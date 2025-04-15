@@ -1,9 +1,0 @@
-{
-  "pages": [
-    "pages/index/index",
-    "pages/game/game"
-  ],
-  "window": {
-    "navigationBarTitleText": "三消小游戏"
-  }
-}
