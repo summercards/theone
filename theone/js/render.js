@@ -1,9 +1,9 @@
-GameGlobal.canvas = wx.createCanvas();
+import SceneManager from './engine/scene.js';
+import drawHeroSelect from './scenes/hero-select.js';
+import drawGameScene from './scenes/game-scene.js';
 
-const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-
-canvas.width = windowInfo.screenWidth;
-canvas.height = windowInfo.screenHeight;
-
-export const SCREEN_WIDTH = windowInfo.screenWidth;
-export const SCREEN_HEIGHT = windowInfo.screenHeight;
+export default function render(ctx) {
+  const scene = SceneManager.getScene();
+  if (scene === 'HERO_SELECT') drawHeroSelect(ctx);
+  else if (scene === 'GAME') drawGameScene(ctx);
+}

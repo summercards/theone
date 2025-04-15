@@ -1,0 +1,10 @@
+.container {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+button {
+  font-size: 36rpx;
+  padding: 20rpx 40rpx;
+}

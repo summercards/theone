@@ -1,0 +1,3 @@
+<view class="container">
+  <button bindtap="startGame">开始游戏</button>
+</view>
