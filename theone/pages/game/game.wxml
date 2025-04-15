@@ -1,0 +1,13 @@
+<view class="game-container">
+  <view class="grid">
+    <block wx:for="{{grid}}" wx:for-item="row" wx:key="index">
+      <view class="row">
+        <block wx:for="{{row}}" wx:for-item="cell" wx:key="index">
+          <view class="cell type-{{cell}}" data-row="{{index}}" data-col="{{index}}" bindtap="onCellTap">
+            {{cell}}
+          </view>
+        </block>
+      </view>
+    </block>
+  </view>
+</view>
