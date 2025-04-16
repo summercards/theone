@@ -1,4 +1,5 @@
 import { addEffect, updateEffects, drawEffects } from './effects.js';
+
 let ctxRef;
 let switchPageFn;
 let canvasRef;
@@ -34,12 +35,9 @@ function initGrid() {
 }
 
 function drawGame() {
+  // 创建背景层并清空画布
   ctxRef.fillStyle = '#001';
   ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
-
-  ctxRef.fillStyle = 'white';
-  ctxRef.font = '36px sans-serif';
-  ctxRef.fillText('游戏中：三消开发中', 50, 60);
 
   const blockColors = {
     A: '#FF4C4C', B: '#4CFF4C', C: '#4C4CFF',
@@ -56,6 +54,7 @@ function drawGame() {
   window.__gridStartX = startX;
   window.__gridStartY = startY;
 
+  // 绘制方块
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
       const block = gridData[row][col];
@@ -77,11 +76,25 @@ function drawGame() {
     }
   }
 
+  // 绘制特效（在方块之上）
+  drawEffects(ctxRef);
+
+  // 在单独的绘制层绘制UI元素
+  drawUI();
+}
+
+function drawUI() {
+  // 绘制UI元素：游戏中的提示文本
+  ctxRef.fillStyle = 'white';
+  ctxRef.font = '36px sans-serif';
+  ctxRef.fillText('游戏中：三消开发中', 50, 60); // 绘制游戏中提示文本
+
+  // 绘制主页按钮
   ctxRef.fillStyle = '#888';
-  ctxRef.fillRect(20, 20, 100, 60);
+  ctxRef.fillRect(20, 20, 100, 60); // 绘制按钮背景
   ctxRef.fillStyle = 'white';
   ctxRef.font = '24px sans-serif';
-  ctxRef.fillText('主页', 40, 60);
+  ctxRef.fillText('主页', 40, 60); // 绘制按钮文本
 }
 
 function animateSwap(src, dst, callback, rollback = false) {
@@ -92,6 +105,7 @@ function animateSwap(src, dst, callback, rollback = false) {
   const startY = window.__gridStartY;
 
   const drawWithOffset = (offsetX1, offsetY1, offsetX2, offsetY2) => {
+    // 只绘制当前正在移动的方块
     ctxRef.fillStyle = '#001';
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
 
@@ -100,6 +114,7 @@ function animateSwap(src, dst, callback, rollback = false) {
       D: '#FFD700', E: '#FF69B4', F: '#00FFFF'
     };
 
+    // 绘制网格
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
         let offsetX = 0, offsetY = 0;
@@ -122,6 +137,12 @@ function animateSwap(src, dst, callback, rollback = false) {
         ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
       }
     }
+
+    // 绘制特效
+    drawEffects(ctxRef);
+
+    // 绘制UI元素
+    drawUI();
   };
 
   const deltaX = (dst.col - src.col) * blockSize / steps;
@@ -203,6 +224,9 @@ function onTouch(e) {
   }
 }
 
+// 其他函数保持不变
+
+
 function checkAndClearMatches() {
   const toClear = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
 
@@ -229,7 +253,7 @@ function checkAndClearMatches() {
     for (let col = 0; col < gridSize; col++) {
       if (toClear[row][col]) {
         addEffect(col * 64 + 32, row * 64 + 16);
-    gridData[row][col] = null;
+        gridData[row][col] = null;
         cleared = true;
       }
     }
@@ -246,7 +270,7 @@ function dropBlocks() {
           if (gridData[k][col] !== null) {
             gridData[row][col] = gridData[k][col];
             addEffect(col * 64 + 32, k * 64 + 16);
-    gridData[k][col] = null;
+            gridData[k][col] = null;
             break;
           }
         }
@@ -321,33 +345,29 @@ function checkHasMatchAt(row, col) {
 
 function processClearAndDrop() {
   const loop = () => {
-    // 阶段 1：清除后暂停一下
     setTimeout(() => {
-      dropBlocks();     // 阶段 2：执行下落逻辑
-      drawGame();       // 可配合落下动画
+      dropBlocks();
+      drawGame();
 
       setTimeout(() => {
-        fillNewBlocks();  // 阶段 3：补新方块
-        drawGame();       // 可配合出现动画
+        fillNewBlocks();
+        drawGame();
 
         setTimeout(() => {
           if (checkAndClearMatches()) {
-            loop(); // 有连锁反应，继续处理
+            loop();
           } else if (!hasPossibleMatches()) {
-            // 阶段 4：刷新棋盘前也暂停一下
             setTimeout(() => {
               initGrid();
               drawGame();
             }, 500);
           }
-        }, 300); // 填充后延时
-      }, 300); // 下落后延时
-    }, 200); // 消除后延时
+        }, 300);
+      }, 300);
+    }, 200);
   };
 
   loop();
 }
 
-
 export function updateGamePage() {}
-
