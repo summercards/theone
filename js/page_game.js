@@ -1,4 +1,4 @@
-import { addEffect, updateEffects, drawEffects } from './effects.js';
+import { updateAllEffects, drawAllEffects, createExplosion } from './effects_engine.js';
 
 let ctxRef;
 let switchPageFn;
@@ -77,7 +77,7 @@ function drawGame() {
   }
 
   // 绘制特效（在方块之上）
-  drawEffects(ctxRef);
+  drawAllEffects(ctxRef);
 
   // 在单独的绘制层绘制UI元素
   drawUI();
@@ -139,7 +139,7 @@ function animateSwap(src, dst, callback, rollback = false) {
     }
 
     // 绘制特效
-    drawEffects(ctxRef);
+    drawAllEffects(ctxRef);
 
     // 绘制UI元素
     drawUI();
@@ -257,7 +257,7 @@ function checkAndClearMatches() {
         const startY = window.__gridStartY;
         const effectX = startX + col * blockSize + blockSize / 2;
         const effectY = startY + row * blockSize + blockSize / 2;
-addEffect(effectX, effectY);
+        createExplosion(effectX, effectY);
 
         gridData[row][col] = null;
         cleared = true;
@@ -275,7 +275,13 @@ function dropBlocks() {
         for (let k = row - 1; k >= 0; k--) {
           if (gridData[k][col] !== null) {
             gridData[row][col] = gridData[k][col];
-            addEffect(col * 64 + 32, k * 64 + 16);
+            const blockSize = window.__blockSize;
+const startX = window.__gridStartX;
+const startY = window.__gridStartY;
+const effectX = startX + col * blockSize + blockSize / 2;
+const effectY = startY + k * blockSize + blockSize / 2;
+createExplosion(effectX, effectY);
+
             gridData[k][col] = null;
             break;
           }
@@ -377,5 +383,5 @@ function processClearAndDrop() {
 }
 
 export function updateGamePage() {
-  updateEffects();
+  updateAllEffects();
 }
