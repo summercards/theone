@@ -1,7 +1,7 @@
 {
   "appid": "wxde998a2a92f30211",
   "compileType": "game",
-  "libVersion": "3.8.1",
+  "libVersion": "3.8.0",
   "packOptions": {
     "ignore": [],
     "include": []
