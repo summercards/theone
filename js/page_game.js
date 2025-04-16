@@ -252,7 +252,13 @@ function checkAndClearMatches() {
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
       if (toClear[row][col]) {
-        addEffect(col * 64 + 32, row * 64 + 16);
+        const blockSize = window.__blockSize;
+        const startX = window.__gridStartX;
+        const startY = window.__gridStartY;
+        const effectX = startX + col * blockSize + blockSize / 2;
+        const effectY = startY + row * blockSize + blockSize / 2;
+addEffect(effectX, effectY);
+
         gridData[row][col] = null;
         cleared = true;
       }
@@ -370,4 +376,6 @@ function processClearAndDrop() {
   loop();
 }
 
-export function updateGamePage() {}
+export function updateGamePage() {
+  updateEffects();
+}
