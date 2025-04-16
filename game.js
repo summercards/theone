@@ -1,5 +1,5 @@
 import { initHomePage, updateHomePage } from './js/page_home.js';
-import { initHeroSelectPage, updateHeroSelectPage } from './js/page_hero_select.js';
+import { initHeroSelectPage } from './js/page_hero_select.js';
 import { initGamePage, updateGamePage, drawGame } from './js/page_game.js'; // ✅ 同时引入 drawGame
 
 const canvas = wx.createCanvas();
@@ -33,7 +33,7 @@ function loop() {
   requestAnimationFrame(loop);
 
   if (currentPage === 'home') updateHomePage();
-  if (currentPage === 'heroSelect') updateHeroSelectPage();
+
 
   if (currentPage === 'game') {
     updateGamePage(); // 更新特效生命周期
