@@ -34,7 +34,7 @@ function initGrid() {
   }
 }
 
-function drawGame() {
+export function drawGame() {
   // 创建背景层并清空画布
   ctxRef.fillStyle = '#001';
   ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);

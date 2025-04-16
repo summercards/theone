@@ -1,7 +1,7 @@
 // effects_engine.js
 import { addEffect, updateEffects, drawEffects } from './effects.js';
 
-// 调用每帧更新所有特效
+// 每帧更新所有特效（可扩展传入 deltaTime）
 export function updateAllEffects() {
   updateEffects();
 }
@@ -11,18 +11,23 @@ export function drawAllEffects(ctx) {
   drawEffects(ctx);
 }
 
-// 创建一个缩小方块特效 + 粒子爆炸特效
-export function createExplosion(x, y) {
-  addEffect(x, y, 'shrink');
-  for (let i = 0; i < 5; i++) {
+// 创建一个缩小方块特效 + 爆炸粒子
+export function createExplosion(x, y, color = '#FFD700') {
+  addEffect(x, y, { type: 'shrink', color, life: 45 }); // ⏳ 更慢缩放
+
+  for (let i = 0; i < 8; i++) {
     const angle = Math.random() * 2 * Math.PI;
     const speed = Math.random() * 2 + 1;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
     addEffect(x, y, {
       type: 'particle',
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 20,
-      alpha: 1
+      vx,
+      vy,
+      radius: 4,
+      color,
+      alpha: 1,
+      life: 30
     });
   }
 }
