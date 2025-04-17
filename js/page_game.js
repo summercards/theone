@@ -2,6 +2,7 @@ import { updateAllEffects, drawAllEffects, createExplosion } from './effects_eng
 import { getSelectedHeroes } from './data/hero_state.js';
 
 
+const heroImageCache = {}; // 缓存图片
 let ctxRef;
 let switchPageFn;
 let canvasRef;
@@ -45,17 +46,30 @@ export function drawGame() {
   const selectedHeroes = getSelectedHeroes();
   const iconSize = 40;
   const spacing = 10;
-
+  const totalWidth = selectedHeroes.length * iconSize + (selectedHeroes.length - 1) * spacing;
+  const startXHero = (canvasRef.width - totalWidth) / 2;
+  const topMargin = 100; // 离顶部留白，避免和UI重叠
+  
   selectedHeroes.forEach((hero, index) => {
-  if (!hero) return;
-  const img = wx.createImage();
-  img.src = `assets/icons/${hero.icon}`;
-  img.onload = () => {
-    const x = 20 + index * (iconSize + spacing);
-    const y = 10;
-    ctxRef.drawImage(img, x, y, iconSize, iconSize);
-  };
-});
+    if (!hero) return;
+  
+    const x = startX + index * (iconSize + spacing);
+    const y = topMargin;
+  
+    if (!heroImageCache[hero.id]) {
+      const img = wx.createImage();
+      img.src = `assets/icons/${hero.icon}`;
+      img.onload = () => {
+        heroImageCache[hero.id] = img;
+        // ❌ 不触发 drawGame，不打断当前状态
+      };
+      return; // 不绘制头像
+    }
+    
+    // ✅ 头像已缓存，同步绘制
+    ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
+  });
+  
 
   const blockColors = {
     A: '#FF4C4C', B: '#4CFF4C', C: '#4C4CFF',
@@ -113,6 +127,23 @@ function drawUI() {
   ctxRef.fillStyle = 'white';
   ctxRef.font = '24px sans-serif';
   ctxRef.fillText('主页', 40, 60); // 绘制按钮文本
+
+    // ✅ 头像绘制补进来
+    const selectedHeroes = getSelectedHeroes();
+    const iconSize = 50;
+    const spacing = 10;
+    const totalWidth = selectedHeroes.length * iconSize + (selectedHeroes.length - 1) * spacing;
+    const startXHero = (canvasRef.width - totalWidth) / 2;
+    const topMargin = 350;
+  
+    selectedHeroes.forEach((hero, index) => {
+      if (!hero) return;
+      const x = startXHero + index * (iconSize + spacing);
+      const y = topMargin;
+      if (heroImageCache[hero.id]) {
+        ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
+      }
+    });
 }
 
 function animateSwap(src, dst, callback, rollback = false) {
@@ -155,6 +186,8 @@ function animateSwap(src, dst, callback, rollback = false) {
         ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
       }
     }
+
+
 
     // 绘制特效
     drawAllEffects(ctxRef);
