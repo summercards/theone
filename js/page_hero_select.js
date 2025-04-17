@@ -1,3 +1,5 @@
+const HeroState = require('./data/hero_state.js');
+
 // ✅ js/page_hero_select.js（自适应 Canvas 尺寸版）
 const HeroData = require('./data/hero_data.js');
 
@@ -29,7 +31,9 @@ function initHeroSelectPage(ctx, switchPage, canvas) {
         let index = selectedHeroes.findIndex(h => h === null);
         if (index !== -1) {
           selectedHeroes[index] = hero;
+          HeroState.setSelectedHeroes(selectedHeroes); // ✅ 保存到共享模块
           render(ctx, canvas);
+          
         }
         return;
       }

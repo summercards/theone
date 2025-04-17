@@ -1,4 +1,6 @@
 import { updateAllEffects, drawAllEffects, createExplosion } from './effects_engine.js';
+import { getSelectedHeroes } from './data/hero_state.js';
+
 
 let ctxRef;
 let switchPageFn;
@@ -38,6 +40,22 @@ export function drawGame() {
   // 创建背景层并清空画布
   ctxRef.fillStyle = '#001';
   ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+
+  // ✅ 添加：绘制出战英雄头像
+  const selectedHeroes = getSelectedHeroes();
+  const iconSize = 40;
+  const spacing = 10;
+
+  selectedHeroes.forEach((hero, index) => {
+  if (!hero) return;
+  const img = wx.createImage();
+  img.src = `assets/icons/${hero.icon}`;
+  img.onload = () => {
+    const x = 20 + index * (iconSize + spacing);
+    const y = 10;
+    ctxRef.drawImage(img, x, y, iconSize, iconSize);
+  };
+});
 
   const blockColors = {
     A: '#FF4C4C', B: '#4CFF4C', C: '#4C4CFF',
