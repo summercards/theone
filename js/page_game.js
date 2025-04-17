@@ -138,12 +138,43 @@ function drawUI() {
   
     selectedHeroes.forEach((hero, index) => {
       if (!hero) return;
+  
       const x = startXHero + index * (iconSize + spacing);
       const y = topMargin;
+  
+      // 稀有度边框颜色
+      let borderColor = '#888';
+      if (hero.rarity === 'SSR') borderColor = '#FFD700';   // 金
+      else if (hero.rarity === 'SR') borderColor = '#C0C0C0'; // 银
+      else if (hero.rarity === 'R') borderColor = '#8B4513';  // 铜
+  
+      // 背景框（可选）
+      ctxRef.fillStyle = '#222';
+      ctxRef.fillRect(x - 4, y - 4, iconSize + 8, iconSize + 8);
+  
+      // 绘头像
       if (heroImageCache[hero.id]) {
         ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
       }
+  
+      // 绘边框
+      ctxRef.strokeStyle = borderColor;
+      ctxRef.lineWidth = 3;
+      ctxRef.strokeRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
+  
+      // 绘制职业标签
+      ctxRef.fillStyle = 'white';
+      ctxRef.font = '12px sans-serif';
+      ctxRef.fillText(hero.role, x, y + iconSize + 14);
+  
+      // 绘制物理/魔法数值
+      ctxRef.fillStyle = '#AAA';
+      ctxRef.font = '11px sans-serif';
+      const phys = hero.attributes?.physical ?? 0;
+      const magic = hero.attributes?.magical ?? 0;
+      ctxRef.fillText(`物:${phys} 魔:${magic}`, x, y + iconSize + 28);
     });
+  
 }
 
 function animateSwap(src, dst, callback, rollback = false) {
