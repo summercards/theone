@@ -7,6 +7,7 @@ const HeroData = {
       name: "剑士",
       icon: "swordsman.png",
       role: "战士",
+      rarity: "SR", // ⭐ 稀有度字段
       attributes: {
         physical: 9,
         magical: 4
@@ -26,6 +27,7 @@ const HeroData = {
       name: "弓箭手",
       icon: "archer.png",
       role: "游侠",
+      rarity: "R",
       attributes: {
         physical: 8,
         magical: 5
@@ -45,6 +47,7 @@ const HeroData = {
       name: "法师",
       icon: "mage.png",
       role: "法师",
+      rarity: "SSR",
       attributes: {
         physical: 2,
         magical: 10
@@ -64,6 +67,7 @@ const HeroData = {
       name: "骑士",
       icon: "knight.png",
       role: "坦克",
+      rarity: "SR",
       attributes: {
         physical: 7,
         magical: 3
@@ -83,6 +87,7 @@ const HeroData = {
       name: "刺客",
       icon: "assassin.png",
       role: "刺客",
+      rarity: "SSR",
       attributes: {
         physical: 10,
         magical: 2
