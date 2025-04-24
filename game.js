@@ -1,43 +1,49 @@
-import { initHomePage, updateHomePage } from './js/page_home.js';
-import { initHeroSelectPage } from './js/page_hero_select.js';
-import { initGamePage, updateGamePage, drawGame } from './js/page_game.js'; // ✅ 同时引入 drawGame
+/* CENTRALIZED EVENT PROXY VERSION */
+
+import PageHome       from './js/page_home.js';
+import PageHeroSelect from './js/page_hero_select.js';
+import PageGame       from './js/page_game.js';
 
 const canvas = wx.createCanvas();
-const ctx = canvas.getContext('2d');
+const ctx     = canvas.getContext('2d');
 
-let currentPage = 'home';
+const pages = {
+  home:       PageHome,
+  heroSelect: PageHeroSelect,
+  game:       PageGame
+};
 
-// ✅ 页面切换函数
-function switchPage(page) {
-  currentPage = page;
+let currentPageName   = 'home';
+let currentPageModule = pages.home;
 
-  if (page === 'home') {
-    initHomePage(ctx, switchPage, canvas);
-  }
-
-  if (page === 'heroSelect') {
-    initHeroSelectPage(ctx, switchPage, canvas);
-  }
-
-  if (page === 'game') {
-    initGamePage(ctx, switchPage, canvas);
-    // ✅ 不用单独启动循环，统一由全局 loop 控制
-  }
+function switchPage(name){
+  currentPageModule.destroy?.();
+  currentPageName   = name;
+  currentPageModule = pages[name];
+  currentPageModule.init?.(ctx, switchPage, canvas);
 }
 
-// ✅ 初始页面为 home
+// 初始页
 switchPage('home');
 
-// ✅ 全局主循环，每帧刷新当前页面
-function loop() {
+// 统一事件代理
+['touchstart','touchmove','touchend'].forEach(type=>{
+  canvas.addEventListener(type,e=>{
+    const fn = currentPageModule['on'+type[0].toUpperCase()+type.slice(1)];
+    if (typeof fn === 'function'){
+      const bubble = fn(e) === false;
+      if(!bubble){
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  });
+});
+
+// 主循环
+function loop(timestamp){
   requestAnimationFrame(loop);
-
-  if (currentPage === 'home') updateHomePage();
-
-
-  if (currentPage === 'game') {
-    updateGamePage(); // 更新特效生命周期
-    drawGame();       // ✅ 关键：每帧重绘，让特效真正动起来
-  }
+  currentPageModule.update?.(timestamp);
+  currentPageModule.draw?.(ctx);
 }
 loop();

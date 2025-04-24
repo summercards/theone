@@ -9,10 +9,21 @@ let scrollY = 0;
 let isDragging = false;
 let lastY = 0;
 const SCROLL_LIMIT = 400; // 英雄池最大可上滑像素
+
+let ctxRef;
+let switchPageFn;
+let canvasRef;
+
+let _handlers = [];
+let _touchStartHandler, _touchMoveHandler, _touchEndHandler;
 const heroImageCache = {}; // 缓存头像图像
 
 function initHeroSelectPage(ctx, switchPage, canvas) {
-  canvas.addEventListener('touchstart', (e) => {
+  ctxRef = ctx;
+  switchPageFn = switchPage;
+  canvasRef = canvas;
+
+  _touchStartHandler = function(e) {
     const touch = e.touches[0];
     const x = touch.clientX;
     const y = touch.clientY;
@@ -22,7 +33,7 @@ function initHeroSelectPage(ctx, switchPage, canvas) {
       const rect = slotRects[i];
       if (pointInRect(x, y, rect)) {
         selectedHeroes[i] = null;
-        render(ctx, canvas);
+        render(ctxRef, canvasRef);
         return;
       }
     }
@@ -36,26 +47,27 @@ function initHeroSelectPage(ctx, switchPage, canvas) {
         if (index !== -1) {
           selectedHeroes[index] = hero;
           HeroState.setSelectedHeroes(selectedHeroes);
-          render(ctx, canvas);
+          render(ctxRef, canvasRef);
         }
         return;
       }
     }
 
     // 点击确认按钮
-    const btnX = canvas.width / 2 - 80;
-    const btnY = canvas.height - 80;
+    const btnX = canvasRef.width / 2 - 80;
+    const btnY = canvasRef.height - 80;
     if (pointInRect(x, y, { x: btnX, y: btnY, width: 160, height: 50 })) {
       wx.setStorageSync("selectedHeroes", selectedHeroes);
-      switchPage("game");
+      switchPageFn("game");
     }
 
     // 开始拖动
     isDragging = true;
     lastY = y;
-  });
-
-  canvas.addEventListener('touchmove', (e) => {
+  };
+canvas.addEventListener('touchstart', _touchStartHandler);
+_handlers.push(['touchstart', _touchStartHandler]);
+_touchMoveHandler = function(e) {
     if (!isDragging) return;
     const currentY = e.touches[0].clientY;
     const deltaY = currentY - lastY;
@@ -65,14 +77,16 @@ function initHeroSelectPage(ctx, switchPage, canvas) {
     if (scrollY > 0) scrollY = 0;
     if (scrollY < -SCROLL_LIMIT) scrollY = -SCROLL_LIMIT;
 
-    render(ctx, canvas);
-  });
-
-  canvas.addEventListener('touchend', () => {
+    render(ctxRef, canvasRef);
+  };
+canvas.addEventListener('touchmove', _touchMoveHandler);
+_handlers.push(['touchmove', _touchMoveHandler]);
+_touchEndHandler = function() {
     isDragging = false;
-  });
-
-  render(ctx, canvas);
+  };
+canvas.addEventListener('touchend', _touchEndHandler);
+_handlers.push(['touchend', _touchEndHandler]);
+render(ctx, canvas);
 }
 
 function pointInRect(x, y, rect) {
@@ -176,6 +190,24 @@ function drawIcon(ctx, hero, x, y) {
     render(ctx, ctx.canvas); // 触发重新渲染一次头像
   };
 }
-module.exports = {
-  initHeroSelectPage
+
+
+export function destroyHeroSelectPage() {
+  if (!canvasRef) return;
+  _handlers.forEach(([type, fn]) => {
+    canvasRef.removeEventListener(type, fn);
+  });
+  _handlers.length = 0;
+}
+
+export default {
+  init: initHeroSelectPage,
+  update: () => {},
+  draw(ctx){               // ← 新增包装函数
+  render(ctx, canvasRef);
+     },
+  onTouchstart: _touchStartHandler,
+  onTouchmove: _touchMoveHandler,
+  onTouchend: _touchEndHandler,
+  destroy: destroyHeroSelectPage
 };

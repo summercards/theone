@@ -8,7 +8,6 @@ export function initHomePage(ctx, switchPage, canvas) {
   canvasRef = canvas;
 
   drawHomeUI();
-  canvasRef.addEventListener('touchend', onTouch);
 }
 
 function drawHomeUI() {
@@ -43,9 +42,19 @@ function onTouch(e) {
   const y = canvasRef.height * 0.6;
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= y && yTouch <= y + btnHeight) {
-    canvasRef.removeEventListener('touchend', onTouch);
     switchPageFn('heroSelect');
   }
 }
 
 export function updateHomePage() {}
+
+export function onTouchend(e){
+  onTouch(e);
+}
+
+export default {
+  init: initHomePage,
+  update: updateHomePage,
+  draw: drawHomeUI,
+  onTouchend
+};

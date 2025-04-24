@@ -24,7 +24,6 @@ export function initGamePage(ctx, switchPage, canvas) {
   // ===== Monster System =====
   loadMonster(1);
 drawGame();
-  canvasRef.addEventListener('touchend', onTouch);
 }
 
 function initGrid() {
@@ -264,7 +263,6 @@ function onTouch(e) {
   const yTouch = touch.clientY;
 
   if (xTouch >= 20 && xTouch <= 120 && yTouch >= 20 && yTouch <= 80) {
-    canvasRef.removeEventListener('touchend', onTouch);
     switchPageFn('home');
     return;
   }
@@ -492,3 +490,13 @@ export function updateGamePage() {
   updateAllEffects();
 }
 
+export function onTouchend(e){
+  onTouch(e);
+}
+
+export default {
+  init: initGamePage,
+  update: updateGamePage,
+  draw: drawGame,
+  onTouchend
+};
