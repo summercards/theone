@@ -1,11 +1,11 @@
 import { updateAllEffects, drawAllEffects, createExplosion } from './effects_engine.js';
 import { getSelectedHeroes } from './data/hero_state.js';
 // 👾 Monster system
-import { loadMonster, getMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
+import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
+import { drawMonsterSprite } from './ui/monster_ui.js';
 
 
 const heroImageCache = {}; // 缓存图片
-const monsterImageCache = {};
 let ctxRef;
 let switchPageFn;
 let canvasRef;
@@ -114,8 +114,6 @@ export function drawGame() {
     }
   }
 
-  drawMonster(ctxRef);
-
 // 绘制特效（在方块之上）
   drawAllEffects(ctxRef);
 
@@ -123,11 +121,15 @@ export function drawGame() {
   drawUI();
 }
 
+  //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
   // 绘制UI元素：游戏中的提示文本
   ctxRef.fillStyle = 'white';
   ctxRef.font = '36px sans-serif';
   ctxRef.fillText('游戏中：三消开发中', 50, 60); // 绘制游戏中提示文本
+ 
+  //绘制怪物图层
+  drawMonsterSprite(ctxRef, canvasRef); 
 
   // 绘制主页按钮
   ctxRef.fillStyle = '#888';
@@ -171,16 +173,16 @@ function drawUI() {
       ctxRef.strokeRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
   
       // 绘制职业标签
-      ctxRef.fillStyle = 'white';
-      ctxRef.font = '12px sans-serif';
-      ctxRef.fillText(hero.role, x, y + iconSize + 14);
+      //ctxRef.fillStyle = 'white';
+      //ctxRef.font = '12px sans-serif';
+      //ctxRef.fillText(hero.role, x, y + iconSize + 14);
   
       // 绘制物理/魔法数值
-      ctxRef.fillStyle = '#AAA';
-      ctxRef.font = '11px sans-serif';
-      const phys = hero.attributes?.physical ?? 0;
-      const magic = hero.attributes?.magical ?? 0;
-      ctxRef.fillText(`物:${phys} 魔:${magic}`, x, y + iconSize + 28);
+      //ctxRef.fillStyle = '#AAA';
+      //ctxRef.font = '11px sans-serif';
+      //const phys = hero.attributes?.physical ?? 0;
+      //const magic = hero.attributes?.magical ?? 0;
+      //ctxRef.fillText(`物:${phys} 魔:${magic}`, x, y + iconSize + 28);
     });
   
 }
@@ -490,34 +492,3 @@ export function updateGamePage() {
   updateAllEffects();
 }
 
-function drawMonster(ctx) {
-  const monster = getMonster();
-  if (!monster || !canvasRef) return;
-
-  if (!monsterImageCache[monster.id]) {
-    const img = wx.createImage();
-    img.src = `assets/monsters/${monster.sprite}`;
-    monsterImageCache[monster.id] = img;
-  }
-  const img = monsterImageCache[monster.id];
-  const spriteW = 120;
-  const spriteH = 120;
-  const x = (canvasRef.width - spriteW) / 2;
-  const y = 20;
-  if (img && img.width) {
-    ctx.drawImage(img, x, y, spriteW, spriteH);
-  }
-
-  const barWidth = 140;
-  const barHeight = 12;
-  const hpRatio = monster.hp / monster.maxHp;
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(x, y + spriteH + 6, barWidth, barHeight);
-  ctx.fillStyle = '#ff4444';
-  ctx.fillRect(x, y + spriteH + 6, barWidth * hpRatio, barHeight);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '14px Arial';
-  ctx.textAlign = 'center';
-  ctx.fillText(`Lv.${monster.level}  ${monster.name}`, x + barWidth / 2, y + spriteH + barHeight + 24);
-}
