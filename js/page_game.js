@@ -1,8 +1,11 @@
 import { updateAllEffects, drawAllEffects, createExplosion } from './effects_engine.js';
 import { getSelectedHeroes } from './data/hero_state.js';
+// 👾 Monster system
+import { loadMonster, getMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
 
 
 const heroImageCache = {}; // 缓存图片
+const monsterImageCache = {};
 let ctxRef;
 let switchPageFn;
 let canvasRef;
@@ -17,7 +20,10 @@ export function initGamePage(ctx, switchPage, canvas) {
   canvasRef = canvas;
 
   initGrid();
-  drawGame();
+  
+  // ===== Monster System =====
+  loadMonster(1);
+drawGame();
   canvasRef.addEventListener('touchend', onTouch);
 }
 
@@ -108,7 +114,9 @@ export function drawGame() {
     }
   }
 
-  // 绘制特效（在方块之上）
+  drawMonster(ctxRef);
+
+// 绘制特效（在方块之上）
   drawAllEffects(ctxRef);
 
   // 在单独的绘制层绘制UI元素
@@ -310,6 +318,7 @@ function onTouch(e) {
 
 
 function checkAndClearMatches() {
+  let clearedCount = 0;
   const toClear = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
 
   for (let row = 0; row < gridSize; row++) {
@@ -342,12 +351,25 @@ function checkAndClearMatches() {
         createExplosion(effectX, effectY);
 
         gridData[row][col] = null;
+        clearedCount++;
         cleared = true;
       }
     }
   }
 
-  return cleared;
+  
+if (clearedCount > 0) {
+  const damage = clearedCount * 20;
+  dealDamage(damage);
+  if (isMonsterDead()) {
+    loadMonster(getNextLevel());
+  } else {
+    const skill = monsterTurn();
+    // TODO: handle skill damage / effects
+  }
+}
+return clearedCount > 0;
+
 }
 
 function dropBlocks() {
@@ -466,4 +488,36 @@ function processClearAndDrop() {
 
 export function updateGamePage() {
   updateAllEffects();
+}
+
+function drawMonster(ctx) {
+  const monster = getMonster();
+  if (!monster || !canvasRef) return;
+
+  if (!monsterImageCache[monster.id]) {
+    const img = wx.createImage();
+    img.src = `assets/monsters/${monster.sprite}`;
+    monsterImageCache[monster.id] = img;
+  }
+  const img = monsterImageCache[monster.id];
+  const spriteW = 120;
+  const spriteH = 120;
+  const x = (canvasRef.width - spriteW) / 2;
+  const y = 20;
+  if (img && img.width) {
+    ctx.drawImage(img, x, y, spriteW, spriteH);
+  }
+
+  const barWidth = 140;
+  const barHeight = 12;
+  const hpRatio = monster.hp / monster.maxHp;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(x, y + spriteH + 6, barWidth, barHeight);
+  ctx.fillStyle = '#ff4444';
+  ctx.fillRect(x, y + spriteH + 6, barWidth * hpRatio, barHeight);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Lv.${monster.level}  ${monster.name}`, x + barWidth / 2, y + spriteH + barHeight + 24);
 }
