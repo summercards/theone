@@ -43,6 +43,7 @@ function initGrid() {
 }
 
 export function drawGame() {
+  ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   // 创建背景层并清空画布
   ctxRef.fillStyle = '#001';
   ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
@@ -122,10 +123,11 @@ export function drawGame() {
 
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
+  ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   // 绘制UI元素：游戏中的提示文本
-  ctxRef.fillStyle = 'white';
-  ctxRef.font = '36px sans-serif';
-  ctxRef.fillText('游戏中：三消开发中', 50, 60); // 绘制游戏中提示文本
+  //ctxRef.fillStyle = 'white';
+  //ctxRef.font = '36px sans-serif';
+  //ctxRef.fillText('游戏中：三消开发中', 50, 60); // 绘制游戏中提示文本
  
   //绘制怪物图层
   drawMonsterSprite(ctxRef, canvasRef); 
@@ -135,7 +137,7 @@ function drawUI() {
   ctxRef.fillRect(20, 20, 100, 60); // 绘制按钮背景
   ctxRef.fillStyle = 'white';
   ctxRef.font = '24px sans-serif';
-  ctxRef.fillText('主页', 40, 60); // 绘制按钮文本
+  //ctxRef.fillText('主页', 40, 60); // 绘制按钮文本
 
     // ✅ 头像绘制补进来
     const selectedHeroes = getSelectedHeroes();
@@ -194,6 +196,7 @@ function animateSwap(src, dst, callback, rollback = false) {
   const startY = window.__gridStartY;
 
   const drawWithOffset = (offsetX1, offsetY1, offsetX2, offsetY2) => {
+    ctxRef.setTransform(1, 0, 0, 1, 0, 0);
     // 只绘制当前正在移动的方块
     ctxRef.fillStyle = '#001';
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);

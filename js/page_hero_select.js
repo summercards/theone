@@ -1,3 +1,13 @@
+function drawText(ctx, text, x, y, font = '16px sans-serif', color = '#333',
+                  hAlign = 'left', vAlign = 'alphabetic') {
+  ctx.fillStyle   = color;
+  ctx.font        = font;
+  ctx.textAlign   = hAlign;      // 'left' | 'center' | 'right'
+  ctx.textBaseline= vAlign;      // 'top' | 'middle' | 'bottom' | 'alphabetic'
+  ctx.fillText(text, x, y);
+}
+
+
 const HeroState = require('./data/hero_state.js');
 const HeroData = require('./data/hero_data.js');
 
@@ -105,9 +115,9 @@ function render(ctx, canvas) {
   const topOffset = 80;
 
   // 出战栏位
-  ctx.fillStyle = '#333';
-  ctx.font = '16px sans-serif';
-  ctx.fillText("出战英雄（点击移除）", paddingX, 280 + topOffset);
+  drawText(ctx, "出战英雄（点击移除）",
+            paddingX, 280 + topOffset,
+            '16px sans-serif', '#333', 'left', 'top');
   slotRects = [];
   for (let i = 0; i < 5; i++) {
     const x = paddingX + i * (heroSize + gap);
@@ -122,7 +132,9 @@ function render(ctx, canvas) {
   const baseY = 420;
   const scrollBaseY = baseY + scrollY + topOffset;
   ctx.fillStyle = '#333';
-  ctx.fillText("英雄池（点击添加）", paddingX, baseY + scrollY + topOffset - 20);
+   drawText(ctx, "英雄池（点击添加）",
+            paddingX, baseY + scrollY + topOffset - 20,
+            '16px sans-serif', '#333', 'left', 'top');
 
   // 英雄池绘制
   iconRects = [];
@@ -143,9 +155,10 @@ function render(ctx, canvas) {
   const btnY = canvas.height - 80;
   ctx.fillStyle = '#00AA00';
   ctx.fillRect(btnX, btnY, 160, 50);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '18px sans-serif';
-  ctx.fillText("确认出战", btnX + 35, btnY + 30);
+   drawText(ctx, "确认出战",
+            btnX + 80,          // 按钮中心 = btnX + btnWidth/2
+            btnY + 25,          //           btnY + btnHeight/2
+            '18px sans-serif', '#fff', 'center', 'middle');
 }
 
 function drawIcon(ctx, hero, x, y) {
@@ -168,17 +181,17 @@ function drawIcon(ctx, hero, x, y) {
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(x, y + iconSize - 14, iconSize, 14);
-    ctx.fillStyle = 'white';
-    ctx.font = '10px sans-serif';
-    ctx.fillText(hero.role, x + 4, y + iconSize - 3);
+     drawText(ctx, hero.role,
+                x + 4, y + iconSize - 3,
+                '10px sans-serif', '#fff', 'left', 'bottom');
 
     const phys = hero.attributes?.physical ?? 0;
     const magic = hero.attributes?.magical ?? 0;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(x, y - 14, iconSize, 14);
-    ctx.fillStyle = '#0FF';
-    ctx.font = '10px sans-serif';
-    ctx.fillText(`物:${phys} 魔:${magic}`, x + 4, y - 3);
+     drawText(ctx, `物:${phys} 魔:${magic}`,
+              x + 4, y - 3,
+              '10px sans-serif', '#0FF', 'left', 'bottom');
     return;
   }
 
