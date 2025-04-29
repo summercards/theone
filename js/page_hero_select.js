@@ -1,6 +1,25 @@
+
+function drawRoundedRect(ctx, x, y, width, height, radius = 10, fill = true, stroke = true) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
+
+
+
 /* ===================== 通用文字绘制 ===================== */
 function drawText(ctx, text, x, y,
-  font = '16px sans-serif', color = '#333',
+  font = '16px IndieFlower, sans-serif', color = '#FFF',
   hAlign = 'left', vAlign = 'alphabetic') {
   ctx.fillStyle    = color;
   ctx.font         = font;
@@ -22,9 +41,9 @@ let iconRects   = [];
 let btnPrevRect = null;
 let btnNextRect = null;
 
-const HERO_PER_PAGE = 10;      // 2 行 × 5 列
-const TOTAL_PAGES   = 3;       // 固定 3 页，占位问号补空
-let   pageIndex     = 0;       // 0-based
+const HERO_PER_PAGE = 10;
+const TOTAL_PAGES   = 3;
+let   pageIndex     = 0;
 
 let ctxRef, canvasRef, switchPageFn;
 
@@ -42,7 +61,6 @@ function initHeroSelectPage(ctx, switchPage, canvas) {
 function onTouch(e) {
   const { clientX: x, clientY: y } = e.touches[0];
 
-  /* ---- 出战栏：移除 ---- */
   for (let i = 0; i < slotRects.length; i++) {
     if (hit(x, y, slotRects[i])) {
       selectedHeroes[i] = null;
@@ -51,7 +69,6 @@ function onTouch(e) {
     }
   }
 
-  /* ---- 翻页按钮 ---- */
   if (hit(x, y, btnPrevRect) && pageIndex > 0) {
     pageIndex--;
     return render();
@@ -61,7 +78,6 @@ function onTouch(e) {
     return render();
   }
 
-  /* ---- 英雄池：添加 ---- */
   for (const { rect, hero } of iconRects) {
     if (hero && hit(x, y, rect)) {
       if (selectedHeroes.some(h => h && h.id === hero.id)) return;
@@ -74,7 +90,6 @@ function onTouch(e) {
     }
   }
 
-  /* ---- 确认按钮 ---- */
   const confirmRect = {
     x: canvasRef.width / 2 - 80,
     y: canvasRef.height - 80,
@@ -97,35 +112,34 @@ function hit(px, py, r) {
 function render() {
   const ctx = ctxRef, canvas = canvasRef;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#FFF';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#2B0000';
+  drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, 8, true, false);
 
   const PAD_X     = 20;
   const ICON      = 60;
   const GAP       = 15;
   const topOffset = 80;
 
-  /* —— 出战栏 —— */
   drawText(ctx, '出战英雄（点击移除）',
-           PAD_X, 280 + topOffset, '16px sans-serif', '#333', 'left', 'top');
+           PAD_X, 280 + topOffset, '16px IndieFlower', '#FFD', 'left', 'top');
 
   slotRects.length = 0;
   for (let i = 0; i < 5; i++) {
     const sx = PAD_X + i * (ICON + GAP);
     const sy = 300 + topOffset;
-    ctx.strokeStyle = '#999';
-    ctx.strokeRect(sx, sy, ICON, ICON);
+    ctx.strokeStyle = '#FF0000';
+    ctx.lineWidth = 3;
+    drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
     slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
     if (selectedHeroes[i]) drawIcon(ctx, selectedHeroes[i], sx, sy);
   }
 
-  /* —— 英雄池 —— */
   drawText(ctx, '英雄池（点击添加）',
-           PAD_X, 420 + topOffset - 20, '16px sans-serif', '#333', 'left', 'top');
+           PAD_X, 420 + topOffset - 20, '16px IndieFlower', '#FFD', 'left', 'top');
 
   const startIdx   = pageIndex * HERO_PER_PAGE;
   const pageHeroes = HeroData.heroes.slice(startIdx, startIdx + HERO_PER_PAGE);
-  while (pageHeroes.length < HERO_PER_PAGE) pageHeroes.push(null); // 占位
+  while (pageHeroes.length < HERO_PER_PAGE) pageHeroes.push(null);
 
   iconRects.length = 0;
   pageHeroes.forEach((hero, i) => {
@@ -133,80 +147,74 @@ function render() {
     const col = i % 5;
     const ix  = PAD_X + col * (ICON + GAP);
     const iy  = 420 + topOffset + row * (ICON + 30);
-    ctx.strokeStyle = '#999';
-    ctx.strokeRect(ix, iy, ICON, ICON);
+    ctx.strokeStyle = '#FF6666';
+    ctx.lineWidth = 2;
+    drawRoundedRect(ctx, ix, iy, ICON, ICON, 8, false, true);
 
     if (hero) drawIcon(ctx, hero, ix, iy);
     else {
-      ctx.fillStyle = '#EEE';
-      ctx.fillRect(ix + 4, iy + 4, ICON - 8, ICON - 8);
+      ctx.fillStyle = '#800000';
+      drawRoundedRect(ctx, ix + 4, iy + 4, ICON - 8, ICON - 8, 8, true, false);
       drawText(ctx, '?', ix + ICON / 2, iy + ICON / 2,
-               '20px sans-serif', '#AAA', 'center', 'middle');
+               '20px IndieFlower', '#FFF', 'center', 'middle');
     }
     iconRects.push({ rect: { x: ix, y: iy, width: ICON, height: ICON }, hero });
   });
 
-  /* —— 翻页按钮 —— */
   const btnY = 420 + topOffset + 2 * (ICON + 30) + 10;
-  btnPrevRect = { x: PAD_X,                 y: btnY, width: 40, height: 40 };
+  btnPrevRect = { x: PAD_X, y: btnY, width: 40, height: 40 };
   btnNextRect = { x: canvas.width - PAD_X - 40, y: btnY, width: 40, height: 40 };
 
-  ctx.fillStyle = pageIndex > 0 ? '#00AA00' : '#DDD';
-  ctx.fillRect(btnPrevRect.x, btnPrevRect.y, 40, 40);
+  ctx.fillStyle = pageIndex > 0 ? '#AA0000' : '#300';
+  drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, 40, 40, 8, true, false);
   drawText(ctx, '<', btnPrevRect.x + 20, btnPrevRect.y + 20,
-           '24px sans-serif', '#FFF', 'center', 'middle');
+           '24px IndieFlower', '#FFF', 'center', 'middle');
 
-  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#00AA00' : '#DDD';
-  ctx.fillRect(btnNextRect.x, btnNextRect.y, 40, 40);
+  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#AA0000' : '#300';
+  drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, 40, 40, 8, true, false);
   drawText(ctx, '>', btnNextRect.x + 20, btnNextRect.y + 20,
-           '24px sans-serif', '#FFF', 'center', 'middle');
+           '24px IndieFlower', '#FFF', 'center', 'middle');
 
-  /* —— 页码 —— */
   drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
            canvas.width / 2, btnPrevRect.y + 20,
-           '14px sans-serif', '#333', 'center', 'middle');
+           '14px IndieFlower', '#FFD', 'center', 'middle');
 
-  /* —— 确认按钮 —— */
   const confirmX = canvas.width / 2 - 80;
   const confirmY = canvas.height - 80;
-  ctx.fillStyle  = '#00AA00';
-  ctx.fillRect(confirmX, confirmY, 160, 50);
+  ctx.fillStyle  = '#CC0000';
+  drawRoundedRect(ctx, confirmX, confirmY, 160, 50, 8, true, false);
   drawText(ctx, '确认出战', confirmX + 80, confirmY + 25,
-           '18px sans-serif', '#FFF', 'center', 'middle');
+           '18px IndieFlower', '#FFF', 'center', 'middle');
 }
 
 /* ===================== 头像绘制 ========================= */
 function drawIcon(ctx, hero, x, y) {
   const ICON = 60;
-  const rarityColor =
-    { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#888';
+  const rarityColor = { SSR: '#FF0000', SR: '#AA2222', R: '#882222' }[hero.rarity] || '#660000';
 
   if (heroImageCache[hero.id]) {
-    ctx.fillStyle = '#111';
-    ctx.fillRect(x - 2, y - 2, ICON + 4, ICON + 4);
+    ctx.fillStyle = '#000';
+    drawRoundedRect(ctx, x - 2, y - 2, ICON + 4, ICON + 4, 8, true, false);
     ctx.drawImage(heroImageCache[hero.id], x, y, ICON, ICON);
 
     ctx.strokeStyle = rarityColor;
-    ctx.lineWidth   = 2;
-    ctx.strokeRect(x - 1, y - 1, ICON + 2, ICON + 2);
+    ctx.lineWidth   = 3;
+    drawRoundedRect(ctx, x - 1, y - 1, ICON + 2, ICON + 2, 8, false, true);
 
-    /* ── 顶部属性 ── */
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(x, y - 14, ICON, 14);
+    drawRoundedRect(ctx, x, y - 14, ICON, 14, 8, true, false);
     drawText(ctx, `物:${hero.attributes.physical} 魔:${hero.attributes.magical}`,
-             x + 4, y - 3, '10px sans-serif', '#0FF', 'left', 'bottom');
+             x + 4, y - 3, '10px IndieFlower', '#FFD', 'left', 'bottom');
 
-    /* ── 底部名字 / 职业 ── */
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(x, y + ICON - 20, ICON, 20);
-    drawText(ctx, hero.role, x + 36, y + ICON - 14,
-             '10px sans-serif', '#FFF', 'left', 'bottom');
+    drawRoundedRect(ctx, x, y + ICON - 20, ICON, 20, 8, true, false);
+    drawText(ctx, hero.role, x + 4, y + ICON - 14,
+             '10px IndieFlower', '#FFF', 'left', 'bottom');
     drawText(ctx, hero.name, x + 4, y + ICON - 3,
-             '10px sans-serif', '#FFF', 'left', 'bottom');
+             '10px IndieFlower', '#FFF', 'left', 'bottom');
     return;
   }
 
-  /* 异步加载图片 */
   const img = wx.createImage();
   img.src   = `assets/icons/${hero.icon}`;
   img.onload = () => { heroImageCache[hero.id] = img; render(); };
