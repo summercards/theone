@@ -1,8 +1,10 @@
 import { updateAllEffects, drawAllEffects, createExplosion } from './effects_engine.js';
 import { getSelectedHeroes } from './data/hero_state.js';
+import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
 import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
 import { drawMonsterSprite } from './ui/monster_ui.js';
+
 
 
 const heroImageCache = {}; // 缓存图片
@@ -48,33 +50,8 @@ export function drawGame() {
   ctxRef.fillStyle = '#001';
   ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
 
-  // ✅ 添加：绘制出战英雄头像
-  const selectedHeroes = getSelectedHeroes();
-  const iconSize = 40;
-  const spacing = 10;
-  const totalWidth = selectedHeroes.length * iconSize + (selectedHeroes.length - 1) * spacing;
-  const startXHero = (canvasRef.width - totalWidth) / 2;
-  const topMargin = 100; // 离顶部留白，避免和UI重叠
-  
-  selectedHeroes.forEach((hero, index) => {
-    if (!hero) return;
-  
-    const x = startX + index * (iconSize + spacing);
-    const y = topMargin;
-  
-    if (!heroImageCache[hero.id]) {
-      const img = wx.createImage();
-      img.src = `assets/icons/${hero.icon}`;
-      img.onload = () => {
-        heroImageCache[hero.id] = img;
-        // ❌ 不触发 drawGame，不打断当前状态
-      };
-      return; // 不绘制头像
-    }
-    
-    // ✅ 头像已缓存，同步绘制
-    ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
-  });
+
+
   
 
   const blockColors = {
@@ -139,52 +116,68 @@ function drawUI() {
   ctxRef.font = '24px sans-serif';
   //ctxRef.fillText('主页', 40, 60); // 绘制按钮文本
 
-    // ✅ 头像绘制补进来
-    const selectedHeroes = getSelectedHeroes();
-    const iconSize = 50;
-    const spacing = 10;
-    const totalWidth = selectedHeroes.length * iconSize + (selectedHeroes.length - 1) * spacing;
-    const startXHero = (canvasRef.width - totalWidth) / 2;
-    const topMargin = 350;
+/* === 出战栏：固定 5 槽位 + 编号（原来绿色框位置） ================ */
+const heroes      = getSelectedHeroes();   // 长度固定 5
+const iconSize    = 48;                    // 头像边长，可调
+const spacing     = 12;                    // 槽位间隔
+const totalWidth  = 5 * iconSize + 4 * spacing;
+const startXHero  = (canvasRef.width - totalWidth) / 2;
+const topMargin   = 350;                   // 保持原位置
+
+for (let i = 0; i < 5; i++) {
+  const x = startXHero + i * (iconSize + spacing);
+  const y = topMargin;
+
+  // — 背板框（空位也画） —
+  ctxRef.fillStyle = '#111';
+  ctxRef.fillRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
+  ctxRef.strokeStyle = '#888';
+  ctxRef.lineWidth   = 2;
+  ctxRef.strokeRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
+
+    /* — 蓄力条 — */
+    const charges = getCharges();          // [0-100]
+    const percent = charges[i] || 0;       // 当前槽位蓄力
+    const barW = iconSize;                 // 同头像宽
+    const barH = 6;                        // 条高度
+    const barX = x;                        // 与头像左对齐
+    const barY = y + iconSize + 16;        // 位于编号下方少许
   
-    selectedHeroes.forEach((hero, index) => {
-      if (!hero) return;
+    // 背景框
+    ctxRef.fillStyle = '#333';
+    ctxRef.fillRect(barX, barY, barW, barH);
   
-      const x = startXHero + index * (iconSize + spacing);
-      const y = topMargin;
+    // 填充进度
+    ctxRef.fillStyle = '#0F0';             // 绿色，可换
+    ctxRef.fillRect(barX, barY, barW * (percent / 100), barH);
   
-      // 稀有度边框颜色
-      let borderColor = '#888';
-      if (hero.rarity === 'SSR') borderColor = '#FFD700';   // 金
-      else if (hero.rarity === 'SR') borderColor = '#C0C0C0'; // 银
-      else if (hero.rarity === 'R') borderColor = '#8B4513';  // 铜
+    // 进度边框
+    ctxRef.strokeStyle = '#888';
+    ctxRef.lineWidth = 1;
+    ctxRef.strokeRect(barX, barY, barW, barH);
   
-      // 背景框（可选）
-      ctxRef.fillStyle = '#222';
-      ctxRef.fillRect(x - 4, y - 4, iconSize + 8, iconSize + 8);
-  
-      // 绘头像
-      if (heroImageCache[hero.id]) {
-        ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
-      }
-  
-      // 绘边框
-      ctxRef.strokeStyle = borderColor;
-      ctxRef.lineWidth = 3;
-      ctxRef.strokeRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
-  
-      // 绘制职业标签
-      //ctxRef.fillStyle = 'white';
-      //ctxRef.font = '12px sans-serif';
-      //ctxRef.fillText(hero.role, x, y + iconSize + 14);
-  
-      // 绘制物理/魔法数值
-      //ctxRef.fillStyle = '#AAA';
-      //ctxRef.font = '11px sans-serif';
-      //const phys = hero.attributes?.physical ?? 0;
-      //const magic = hero.attributes?.magical ?? 0;
-      //ctxRef.fillText(`物:${phys} 魔:${magic}`, x, y + iconSize + 28);
-    });
+
+  // — 已选英雄头像 —
+  const hero = heroes[i];
+  if (hero) {
+    if (heroImageCache[hero.id]) {
+      ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
+    } else {
+      const img = wx.createImage();
+      img.src   = `assets/icons/${hero.icon}`;
+      img.onload = () => { heroImageCache[hero.id] = img; };
+    }
+  }
+
+  // — 槽位编号 —
+  ctxRef.fillStyle   = '#FFF';
+  ctxRef.font        = '12px sans-serif';
+  ctxRef.textAlign   = 'center';
+  ctxRef.textBaseline= 'top';
+  ctxRef.fillText(i + 1, x + iconSize / 2, y + iconSize + 2);
+}
+/* =============================================================== */
+
   
 }
 
@@ -362,8 +355,14 @@ function checkAndClearMatches() {
 
   
 if (clearedCount > 0) {
+  // === 新增：给所有已上阵英雄增加蓄力 ===
+    for (let i = 0; i < 5; i++) {
+      setCharge(i, getCharges()[i] + clearedCount * 20); // 20% × 方块数，可自行调系数
+  }
+  
   const damage = clearedCount * 20;
   dealDamage(damage);
+  
   if (isMonsterDead()) {
     loadMonster(getNextLevel());
   } else {
