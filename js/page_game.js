@@ -460,9 +460,7 @@ function dropBlocks() {
             const blockSize = window.__blockSize;
 const startX = window.__gridStartX;
 const startY = window.__gridStartY;
-const effectX = startX + col * blockSize + blockSize / 2;
-const effectY = startY + k * blockSize + blockSize / 2;
-createExplosion(effectX, effectY);
+
 
             gridData[k][col] = null;
             break;
