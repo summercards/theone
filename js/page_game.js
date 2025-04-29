@@ -4,6 +4,7 @@ import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
 import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
 import { drawMonsterSprite } from './ui/monster_ui.js';
+import HeroData from './data/hero_data.js';
 
 // 字母块 → 英雄职业 的映射
 const BLOCK_ROLE_MAP = {
@@ -144,6 +145,8 @@ for (let i = 0; i < 5; i++) {
   ctxRef.lineWidth   = 2;
   ctxRef.strokeRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
 
+
+
     /* — 蓄力条 — */
     const charges = getCharges();          // [0-100]
     const percent = charges[i] || 0;       // 当前槽位蓄力
@@ -155,6 +158,14 @@ for (let i = 0; i < 5; i++) {
     // 背景框
     ctxRef.fillStyle = '#333';
     ctxRef.fillRect(barX, barY, barW, barH);
+
+   // 若蓄力满，画闪烁边框
+if (percent >= 100) {
+  ctxRef.strokeStyle = (Date.now() % 500 < 250) ? '#FF0' : '#F00'; // 闪黄红
+  ctxRef.lineWidth = 4;
+  ctxRef.strokeRect(x - 4, y - 4, iconSize + 8, iconSize + 8);
+}
+
   
     // 填充进度
     ctxRef.fillStyle = '#0F0';             // 绿色，可换
@@ -272,6 +283,34 @@ function onTouch(e) {
     return;
   }
 
+  /* === 点击头像 → 释放必杀 =============================== */
+{
+  const iconSize = 48;
+  const spacing  = 12;
+  const totalWidth = 5 * iconSize + 4 * spacing;
+  const startXHero = (canvasRef.width - totalWidth) / 2;
+  const topMargin  = 350;
+
+  const heroes = getSelectedHeroes();
+  for (let i = 0; i < 5; i++) {
+    const xIcon = startXHero + i * (iconSize + spacing);
+    const yIcon = topMargin;
+
+    if (
+      xTouch >= xIcon && xTouch <= xIcon + iconSize &&
+      yTouch >= yIcon && yTouch <= yIcon + iconSize
+    ) {
+      if (getCharges()[i] >= 100) {
+        releaseHeroSkill(i);  // 调用我们在步骤 2 新增的函数
+        drawGame();           // 立即刷新
+      }
+      return; // 点中了头像，无论是否释放技能，都不再处理网格点击
+    }
+  }
+}
+/* ===================================================== */
+
+
   const blockSize = window.__blockSize;
   const startX = window.__gridStartX;
   const startY = window.__gridStartY;
@@ -386,6 +425,14 @@ if (clearedCount > 0) {
       // 每消一块奖励 20%（系数可自己调）
       setCharge(i, chargesNow[i] + gainedBlocks * 20);
     }
+
+    // === 蓄力满自动释放技能 ===
+  for (let i = 0; i < 5; i++) {
+  if (getCharges()[i] >= 100) {
+    releaseHeroSkill(i);
+  }
+}
+
   }
   
   
@@ -531,3 +578,27 @@ export default {
   draw: drawGame,
   onTouchend
 };
+
+function releaseHeroSkill(slotIndex) {
+  const hero = getSelectedHeroes()[slotIndex];
+  if (!hero) return;
+
+  const { effect } = hero.skill;
+  if (!effect) return;
+
+  switch (effect.type) {
+    case 'physicalDamage':
+    case 'magicalDamage':
+      dealDamage(effect.amount);
+      break;
+    // 若以后要支持 buff/heal，可继续扩展
+    default:
+      console.warn('未知技能类型', effect.type);
+  }
+
+  // 清零蓄力
+  setCharge(slotIndex, 0);
+
+  // TODO: 可在此触发动画或特效
+  createExplosion(canvasRef.width / 2, canvasRef.height / 2); // 简单爆炸示例
+}
