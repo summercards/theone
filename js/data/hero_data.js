@@ -4,11 +4,11 @@ const HeroData = {
   heroes: [
     {
       id: "hero001",
-      name: "剑士",
+      name: "原味肠",
       icon: "swordsman.png",
       role: "战士",
       rarity: "SR",
-      attributes: { physical: 500, magical: 4 },
+      attributes: { physical: 500 },
     
       skill: {
         name: "破甲斩",
@@ -25,7 +25,7 @@ const HeroData = {
     },
     {
       id: "hero002",
-      name: "弓箭手",
+      name: "MIO",
       icon: "archer.png",
       role: "游侠",
       rarity: "R",
@@ -35,17 +35,17 @@ const HeroData = {
       },
       skill: {
         name: "贯穿射击",
-        description: "射出穿透敌人的箭矢",
+        description: "将当前伤害池翻倍",
         effect: {
-          type: "physicalDamage",
-          amount: 110
+          type: "mulGauge",   // ← 新类型：乘以系数
+          factor: 2           // 乘 2；改成 1.5 就是 +50%
         },
         cooldown: 2
       }
     },
     {
       id: "hero003",
-      name: "法师",
+      name: "凯瑟琳",
       icon: "mage.png",
       role: "法师",
       rarity: "SSR",
@@ -65,7 +65,7 @@ const HeroData = {
     },
     {
       id: "hero004",
-      name: "骑士",
+      name: "任天堂",
       icon: "knight.png",
       role: "坦克",
       rarity: "SR",
@@ -85,7 +85,7 @@ const HeroData = {
     },
     {
       id: "hero005",
-      name: "刺客",
+      name: "男鼠鼠",
       icon: "assassin.png",
       role: "刺客",
       rarity: "SSR",

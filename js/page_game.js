@@ -670,6 +670,12 @@ function releaseHeroSkill(slotIndex) {
       dealDamage(eff.amount);
       break;
 
+        /* ---------- 新增：翻倍伤害槽 ---------- */
+  case 'mulGauge':
+    attackGaugeDamage = Math.round(attackGaugeDamage * (eff.factor ?? 1));
+    damagePopTime     = Date.now();   // 触发数字弹跳
+    break;
+    
     /* --------------- ② 新增 addGauge -------------- */
     case 'addGauge': {
       let add = 0;

@@ -1,226 +1,221 @@
-function drawText(ctx, text, x, y, font = '16px sans-serif', color = '#333',
-                  hAlign = 'left', vAlign = 'alphabetic') {
-  ctx.fillStyle   = color;
-  ctx.font        = font;
-  ctx.textAlign   = hAlign;      // 'left' | 'center' | 'right'
-  ctx.textBaseline= vAlign;      // 'top' | 'middle' | 'bottom' | 'alphabetic'
+/* ===================== 通用文字绘制 ===================== */
+function drawText(ctx, text, x, y,
+  font = '16px sans-serif', color = '#333',
+  hAlign = 'left', vAlign = 'alphabetic') {
+  ctx.fillStyle    = color;
+  ctx.font         = font;
+  ctx.textAlign    = hAlign;
+  ctx.textBaseline = vAlign;
   ctx.fillText(text, x, y);
 }
 
-
+/* ===================== 依赖模块 ========================= */
 const HeroState = require('./data/hero_state.js');
-const HeroData = require('./data/hero_data.js');
+const HeroData  = require('./data/hero_data.js');
 
-let selectedHeroes = [null, null, null, null, null];
-let slotRects = [];
-let iconRects = [];
+/* ===================== 选择页状态 ======================= */
+const heroImageCache = {};
+let   selectedHeroes = [null, null, null, null, null];
 
-let scrollY = 0;
-let isDragging = false;
-let lastY = 0;
-const SCROLL_LIMIT = 400; // 英雄池最大可上滑像素
+let slotRects   = [];
+let iconRects   = [];
+let btnPrevRect = null;
+let btnNextRect = null;
 
-let ctxRef;
-let switchPageFn;
-let canvasRef;
+const HERO_PER_PAGE = 10;      // 2 行 × 5 列
+const TOTAL_PAGES   = 3;       // 固定 3 页，占位问号补空
+let   pageIndex     = 0;       // 0-based
 
-let _handlers = [];
-let _touchStartHandler, _touchMoveHandler, _touchEndHandler;
-const heroImageCache = {}; // 缓存头像图像
+let ctxRef, canvasRef, switchPageFn;
 
+/* ===================== 入口 ============================= */
 function initHeroSelectPage(ctx, switchPage, canvas) {
-  ctxRef = ctx;
+  ctxRef       = ctx;
+  canvasRef    = canvas;
   switchPageFn = switchPage;
-  canvasRef = canvas;
 
-  _touchStartHandler = function(e) {
-    const touch = e.touches[0];
-    const x = touch.clientX;
-    const y = touch.clientY;
-
-    // 点击出战栏位
-    for (let i = 0; i < slotRects.length; i++) {
-      const rect = slotRects[i];
-      if (pointInRect(x, y, rect)) {
-        selectedHeroes[i] = null;
-        render(ctxRef, canvasRef);
-        return;
-      }
-    }
-
-    // 点击英雄池
-    for (let i = 0; i < iconRects.length; i++) {
-      const { rect, hero } = iconRects[i];
-      if (pointInRect(x, y, rect)) {
-        if (selectedHeroes.find(h => h && h.id === hero.id)) return;
-        let index = selectedHeroes.findIndex(h => h === null);
-        if (index !== -1) {
-          selectedHeroes[index] = hero;
-          HeroState.setSelectedHeroes(selectedHeroes);
-          render(ctxRef, canvasRef);
-        }
-        return;
-      }
-    }
-
-    // 点击确认按钮
-    const btnX = canvasRef.width / 2 - 80;
-    const btnY = canvasRef.height - 80;
-    if (pointInRect(x, y, { x: btnX, y: btnY, width: 160, height: 50 })) {
-      wx.setStorageSync("selectedHeroes", selectedHeroes);
-      switchPageFn("game");
-    }
-
-    // 开始拖动
-    isDragging = true;
-    lastY = y;
-  };
-canvas.addEventListener('touchstart', _touchStartHandler);
-_handlers.push(['touchstart', _touchStartHandler]);
-_touchMoveHandler = function(e) {
-    if (!isDragging) return;
-    const currentY = e.touches[0].clientY;
-    const deltaY = currentY - lastY;
-    lastY = currentY;
-
-    scrollY += deltaY;
-    if (scrollY > 0) scrollY = 0;
-    if (scrollY < -SCROLL_LIMIT) scrollY = -SCROLL_LIMIT;
-
-    render(ctxRef, canvasRef);
-  };
-canvas.addEventListener('touchmove', _touchMoveHandler);
-_handlers.push(['touchmove', _touchMoveHandler]);
-_touchEndHandler = function() {
-    isDragging = false;
-  };
-canvas.addEventListener('touchend', _touchEndHandler);
-_handlers.push(['touchend', _touchEndHandler]);
-render(ctx, canvas);
+  canvas.addEventListener('touchstart', onTouch);
+  render();
 }
 
-function pointInRect(x, y, rect) {
-  return x >= rect.x && x <= rect.x + rect.width &&
-         y >= rect.y && y <= rect.y + rect.height;
-}
+/* ===================== 触控处理 ========================= */
+function onTouch(e) {
+  const { clientX: x, clientY: y } = e.touches[0];
 
-function render(ctx, canvas) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const paddingX = 20;
-  const heroSize = 60;
-  const gap = 15;
-  const topOffset = 80;
-
-  // 出战栏位
-  drawText(ctx, "出战英雄（点击移除）",
-            paddingX, 280 + topOffset,
-            '16px sans-serif', '#333', 'left', 'top');
-  slotRects = [];
-  for (let i = 0; i < 5; i++) {
-    const x = paddingX + i * (heroSize + gap);
-    const y = 300 + topOffset;
-    ctx.strokeStyle = '#999';
-    ctx.strokeRect(x, y, heroSize, heroSize);
-    slotRects.push({ x, y, width: heroSize, height: heroSize });
-    if (selectedHeroes[i]) drawIcon(ctx, selectedHeroes[i], x, y);
+  /* ---- 出战栏：移除 ---- */
+  for (let i = 0; i < slotRects.length; i++) {
+    if (hit(x, y, slotRects[i])) {
+      selectedHeroes[i] = null;
+      HeroState.setSelectedHeroes(selectedHeroes);
+      return render();
+    }
   }
 
-  // 英雄池标题 & 滚动起点
-  const baseY = 420;
-  const scrollBaseY = baseY + scrollY + topOffset;
-  ctx.fillStyle = '#333';
-   drawText(ctx, "英雄池（点击添加）",
-            paddingX, baseY + scrollY + topOffset - 20,
-            '16px sans-serif', '#333', 'left', 'top');
+  /* ---- 翻页按钮 ---- */
+  if (hit(x, y, btnPrevRect) && pageIndex > 0) {
+    pageIndex--;
+    return render();
+  }
+  if (hit(x, y, btnNextRect) && pageIndex < TOTAL_PAGES - 1) {
+    pageIndex++;
+    return render();
+  }
 
-  // 英雄池绘制
-  iconRects = [];
-  HeroData.heroes.forEach((hero, i) => {
-    const row = Math.floor(i / 5);
-    const col = i % 5;
-    const x = paddingX + col * (heroSize + gap);
-    const y = scrollBaseY + row * (heroSize + 30);
+  /* ---- 英雄池：添加 ---- */
+  for (const { rect, hero } of iconRects) {
+    if (hero && hit(x, y, rect)) {
+      if (selectedHeroes.some(h => h && h.id === hero.id)) return;
+      const empty = selectedHeroes.findIndex(h => h === null);
+      if (empty !== -1) {
+        selectedHeroes[empty] = hero;
+        HeroState.setSelectedHeroes(selectedHeroes);
+        return render();
+      }
+    }
+  }
 
-    ctx.strokeStyle = '#999';
-    ctx.strokeRect(x, y, heroSize, heroSize);
-    drawIcon(ctx, hero, x, y);
-    iconRects.push({ rect: { x, y, width: heroSize, height: heroSize }, hero });
-  });
-
-  // 确认按钮
-  const btnX = canvas.width / 2 - 80;
-  const btnY = canvas.height - 80;
-  ctx.fillStyle = '#00AA00';
-  ctx.fillRect(btnX, btnY, 160, 50);
-   drawText(ctx, "确认出战",
-            btnX + 80,          // 按钮中心 = btnX + btnWidth/2
-            btnY + 25,          //           btnY + btnHeight/2
-            '18px sans-serif', '#fff', 'center', 'middle');
+  /* ---- 确认按钮 ---- */
+  const confirmRect = {
+    x: canvasRef.width / 2 - 80,
+    y: canvasRef.height - 80,
+    width: 160,
+    height: 50
+  };
+  if (hit(x, y, confirmRect)) {
+    wx.setStorageSync('selectedHeroes', selectedHeroes);
+    switchPageFn('game');
+  }
 }
 
-function drawIcon(ctx, hero, x, y) {
-  const iconSize = 60;
+/* ===================== 工具 ============================= */
+function hit(px, py, r) {
+  return r && px >= r.x && px <= r.x + r.width &&
+         py >= r.y && py <= r.y + r.height;
+}
 
-  // 稀有度边框颜色
-  let borderColor = '#888';
-  if (hero.rarity === 'SSR') borderColor = '#FFD700';
-  else if (hero.rarity === 'SR') borderColor = '#C0C0C0';
-  else if (hero.rarity === 'R') borderColor = '#8B4513';
+/* ===================== 主渲染 =========================== */
+function render() {
+  const ctx = ctxRef, canvas = canvasRef;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#FFF';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const PAD_X     = 20;
+  const ICON      = 60;
+  const GAP       = 15;
+  const topOffset = 80;
+
+  /* —— 出战栏 —— */
+  drawText(ctx, '出战英雄（点击移除）',
+           PAD_X, 280 + topOffset, '16px sans-serif', '#333', 'left', 'top');
+
+  slotRects.length = 0;
+  for (let i = 0; i < 5; i++) {
+    const sx = PAD_X + i * (ICON + GAP);
+    const sy = 300 + topOffset;
+    ctx.strokeStyle = '#999';
+    ctx.strokeRect(sx, sy, ICON, ICON);
+    slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
+    if (selectedHeroes[i]) drawIcon(ctx, selectedHeroes[i], sx, sy);
+  }
+
+  /* —— 英雄池 —— */
+  drawText(ctx, '英雄池（点击添加）',
+           PAD_X, 420 + topOffset - 20, '16px sans-serif', '#333', 'left', 'top');
+
+  const startIdx   = pageIndex * HERO_PER_PAGE;
+  const pageHeroes = HeroData.heroes.slice(startIdx, startIdx + HERO_PER_PAGE);
+  while (pageHeroes.length < HERO_PER_PAGE) pageHeroes.push(null); // 占位
+
+  iconRects.length = 0;
+  pageHeroes.forEach((hero, i) => {
+    const row = Math.floor(i / 5);
+    const col = i % 5;
+    const ix  = PAD_X + col * (ICON + GAP);
+    const iy  = 420 + topOffset + row * (ICON + 30);
+    ctx.strokeStyle = '#999';
+    ctx.strokeRect(ix, iy, ICON, ICON);
+
+    if (hero) drawIcon(ctx, hero, ix, iy);
+    else {
+      ctx.fillStyle = '#EEE';
+      ctx.fillRect(ix + 4, iy + 4, ICON - 8, ICON - 8);
+      drawText(ctx, '?', ix + ICON / 2, iy + ICON / 2,
+               '20px sans-serif', '#AAA', 'center', 'middle');
+    }
+    iconRects.push({ rect: { x: ix, y: iy, width: ICON, height: ICON }, hero });
+  });
+
+  /* —— 翻页按钮 —— */
+  const btnY = 420 + topOffset + 2 * (ICON + 30) + 10;
+  btnPrevRect = { x: PAD_X,                 y: btnY, width: 40, height: 40 };
+  btnNextRect = { x: canvas.width - PAD_X - 40, y: btnY, width: 40, height: 40 };
+
+  ctx.fillStyle = pageIndex > 0 ? '#00AA00' : '#DDD';
+  ctx.fillRect(btnPrevRect.x, btnPrevRect.y, 40, 40);
+  drawText(ctx, '<', btnPrevRect.x + 20, btnPrevRect.y + 20,
+           '24px sans-serif', '#FFF', 'center', 'middle');
+
+  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#00AA00' : '#DDD';
+  ctx.fillRect(btnNextRect.x, btnNextRect.y, 40, 40);
+  drawText(ctx, '>', btnNextRect.x + 20, btnNextRect.y + 20,
+           '24px sans-serif', '#FFF', 'center', 'middle');
+
+  /* —— 页码 —— */
+  drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
+           canvas.width / 2, btnPrevRect.y + 20,
+           '14px sans-serif', '#333', 'center', 'middle');
+
+  /* —— 确认按钮 —— */
+  const confirmX = canvas.width / 2 - 80;
+  const confirmY = canvas.height - 80;
+  ctx.fillStyle  = '#00AA00';
+  ctx.fillRect(confirmX, confirmY, 160, 50);
+  drawText(ctx, '确认出战', confirmX + 80, confirmY + 25,
+           '18px sans-serif', '#FFF', 'center', 'middle');
+}
+
+/* ===================== 头像绘制 ========================= */
+function drawIcon(ctx, hero, x, y) {
+  const ICON = 60;
+  const rarityColor =
+    { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#888';
 
   if (heroImageCache[hero.id]) {
     ctx.fillStyle = '#111';
-    ctx.fillRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
-    ctx.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
+    ctx.fillRect(x - 2, y - 2, ICON + 4, ICON + 4);
+    ctx.drawImage(heroImageCache[hero.id], x, y, ICON, ICON);
 
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x - 1, y - 1, iconSize + 2, iconSize + 2);
+    ctx.strokeStyle = rarityColor;
+    ctx.lineWidth   = 2;
+    ctx.strokeRect(x - 1, y - 1, ICON + 2, ICON + 2);
 
+    /* ── 顶部属性 ── */
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(x, y + iconSize - 14, iconSize, 14);
-     drawText(ctx, hero.role,
-                x + 4, y + iconSize - 3,
-                '10px sans-serif', '#fff', 'left', 'bottom');
+    ctx.fillRect(x, y - 14, ICON, 14);
+    drawText(ctx, `物:${hero.attributes.physical} 魔:${hero.attributes.magical}`,
+             x + 4, y - 3, '10px sans-serif', '#0FF', 'left', 'bottom');
 
-    const phys = hero.attributes?.physical ?? 0;
-    const magic = hero.attributes?.magical ?? 0;
+    /* ── 底部名字 / 职业 ── */
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(x, y - 14, iconSize, 14);
-     drawText(ctx, `物:${phys} 魔:${magic}`,
-              x + 4, y - 3,
-              '10px sans-serif', '#0FF', 'left', 'bottom');
+    ctx.fillRect(x, y + ICON - 20, ICON, 20);
+    drawText(ctx, hero.role, x + 36, y + ICON - 14,
+             '10px sans-serif', '#FFF', 'left', 'bottom');
+    drawText(ctx, hero.name, x + 4, y + ICON - 3,
+             '10px sans-serif', '#FFF', 'left', 'bottom');
     return;
   }
 
-  // 如果还没加载过图片
+  /* 异步加载图片 */
   const img = wx.createImage();
-  img.src = `assets/icons/${hero.icon}`;
-  img.onload = () => {
-    heroImageCache[hero.id] = img;
-    render(ctx, ctx.canvas); // 触发重新渲染一次头像
-  };
+  img.src   = `assets/icons/${hero.icon}`;
+  img.onload = () => { heroImageCache[hero.id] = img; render(); };
 }
 
-
-export function destroyHeroSelectPage() {
-  if (!canvasRef) return;
-  _handlers.forEach(([type, fn]) => {
-    canvasRef.removeEventListener(type, fn);
-  });
-  _handlers.length = 0;
-}
-
+/* ===================== 导出 ============================= */
 export default {
-  init: initHeroSelectPage,
-  update: () => {},
-  draw(ctx){               // ← 新增包装函数
-  render(ctx, canvasRef);
-     },
-  onTouchstart: _touchStartHandler,
-  onTouchmove: _touchMoveHandler,
-  onTouchend: _touchEndHandler,
-  destroy: destroyHeroSelectPage
+  init   : initHeroSelectPage,
+  update : () => {},
+  draw   : () => render(),
+  destroy: () => canvasRef.removeEventListener('touchstart', onTouch)
 };
