@@ -4,17 +4,28 @@ import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
 import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
 import { drawMonsterSprite } from './ui/monster_ui.js';
-import HeroData from './data/hero_data.js';
+import HeroData   from './data/hero_data.js';
+import BlockConfig from './data/block_config.js';   // ← 已有就保留
 
-// 字母块 → 英雄职业 的映射
-const BLOCK_ROLE_MAP = {
-  A: '战士',   // 红
-  B: '法师',   // 绿
-  C: '游侠',   // 蓝
-  D: '坦克',   // 黄
-  E: '刺客',   // 粉
-  F: '牧师'    // 青
-};
+let gaugeCount = 0;   // ← 放到文件顶部 (全局)
+let attackDisplayDamage = 0;    // 用于滚动显示的数字
+let damagePopTime       = 0;    // 最近一次数值变化时刻（ms）
+let gaugeFlashTime = 0;          // 0 表示不闪烁
+
+/* === BlockConfig 派生工具映射 ================================= */
+const BLOCK_ROLE_MAP   = Object.fromEntries(
+  Object.entries(BlockConfig).map(([k, v]) => [k, v.role])
+);
+const BLOCK_DAMAGE_MAP = Object.fromEntries(
+  Object.entries(BlockConfig).map(([k, v]) => [k, v.damage])
+);
+/* ============================================================ */
+
+/* 攻击槽：累积伤害数值 */
+let attackGaugeDamage = 0;
+
+
+
 
 
 const heroImageCache = {}; // 缓存图片
@@ -64,10 +75,7 @@ export function drawGame() {
 
   
 
-  const blockColors = {
-    A: '#FF4C4C', B: '#4CFF4C', C: '#4C4CFF',
-    D: '#FFD700', E: '#FF69B4', F: '#00FFFF'
-  };
+
 
   const maxWidth = canvasRef.width * 0.9;
   const maxHeight = canvasRef.height * 0.6;
@@ -86,7 +94,7 @@ export function drawGame() {
       const x = startX + col * blockSize;
       const y = startY + row * blockSize;
 
-      ctxRef.fillStyle = blockColors[block] || '#666';
+      ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
       ctxRef.fillRect(x, y, blockSize - 4, blockSize - 4);
 
       ctxRef.fillStyle = 'white';
@@ -111,6 +119,8 @@ export function drawGame() {
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
+
+
   // 绘制UI元素：游戏中的提示文本
   //ctxRef.fillStyle = 'white';
   //ctxRef.font = '36px sans-serif';
@@ -133,6 +143,66 @@ const spacing     = 12;                    // 槽位间隔
 const totalWidth  = 5 * iconSize + 4 * spacing;
 const startXHero  = (canvasRef.width - totalWidth) / 2;
 const topMargin   = 350;                   // 保持原位置
+
+  /* === 攻击槽（累计伤害） ===================================== */
+  const gaugeW = 180, gaugeH = 14;
+  const gaugeX = (canvasRef.width - gaugeW) / 2;
+  const gaugeY = topMargin - 60;     // 位于英雄栏正上方
+  
+
+/* ==== 累积伤害滚动 & 动画 ================================ */
+// 1. 让显示值逐帧逼近真实值（线性递增，速度可调）
+if (attackDisplayDamage < attackGaugeDamage) {
+  const diff = attackGaugeDamage - attackDisplayDamage;
+  attackDisplayDamage += Math.ceil(diff * 0.33);   // 越接近越慢
+} else {
+  attackDisplayDamage = attackGaugeDamage;         // 不会倒退
+}
+
+// 2. 计算放大系数：变化后 0.4s 内 1.6→1.0 缓回
+let fontScale = 1;
+const popDur = 400;
+if (Date.now() - damagePopTime < popDur) {
+  const p = 1 - (Date.now() - damagePopTime) / popDur;   // 1 → 0
+  fontScale = 1 + 0.6 * p;                               // 1.6 → 1
+}
+
+// 3. 文字样式
+const baseFont   = 20;                  // 基础字号
+const fontSize   = Math.floor(baseFont * fontScale);
+ctxRef.save();
+ctxRef.fillStyle   = '#FF4444';         // 红色
+ctxRef.font        = `bold ${fontSize}px sans-serif`;
+ctxRef.textAlign   = 'center';
+ctxRef.textBaseline= 'middle';
+
+// 如果放大，需要先平移到中心再 scale
+ctxRef.translate(gaugeX + gaugeW / 2, gaugeY + gaugeH / 2);
+ctxRef.scale(fontScale, fontScale);
+ctxRef.fillText(`${attackDisplayDamage}`, 0, 0);
+ctxRef.restore();
+/* ======================================================== */
+
+
+/* --- 操作计数展示 --- */
+const countText = `${gaugeCount}/5`;
+// 文字位置：伤害数字下方 18px，可自行调整
+const countY = gaugeY + gaugeH + 18;
+
+// 闪烁：触发后 600 ms 内黄白交替
+let color = '#FFF';
+if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
+  color = (Date.now() % 200 < 100) ? '#FFD700' : '#FFF';
+} else if (gaugeFlashTime && Date.now() - gaugeFlashTime >= 600) {
+  gaugeFlashTime = 0;            // 结束闪烁
+}
+
+ctxRef.fillStyle   = color;
+ctxRef.font        = '14px sans-serif';
+ctxRef.textAlign   = 'center';
+ctxRef.textBaseline= 'middle';
+ctxRef.fillText(countText, gaugeX + gaugeW / 2, countY);
+
 
 for (let i = 0; i < 5; i++) {
   const x = startXHero + i * (iconSize + spacing);
@@ -164,6 +234,13 @@ if (percent >= 100) {
   ctxRef.strokeStyle = (Date.now() % 500 < 250) ? '#FF0' : '#F00'; // 闪黄红
   ctxRef.lineWidth = 4;
   ctxRef.strokeRect(x - 4, y - 4, iconSize + 8, iconSize + 8);
+}
+
+// === 蓄力满自动释放技能（单独一层） ===
+for (let idx = 0; idx < 5; idx++) {
+  if (getCharges()[idx] >= 100) {
+    releaseHeroSkill(idx);
+  }
 }
 
   
@@ -214,10 +291,7 @@ function animateSwap(src, dst, callback, rollback = false) {
     ctxRef.fillStyle = '#001';
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
 
-    const blockColors = {
-      A: '#FF4C4C', B: '#4CFF4C', C: '#4C4CFF',
-      D: '#FFD700', E: '#FF69B4', F: '#00FFFF'
-    };
+
 
     // 绘制网格
     for (let row = 0; row < gridSize; row++) {
@@ -235,7 +309,7 @@ function animateSwap(src, dst, callback, rollback = false) {
         const y = startY + row * blockSize + offsetY;
         const block = gridData[row][col];
 
-        ctxRef.fillStyle = blockColors[block] || '#666';
+        ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
         ctxRef.fillRect(x, y, blockSize - 4, blockSize - 4);
         ctxRef.fillStyle = 'white';
         ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
@@ -338,6 +412,17 @@ function onTouch(e) {
         animateSwap(src, dst, () => {
           if (checkAndClearMatches()) {
             selected = null;
+
+                // === 玩家本次有效消除计数 ===
+              gaugeCount++;
+              if (gaugeCount >= 5) {
+              dealDamage(attackGaugeDamage);   // 触发伤害
+              attackGaugeDamage = 0;           // 清空伤害槽
+             gaugeCount = 0;                  // 重置计数
+             gaugeFlashTime = Date.now();   // 记录闪烁起始时间
+           }
+
+           
             processClearAndDrop();
           } else {
             const tempBack = gridData[dst.row][dst.col];
@@ -408,6 +493,19 @@ function checkAndClearMatches() {
 
   
 if (clearedCount > 0) {
+
+  // === 按颜色把伤害累到攻击槽 =========================
+Object.keys(colorCounter).forEach(letter => {
+  const blocks = colorCounter[letter];
+  const dmgPer = BLOCK_DAMAGE_MAP[letter] || 0;
+  attackGaugeDamage += blocks * dmgPer;
+  damagePopTime = Date.now();               // 记录变化时间
+
+  
+
+
+});
+
   // === 新增：给所有已上阵英雄增加蓄力 ===
   const chargesNow = getCharges();          // 当前蓄力
   const heroes = getSelectedHeroes();       // 5 槽位
@@ -426,18 +524,14 @@ if (clearedCount > 0) {
       setCharge(i, chargesNow[i] + gainedBlocks * 20);
     }
 
-    // === 蓄力满自动释放技能 ===
-  for (let i = 0; i < 5; i++) {
-  if (getCharges()[i] >= 100) {
-    releaseHeroSkill(i);
+
+    
   }
-}
 
   }
   
   
-  const damage = clearedCount * 20;
-  dealDamage(damage);
+
   
   if (isMonsterDead()) {
     loadMonster(getNextLevel());
@@ -445,10 +539,13 @@ if (clearedCount > 0) {
     const skill = monsterTurn();
     // TODO: handle skill damage / effects
   }
-}
-return clearedCount > 0;
+
+  return clearedCount > 0;
 
 }
+
+
+
 
 function dropBlocks() {
   for (let col = 0; col < gridSize; col++) {
