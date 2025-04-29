@@ -5,6 +5,15 @@ import { setCharge, getCharges } from './data/hero_charge_state.js';
 import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
 import { drawMonsterSprite } from './ui/monster_ui.js';
 
+// 字母块 → 英雄职业 的映射
+const BLOCK_ROLE_MAP = {
+  A: '战士',   // 红
+  B: '法师',   // 绿
+  C: '游侠',   // 蓝
+  D: '坦克',   // 黄
+  E: '刺客',   // 粉
+  F: '牧师'    // 青
+};
 
 
 const heroImageCache = {}; // 缓存图片
@@ -315,6 +324,7 @@ function onTouch(e) {
 
 function checkAndClearMatches() {
   let clearedCount = 0;
+  const colorCounter = {};   // {A:3, B:1 …}
   const toClear = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
 
   for (let row = 0; row < gridSize; row++) {
@@ -346,8 +356,12 @@ function checkAndClearMatches() {
         const effectY = startY + row * blockSize + blockSize / 2;
         createExplosion(effectX, effectY);
 
-        gridData[row][col] = null;
+        const letter = gridData[row][col];                       // 记录颜色
+        colorCounter[letter] = (colorCounter[letter] || 0) + 1;  // 累加
+        
+        gridData[row][col] = null;                               // 真正清除
         clearedCount++;
+        
         cleared = true;
       }
     }
@@ -356,9 +370,24 @@ function checkAndClearMatches() {
   
 if (clearedCount > 0) {
   // === 新增：给所有已上阵英雄增加蓄力 ===
-    for (let i = 0; i < 5; i++) {
-      setCharge(i, getCharges()[i] + clearedCount * 20); // 20% × 方块数，可自行调系数
+  const chargesNow = getCharges();          // 当前蓄力
+  const heroes = getSelectedHeroes();       // 5 槽位
+  
+  for (let i = 0; i < 5; i++) {
+    const hero = heroes[i];
+    if (!hero) continue;
+  
+    // 找出映射到该职业的所有颜色字母
+    const gainedBlocks = Object.keys(colorCounter)
+      .filter(letter => BLOCK_ROLE_MAP[letter] === hero.role)
+      .reduce((sum, letter) => sum + colorCounter[letter], 0);
+  
+    if (gainedBlocks > 0) {
+      // 每消一块奖励 20%（系数可自己调）
+      setCharge(i, chargesNow[i] + gainedBlocks * 20);
+    }
   }
+  
   
   const damage = clearedCount * 20;
   dealDamage(damage);

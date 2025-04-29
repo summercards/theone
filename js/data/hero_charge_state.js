@@ -1,7 +1,11 @@
 // js/data/hero_charge_state.js
-let chargeVals = [0, 0, 0, 0, 0];   // 对应 5 槽位，单位 0-100
+// 保存 5 槽位蓄力值（0–100）
+const chargeVals = [0, 0, 0, 0, 0];
 
-function setCharge(index, value) { chargeVals[index] = Math.max(0, Math.min(100, value)); }
-function getCharges() { return chargeVals; }
+export function setCharge(index, value) {
+  chargeVals[index] = Math.max(0, Math.min(100, value));
+}
 
-module.exports = { setCharge, getCharges };
+export function getCharges() {
+  return chargeVals;
+}
