@@ -1,4 +1,9 @@
-import { updateAllEffects, drawAllEffects, createExplosion } from './effects_engine.js';
+
+// === 变更：把另外两个特效工具也引进来
+import {updateAllEffects,drawAllEffects,createExplosion,
+    createProjectile,     // ← 飞弹
+     createFloatingText    // ← 飘字
+   } from './effects_engine.js';
 import { getSelectedHeroes } from './data/hero_state.js';
 import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
@@ -7,10 +12,14 @@ import { drawMonsterSprite } from './ui/monster_ui.js';
 import HeroData   from './data/hero_data.js';
 import BlockConfig from './data/block_config.js';   // ← 已有就保留
 
+
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
 let damagePopTime       = 0;    // 最近一次数值变化时刻（ms）
 let gaugeFlashTime = 0;          // 0 表示不闪烁
+let pendingDamage = 0;          // 等待打到怪物的数值
+let monsterHitFlashTime = 0;    // 怪物受击闪白计时
+
 
 /* === BlockConfig 派生工具映射 ================================= */
 const BLOCK_ROLE_MAP   = Object.fromEntries(
@@ -416,11 +425,11 @@ function onTouch(e) {
                 // === 玩家本次有效消除计数 ===
               gaugeCount++;
               if (gaugeCount >= 5) {
-              dealDamage(attackGaugeDamage);   // 触发伤害
-              attackGaugeDamage = 0;           // 清空伤害槽
-             gaugeCount = 0;                  // 重置计数
-             gaugeFlashTime = Date.now();   // 记录闪烁起始时间
-           }
+                startAttackEffect(attackGaugeDamage);  // 动画&伤害
+                gaugeCount = 0;
+                gaugeFlashTime = Date.now();
+              }
+              
 
            
             processClearAndDrop();
@@ -446,102 +455,75 @@ function onTouch(e) {
 // 其他函数保持不变
 
 
-function checkAndClearMatches() {
-  let clearedCount = 0;
-  const colorCounter = {};   // {A:3, B:1 …}
-  const toClear = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
+function checkAndClearMatches () {
+  let clearedCount   = 0;
+  const colorCounter = {};                      // {A:3, B:1 …}
+  const toClear      = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
 
+  /* === ① 找 3 连 === */
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize - 2; col++) {
-      const val = gridData[row][col];
-      if (val && val === gridData[row][col + 1] && val === gridData[row][col + 2]) {
+      const v = gridData[row][col];
+      if (v && v === gridData[row][col + 1] && v === gridData[row][col + 2]) {
         toClear[row][col] = toClear[row][col + 1] = toClear[row][col + 2] = true;
       }
     }
   }
-
   for (let col = 0; col < gridSize; col++) {
     for (let row = 0; row < gridSize - 2; row++) {
-      const val = gridData[row][col];
-      if (val && val === gridData[row + 1][col] && val === gridData[row + 2][col]) {
+      const v = gridData[row][col];
+      if (v && v === gridData[row + 1][col] && v === gridData[row + 2][col]) {
         toClear[row][col] = toClear[row + 1][col] = toClear[row + 2][col] = true;
       }
     }
   }
 
-  let cleared = false;
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      if (toClear[row][col]) {
-        const blockSize = window.__blockSize;
-        const startX = window.__gridStartX;
-        const startY = window.__gridStartY;
-        const effectX = startX + col * blockSize + blockSize / 2;
-        const effectY = startY + row * blockSize + blockSize / 2;
-        createExplosion(effectX, effectY);
+  /* === ② 清除并统计 === */
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      if (!toClear[r][c]) continue;
 
-        const letter = gridData[row][col];                       // 记录颜色
-        colorCounter[letter] = (colorCounter[letter] || 0) + 1;  // 累加
-        
-        gridData[row][col] = null;                               // 真正清除
-        clearedCount++;
-        
-        cleared = true;
-      }
+      createExplosion(
+        window.__gridStartX + c * window.__blockSize + window.__blockSize / 2,
+        window.__gridStartY + r * window.__blockSize + window.__blockSize / 2
+      );
+
+      const letter            = gridData[r][c];
+      colorCounter[letter]  = (colorCounter[letter] || 0) + 1;
+      gridData[r][c]         = null;
+      clearedCount++;
     }
   }
 
-  
-if (clearedCount > 0) {
+  /* === ③ 如果有消除，就累伤害 / 加蓄力 === */
+  if (clearedCount > 0) {
+    // a) 累伤害
+    Object.keys(colorCounter).forEach(letter => {
+      attackGaugeDamage += colorCounter[letter] * (BLOCK_DAMAGE_MAP[letter] || 0);
+    });
+    damagePopTime = Date.now();
 
-  // === 按颜色把伤害累到攻击槽 =========================
-Object.keys(colorCounter).forEach(letter => {
-  const blocks = colorCounter[letter];
-  const dmgPer = BLOCK_DAMAGE_MAP[letter] || 0;
-  attackGaugeDamage += blocks * dmgPer;
-  damagePopTime = Date.now();               // 记录变化时间
+    // b) 给英雄充能
+    const chargesNow = getCharges();
+    const heroes     = getSelectedHeroes();
 
-  
-
-
-});
-
-  // === 新增：给所有已上阵英雄增加蓄力 ===
-  const chargesNow = getCharges();          // 当前蓄力
-  const heroes = getSelectedHeroes();       // 5 槽位
-  
-  for (let i = 0; i < 5; i++) {
-    const hero = heroes[i];
-    if (!hero) continue;
-  
-    // 找出映射到该职业的所有颜色字母
-    const gainedBlocks = Object.keys(colorCounter)
-      .filter(letter => BLOCK_ROLE_MAP[letter] === hero.role)
-      .reduce((sum, letter) => sum + colorCounter[letter], 0);
-  
-    if (gainedBlocks > 0) {
-      // 每消一块奖励 20%（系数可自己调）
-      setCharge(i, chargesNow[i] + gainedBlocks * 20);
-    }
-
-
-    
+    heroes.forEach((hero, i) => {
+      if (!hero) return;
+      const gained = Object.keys(colorCounter)
+        .filter(l => BLOCK_ROLE_MAP[l] === hero.role)
+        .reduce((sum, l) => sum + colorCounter[l], 0);
+      if (gained) setCharge(i, chargesNow[i] + gained * 20);      // 20% × 方块数
+    });
   }
 
-  }
-  
-  
-
-  
+  /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
     loadMonster(getNextLevel());
   } else {
-    const skill = monsterTurn();
-    // TODO: handle skill damage / effects
+    monsterTurn();
   }
 
   return clearedCount > 0;
-
 }
 
 
@@ -678,22 +660,68 @@ function releaseHeroSkill(slotIndex) {
   const hero = getSelectedHeroes()[slotIndex];
   if (!hero) return;
 
-  const { effect } = hero.skill;
-  if (!effect) return;
+  const eff = hero.skill?.effect;
+  if (!eff) return;
 
-  switch (effect.type) {
+  switch (eff.type) {
+    /* ----------------- ① 通用伤害 ----------------- */
     case 'physicalDamage':
     case 'magicalDamage':
-      dealDamage(effect.amount);
+      dealDamage(eff.amount);
       break;
-    // 若以后要支持 buff/heal，可继续扩展
+
+    /* --------------- ② 新增 addGauge -------------- */
+    case 'addGauge': {
+      let add = 0;
+      if ('value' in eff)          add = eff.value;                       // 固定值
+      else if (eff.source === 'physical')
+        add = hero.attributes.physical * (eff.scale ?? 1);
+      else if (eff.source === 'magical')
+        add = hero.attributes.magical * (eff.scale ?? 1);
+
+      attackGaugeDamage += Math.round(add);
+      damagePopTime      = Date.now();    // 让数字弹跳
+      break;
+    }
+
+    /* ---------------- ③ 预留其它 ------------------ */
     default:
-      console.warn('未知技能类型', effect.type);
+      console.warn('未知技能类型', eff.type);
   }
 
-  // 清零蓄力
+  /* 收尾：清蓄力 & 特效 */
   setCharge(slotIndex, 0);
-
-  // TODO: 可在此触发动画或特效
-  createExplosion(canvasRef.width / 2, canvasRef.height / 2); // 简单爆炸示例
+  createExplosion(canvasRef.width / 2, canvasRef.height / 2);
 }
+
+
+function startAttackEffect(dmg) {
+  if (dmg <= 0) return;
+
+  // ① 清零界面累计
+  attackGaugeDamage   = 0;
+  attackDisplayDamage = 0;
+
+  // ② 记录待结算伤害
+  pendingDamage = dmg;
+
+  // ③ 发射飞弹：起点 = 伤害数字中心，终点 = 怪物中心
+  const startX = canvasRef.width / 2;
+  const startY = 290;                            
+  const endX   = canvasRef.width / 2;
+  const endY   = 120;                           // 怪物中心高度，按你的 UI 调
+
+  createProjectile(startX, startY, endX, endY, 500, () => {
+    // 飞弹到达 ⇒ 怪物掉血 & 受击闪
+    dealDamage(pendingDamage);
+    createExplosion(endX, endY);                // 爆点可复用现有效果
+    monsterHitFlashTime = Date.now();
+
+    // 飘字
+    createFloatingText(`-${pendingDamage}`, endX, endY - 40);
+
+    pendingDamage = 0;
+  });
+}
+
+export { monsterHitFlashTime };

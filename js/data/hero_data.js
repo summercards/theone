@@ -7,18 +7,19 @@ const HeroData = {
       name: "剑士",
       icon: "swordsman.png",
       role: "战士",
-      rarity: "SR", // ⭐ 稀有度字段
-      attributes: {
-        physical: 9,
-        magical: 4
-      },
+      rarity: "SR",
+      attributes: { physical: 500, magical: 4 },
+    
       skill: {
         name: "破甲斩",
-        description: "对敌人造成高额物理伤害",
+        description: "将自身物攻注入伤害槽",
+        /* ------------------- 新写法 ------------------- */
         effect: {
-          type: "physicalDamage",
-          amount: 120
+          type: "addGauge",       // ← 新类型：向伤害槽加数值
+          source: "physical",     // 用哪项属性：physical / magical / 固定数字
+          scale: 1                // 倍率；1 = 原值，0.5 = 一半，可选
         },
+        /* --------------------------------------------- */
         cooldown: 3
       }
     },
