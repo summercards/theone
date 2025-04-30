@@ -1,5 +1,4 @@
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
-
 import { getTotalCoins } from './data/coin_state.js';
 
 function drawText(ctx, text, x, y,
@@ -62,8 +61,8 @@ function onTouch(e) {
       if (selectedHeroes.some(h => h && h.id === hero.id)) return;
       const empty = selectedHeroes.findIndex(h => h === null);
       if (empty !== -1) {
-        selectedHeroes[empty] = hero.id;  // ⬅️ 存英雄 ID，而非整个对象
-        HeroState.setSelectedHeroes(selectedHeroes);  // ⬅️ 传入 ID 数组，内部生成 HeroState 实例
+        selectedHeroes[empty] = hero.id;
+        HeroState.setSelectedHeroes(selectedHeroes);
         return render();
       }
     }
@@ -92,12 +91,9 @@ function render() {
   ctx.fillStyle = '#2E003E';
   drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, 8, true, false);
 
-    // --- 总金币显示 ---
-  drawText(ctx,
-           `金币: ${getTotalCoins()}`,
+  drawText(ctx, `金币: ${getTotalCoins()}`,
            canvas.width - 306, 116,
-           '18px IndieFlower', '#FFD700',
-           'right', 'top');
+           '18px IndieFlower', '#FFD700', 'right', 'top');
 
   const PAD_X = 20;
   const ICON = 60;
@@ -115,7 +111,7 @@ function render() {
     ctx.lineWidth = 3;
     drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
     slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
-  
+
     const heroObj = selectedHeroes[i] && HeroData.getHeroById(selectedHeroes[i]);
     if (heroObj) drawIcon(ctx, heroObj, sx, sy);
   }
@@ -179,8 +175,12 @@ function drawIcon(ctx, hero, x, y) {
   const radius = 12;
   const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
 
+  const saved = wx.getStorageSync('heroProgress')?.[hero.id];
+  const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
+  const magical = saved?.attributes?.magical ?? hero.attributes.magical ?? 0;
+  const level = saved?.level ?? hero.level ?? 1;
+
   if (heroImageCache[hero.id]) {
-    // 圆角剪裁头像图像
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -197,18 +197,12 @@ function drawIcon(ctx, hero, x, y) {
     ctx.drawImage(heroImageCache[hero.id], x, y, ICON, ICON);
     ctx.restore();
 
-    // 稀有度边框
     ctx.strokeStyle = rarityColor;
     ctx.lineWidth = 5;
     drawRoundedRect(ctx, x, y, ICON, ICON, radius, false, true);
 
-    // 顶部属性
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    drawRoundedRect(ctx, x, y - 14, ICON, 14, 4, true, false);
-    drawText(ctx, `物:${hero.attributes.physical} 魔:${hero.attributes.magical}`,
-      x + 4, y - 3, '10px IndieFlower', '#FFD', 'left', 'bottom');
 
-    // 职业和名字加粗描边
+
     ctx.font = 'bold 10px IndieFlower';
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#000';
@@ -220,16 +214,52 @@ function drawIcon(ctx, hero, x, y) {
     ctx.fillText(hero.role, x + 4, y + ICON - 14);
     ctx.strokeText(hero.name, x + 4, y + ICON - 3);
     ctx.fillText(hero.name, x + 4, y + ICON - 3);
-    return;
+  } else {
+    const img = wx.createImage();
+    img.src = `assets/icons/${hero.icon}`;
+    img.onload = () => { heroImageCache[hero.id] = img; render(); };
   }
 
-  const img = wx.createImage();
-  img.src = `assets/icons/${hero.icon}`;
-  img.onload = () => { heroImageCache[hero.id] = img; render(); };
+// 属性保留在头像下方
+let attrText = '';
+switch (hero.role) {
+  case '战士':
+  case '刺客':
+  case '游侠':
+  case '坦克':
+    attrText = `物攻: ${physical}`;
+    break;
+  case '法师':
+    attrText = `魔攻: ${magical}`;
+    break;
+  default:
+    attrText = `物:${physical} 魔:${magical}`;
+}
+
+drawText(ctx, attrText, x + 4, y + ICON + 6,
+  '12px IndieFlower', '#FFF', 'left', 'top');
+
+// 等级移到头像右上角内侧
+ctx.font = 'bold 11px IndieFlower, sans-serif';
+ctx.textAlign = 'right';
+ctx.textBaseline = 'top';
+ctx.fillStyle = '#FFD700';
+ctx.shadowColor = '#FFA500';
+ctx.shadowBlur = 4;
+ctx.strokeStyle = '#000';
+ctx.lineWidth = 2;
+
+const lvText = `Lv.${level}`;
+ctx.strokeText(lvText, x + ICON - 4, y + 4);
+ctx.fillText(lvText, x + ICON - 4, y + 4);
+
+// ✅ 重置阴影样式，避免污染后续绘制
+ctx.shadowColor = 'transparent';
+ctx.shadowBlur = 0;
 }
 
 /* ===================== 导出 ============================= */
-export default {
+module.exports = {
   init: initHeroSelectPage,
   update: () => { },
   draw: () => render(),
