@@ -8,7 +8,7 @@ const HeroData = {
       icon: "swordsman.png",
       role: "战士",
       rarity: "SR",
-      attributes: { physical: 500 },
+      attributes: { physical: 10 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,

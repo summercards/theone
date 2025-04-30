@@ -58,7 +58,7 @@ function onTouch(e) {
 
   for (const { rect, hero } of iconRects) {
     if (hero && hit(x, y, rect)) {
-      if (selectedHeroes.some(h => h && h.id === hero.id)) return;
+      if (selectedHeroes.includes(hero.id)) return;
       const empty = selectedHeroes.findIndex(h => h === null);
       if (empty !== -1) {
         selectedHeroes[empty] = hero.id;

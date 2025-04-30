@@ -334,12 +334,23 @@ for (let idx = 0; idx < 5; idx++) {
       img.src   = `assets/icons/${hero.icon}`;
       img.onload = () => { heroImageCache[hero.id] = img; };
     }
-    
-      // 等级文本
-  ctxRef.fillStyle = '#FFD700';
-  ctxRef.font = '12px sans-serif';
-  ctxRef.textAlign = 'center';
-  ctxRef.fillText(`Lv.${hero.level}`, x + iconSize / 2, y - 6);
+
+// 等级文本（样式统一：右上角内侧 + 发光 + 黑描边）
+const lvText = `Lv.${hero.level}`;
+ctxRef.font = 'bold 11px IndieFlower, sans-serif';
+ctxRef.textAlign = 'right';
+ctxRef.textBaseline = 'top';
+ctxRef.fillStyle = '#FFD700';
+ctxRef.shadowColor = '#FFA500';
+ctxRef.shadowBlur = 4;
+ctxRef.strokeStyle = '#000';
+ctxRef.lineWidth = 2;
+
+ctxRef.strokeText(lvText, x + iconSize - 4, y + 4);
+ctxRef.fillText(lvText, x + iconSize - 4, y + 4);
+
+// 重置阴影，避免影响后续绘制
+ctxRef.shadowBlur = 0;
 
   }
 
