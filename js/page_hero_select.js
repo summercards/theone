@@ -1,5 +1,6 @@
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 import { getTotalCoins } from './data/coin_state.js';
+let showUpgradeButtons = false; // 控制是否显示头像下方的升级按钮
 
 function drawText(ctx, text, x, y,
   font = '16px IndieFlower, sans-serif', color = '#FFF',
@@ -56,6 +57,18 @@ function onTouch(e) {
     return render();
   }
 
+  // 📍 加入 toggle 按钮判断
+  const upgradeToggleRect = {
+    x: 20,
+    y: canvasRef.height - 80,
+    width: 100,
+    height: 40
+  };
+  if (hit(x, y, upgradeToggleRect)) {
+    showUpgradeButtons = !showUpgradeButtons;
+    return render();
+  }
+
   for (const { rect, hero } of iconRects) {
     if (hero && hit(x, y, rect)) {
       if (selectedHeroes.includes(hero.id)) return;
@@ -64,6 +77,30 @@ function onTouch(e) {
         selectedHeroes[empty] = hero.id;
         HeroState.setSelectedHeroes(selectedHeroes);
         return render();
+      }
+    }
+  }
+
+  for (const { hero } of iconRects) {
+    const btn = hero?.upgradeButtonRect;
+    if (btn && hit(x, y, btn)) {
+      const progress = wx.getStorageSync('heroProgress')?.[hero.id];
+      const cost = (progress?.level ?? 1) * 100;
+      const coins = getTotalCoins();
+      if (coins >= cost) {
+        const updated = new HeroState.HeroState(hero.id);
+        updated.gainExp(updated.expToNextLevel);
+        const all = wx.getStorageSync('heroProgress') || {};
+        all[hero.id] = {
+          level: updated.level,
+          exp: updated.exp,
+          attributes: updated.attributes
+        };
+        wx.setStorageSync('heroProgress', all);
+        wx.setStorageSync('totalCoins', coins - cost);
+        return render();
+      } else {
+        console.log('金币不足');
       }
     }
   }
@@ -132,7 +169,6 @@ function render() {
     ctx.strokeStyle = '#C084FC';
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, ix, iy, ICON, ICON, 8, false, true);
-
     if (hero) drawIcon(ctx, hero, ix, iy);
     else {
       ctx.fillStyle = '#4B0073';
@@ -161,6 +197,20 @@ function render() {
     canvas.width / 2, btnPrevRect.y + 20,
     '14px IndieFlower', '#DCC6F0', 'center', 'middle');
 
+  // ✅ 新增的 toggle 按钮绘制
+  const upgradeToggleRect = {
+    x: PAD_X,             // 靠左对齐
+    y: canvas.height - 80,
+    width: 80,           // 更小宽度
+    height: 50            // 更小高度
+  };
+  ctx.fillStyle = '#FFD700';
+  drawRoundedRect(ctx, upgradeToggleRect.x, upgradeToggleRect.y, upgradeToggleRect.width, upgradeToggleRect.height, 8, true, false);
+  drawText(ctx, showUpgradeButtons ? '升级' : '升级',
+    upgradeToggleRect.x + upgradeToggleRect.width / 2,
+    upgradeToggleRect.y + 25,
+    '18px IndieFlower', '#FFF', 'center', 'middle');
+
   const confirmX = canvas.width / 2 - 80;
   const confirmY = canvas.height - 80;
   ctx.fillStyle = '#912BB0';
@@ -169,7 +219,6 @@ function render() {
     '18px IndieFlower', '#FFF', 'center', 'middle');
 }
 
-/* ===================== 头像绘制 ========================= */
 function drawIcon(ctx, hero, x, y) {
   const ICON = 60;
   const radius = 12;
@@ -201,15 +250,12 @@ function drawIcon(ctx, hero, x, y) {
     ctx.lineWidth = 5;
     drawRoundedRect(ctx, x, y, ICON, ICON, radius, false, true);
 
-
-
     ctx.font = 'bold 10px IndieFlower';
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#000';
     ctx.fillStyle = '#FFF';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
-
     ctx.strokeText(hero.role, x + 4, y + ICON - 14);
     ctx.fillText(hero.role, x + 4, y + ICON - 14);
     ctx.strokeText(hero.name, x + 4, y + ICON - 3);
@@ -220,45 +266,65 @@ function drawIcon(ctx, hero, x, y) {
     img.onload = () => { heroImageCache[hero.id] = img; render(); };
   }
 
-// 属性保留在头像下方
-let attrText = '';
-switch (hero.role) {
-  case '战士':
-  case '刺客':
-  case '游侠':
-  case '坦克':
-    attrText = `物攻: ${physical}`;
-    break;
-  case '法师':
-    attrText = `魔攻: ${magical}`;
-    break;
-  default:
-    attrText = `物:${physical} 魔:${magical}`;
+  let attrText = '';
+  switch (hero.role) {
+    case '战士':
+    case '刺客':
+    case '游侠':
+    case '坦克':
+      attrText = `物攻: ${physical}`;
+      break;
+    case '法师':
+      attrText = `魔攻: ${magical}`;
+      break;
+    default:
+      attrText = `物:${physical} 魔:${magical}`;
+  }
+
+  drawText(ctx, attrText, x + 4, y + ICON + 6,
+    '12px IndieFlower', '#FFF', 'left', 'top');
+
+  if (showUpgradeButtons) {
+    const btnText = '升级';
+    ctx.font = '12px IndieFlower';
+    const textWidth = ctx.measureText(btnText).width;
+    const btnPadding = 8;
+    
+    const btnW = textWidth + btnPadding * 4;
+    const btnH = 22;
+    const btnX = x + ICON / 2 - btnW / 2;
+    const btnY = y + ICON + 4;
+    
+    ctx.fillStyle = '#FFD700'; // 金色背景
+    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 4, true, false);
+    
+    drawText(ctx, btnText, btnX + btnW / 2, btnY + 2,
+      '12px IndieFlower', '#000', 'center', 'top');
+    
+    // 更新点击区域
+    hero.upgradeButtonRect = { x: btnX, y: btnY, width: btnW, height: btnH };
+
+    hero.upgradeButtonRect = { x: btnX, y: btnY, width: btnW, height: btnH };
+  } else {
+    hero.upgradeButtonRect = null;
+  }
+
+  ctx.font = 'bold 11px IndieFlower, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#FFD700';
+  ctx.shadowColor = '#FFA500';
+  ctx.shadowBlur = 4;
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  const lvText = `Lv.${level}`;
+  ctx.strokeText(lvText, x + ICON - 4, y + 4);
+  ctx.fillText(lvText, x + ICON - 4, y + 4);
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 }
 
-drawText(ctx, attrText, x + 4, y + ICON + 6,
-  '12px IndieFlower', '#FFF', 'left', 'top');
-
-// 等级移到头像右上角内侧
-ctx.font = 'bold 11px IndieFlower, sans-serif';
-ctx.textAlign = 'right';
-ctx.textBaseline = 'top';
-ctx.fillStyle = '#FFD700';
-ctx.shadowColor = '#FFA500';
-ctx.shadowBlur = 4;
-ctx.strokeStyle = '#000';
-ctx.lineWidth = 2;
-
-const lvText = `Lv.${level}`;
-ctx.strokeText(lvText, x + ICON - 4, y + 4);
-ctx.fillText(lvText, x + ICON - 4, y + 4);
-
-// ✅ 重置阴影样式，避免污染后续绘制
-ctx.shadowColor = 'transparent';
-ctx.shadowBlur = 0;
-}
-
-/* ===================== 导出 ============================= */
 module.exports = {
   init: initHeroSelectPage,
   update: () => { },
