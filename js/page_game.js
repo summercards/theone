@@ -157,12 +157,32 @@ function drawUI() {
   //绘制怪物图层
   drawMonsterSprite(ctxRef, canvasRef); 
 
-  // 绘制主页按钮
-  ctxRef.fillStyle = '#888';
-  drawRoundedRect(ctxRef, 20, 20, 100, 60, 10, true, false); // 圆角半径为 10
-  ctxRef.fillStyle = 'white';
-  ctxRef.font = '24px sans-serif';
-  //ctxRef.fillText('主页', 40, 60); // 绘制按钮文本
+// 主页按钮绘制（紫色样式 + 返回箭头）
+const btnX = 20;
+const btnY = 50; // 👈 向下移动一点（原来是 20）
+const btnW = 50;
+const btnH = 40;
+
+// 背景（紫色按钮）
+ctxRef.fillStyle = '#9933CC'; // 与截图中按钮风格一致
+ctxRef.fillRect(btnX, btnY, btnW, btnH);
+
+// 可选：圆角处理
+ctxRef.lineJoin = 'round';
+ctxRef.lineWidth = 8;
+ctxRef.strokeStyle = '#9933CC';
+ctxRef.strokeRect(btnX + 1, btnY + 1, btnW - 2, btnH - 2);
+
+// 文字样式
+ctxRef.fillStyle = 'white';
+ctxRef.font = '18px sans-serif';
+ctxRef.textAlign = 'center';
+ctxRef.textBaseline = 'middle';
+
+// 显示“←主页”
+ctxRef.fillText('主页', btnX + btnW / 2, btnY + btnH / 2);
+
+
 
 /* === 出战栏：固定 5 槽位 + 编号（原来绿色框位置） ================ */
 const heroes      = getSelectedHeroes();   // 长度固定 5
@@ -256,7 +276,7 @@ ctxRef.fillText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
 /* --- 操作计数展示 --- */
 const countText = `${gaugeCount}/5`;
 // 文字位置：伤害数字下方 18px，可自行调整
-const countY = gaugeY + gaugeH + 18;
+const countY = gaugeY + gaugeH + 98;
 
 // 闪烁：触发后 600 ms 内黄白交替
 let color = '#FFF';
@@ -467,8 +487,8 @@ function onTouch(e) {
     const btnH = 40;
   
     if (
-      xTouch >= btnX && xTouch <= btnX + btnW &&
-      yTouch >= btnY && yTouch <= btnY + btnH
+      xTouch >= 20 && xTouch <= 120 &&
+      yTouch >= 100 && yTouch <= 140
     ) {
       switchPageFn('home'); // ✅ 返回主页
     }

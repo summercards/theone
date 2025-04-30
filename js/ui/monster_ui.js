@@ -62,13 +62,13 @@ export function drawMonsterSprite(ctx, canvas) {
   ctx.fillText(
     `${monster.hp} / ${monster.maxHp}`,
     canvas.width / 2,
-    barY - 6  // 血条上方
+    barY - -7  // 血条上方
   );
 
   /* ---------- 6. 名称 + 等级 ---------- */
   ctx.fillText(
     `Lv.${monster.level}  ${monster.name}`,
     canvas.width / 2,
-    barY + BAR_H + 14 // 血条下方显示名称
+    barY + BAR_H + 8 // 血条下方显示名称
   );
 }
