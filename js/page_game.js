@@ -1,5 +1,9 @@
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 
+
+let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
+let showGameOver = false;     // 是否触发失败弹窗
+
 // === 变更：把另外两个特效工具也引进来
 import {updateAllEffects,drawAllEffects,createExplosion,
     createProjectile,     // ← 飞弹
@@ -13,6 +17,7 @@ import { addCoins, getSessionCoins, commitSessionCoins } from './data/coin_state
 import { drawMonsterSprite } from './ui/monster_ui.js';
 import HeroData   from './data/hero_data.js';
 import BlockConfig from './data/block_config.js';   // ← 已有就保留
+import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导入
 
 
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
@@ -53,12 +58,18 @@ export function initGamePage(ctx, switchPage, canvas) {
   switchPageFn = switchPage;
   canvasRef = canvas;
 
+  showGameOver = false;
+  gaugeCount = 0;
+  attackGaugeDamage = 0;
+  attackDisplayDamage = 0;
+  selected = null;
+
   initGrid();
-  
-  // ===== Monster System =====
-  loadMonster(1);
-drawGame();
+  const m = loadMonster(1);
+  turnsLeft = m.skill.cooldown;
+  drawGame();
 }
+
 
 function initGrid() {
   const blocks = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -131,11 +142,6 @@ export function drawGame() {
 function drawUI() {
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
 
-
-  // 绘制UI元素：游戏中的提示文本
-  //ctxRef.fillStyle = 'white';
-  //ctxRef.font = '36px sans-serif';
-  //ctxRef.fillText('游戏中：三消开发中', 50, 60); // 绘制游戏中提示文本
  
   //绘制怪物图层
   drawMonsterSprite(ctxRef, canvasRef); 
@@ -155,42 +161,71 @@ const totalWidth  = 5 * iconSize + 4 * spacing;
 const startXHero  = (canvasRef.width - totalWidth) / 2;
 const topMargin   = 350;                   // 保持原位置
 
-  /* === 攻击槽（累计伤害） ===================================== */
-  const gaugeW = 180, gaugeH = 14;
-  const gaugeX = (canvasRef.width - gaugeW) / 2;
-  const gaugeY = topMargin - 60;     // 位于英雄栏正上方
-  
+/* === 攻击槽（累计伤害） ===================================== */
+const gaugeW = 180, gaugeH = 14;
+const gaugeX = (canvasRef.width - gaugeW) / 2;
+const gaugeY = topMargin - 39;
 
 /* ==== 累积伤害滚动 & 动画 ================================ */
-// 1. 让显示值逐帧逼近真实值（线性递增，速度可调）
+// 1. 动态数值逼近
 if (attackDisplayDamage < attackGaugeDamage) {
   const diff = attackGaugeDamage - attackDisplayDamage;
-  attackDisplayDamage += Math.ceil(diff * 0.33);   // 越接近越慢
+  attackDisplayDamage += Math.ceil(diff * 0.33);
 } else {
-  attackDisplayDamage = attackGaugeDamage;         // 不会倒退
+  attackDisplayDamage = attackGaugeDamage;
 }
 
-// 2. 计算放大系数：变化后 0.4s 内 1.6→1.0 缓回
+// 2. 缩放动画
 let fontScale = 1;
 const popDur = 400;
 if (Date.now() - damagePopTime < popDur) {
-  const p = 1 - (Date.now() - damagePopTime) / popDur;   // 1 → 0
-  fontScale = 1 + 0.6 * p;                               // 1.6 → 1
+  const p = 1 - (Date.now() - damagePopTime) / popDur;
+  fontScale = 1 + 0.6 * p;
 }
 
-// 3. 文字样式
-const baseFont   = 20;                  // 基础字号
-const fontSize   = Math.floor(baseFont * fontScale);
-ctxRef.save();
-ctxRef.fillStyle   = '#FF4444';         // 红色
-ctxRef.font        = `bold ${fontSize}px sans-serif`;
-ctxRef.textAlign   = 'center';
-ctxRef.textBaseline= 'middle';
+// 3. 样式设置（根据伤害值调整）
+const baseFont = attackDisplayDamage > 500 ? 28 : 20;
+const fontSize = Math.floor(baseFont * fontScale);
 
-// 如果放大，需要先平移到中心再 scale
+ctxRef.save();
+ctxRef.font = `bold ${fontSize}px sans-serif`;
+ctxRef.textAlign = 'center';
+ctxRef.textBaseline = 'middle';
+
+// 渐变色与发光根据伤害等级调整
+let gradient, shadowColor;
+if (attackDisplayDamage > 500) {
+  gradient = ctxRef.createLinearGradient(0, 0, 0, fontSize);
+  gradient.addColorStop(0, '#FFA500'); // 橙
+  gradient.addColorStop(1, '#FF4500'); // 深橙红
+  shadowColor = '#FF6600';
+} else {
+  gradient = ctxRef.createLinearGradient(0, 0, 0, fontSize);
+  gradient.addColorStop(0, '#FF4444');
+  gradient.addColorStop(1, '#CC0000');
+  shadowColor = '#FF3333';
+}
+
+ctxRef.fillStyle = gradient;
+ctxRef.shadowColor = shadowColor;
+ctxRef.shadowBlur = attackDisplayDamage > 500 ? 12 : 6;
+
+// 描边（黑边加粗）
+ctxRef.lineWidth = 4;
+ctxRef.strokeStyle = '#000';
+
+// 平移 + 缩放
 ctxRef.translate(gaugeX + gaugeW / 2, gaugeY + gaugeH / 2);
 ctxRef.scale(fontScale, fontScale);
+
+// 渲染描边 + 填充
+ctxRef.strokeText(`${attackDisplayDamage}`, 0, 0);
 ctxRef.fillText(`${attackDisplayDamage}`, 0, 0);
+
+ctxRef.restore();
+
+
+
   /* === 本局金币 HUD ============================== */
   ctxRef.resetTransform?.();      // 小程序 2.32 起支持；低版本可再 setTransform(1…)
   ctxRef.fillStyle   = '#FFD700';
@@ -201,6 +236,11 @@ ctxRef.fillText(`${attackDisplayDamage}`, 0, 0);
 ctxRef.restore();
 /* ======================================================== */
 
+// === 回合 HUD ===
+ctxRef.fillStyle = '#FFA';
+ctxRef.font = '18px sans-serif';
+ctxRef.textAlign = 'right';
+ctxRef.fillText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
 
 /* --- 操作计数展示 --- */
 const countText = `${gaugeCount}/5`;
@@ -285,10 +325,31 @@ for (let idx = 0; idx < 5; idx++) {
     }
   }
 
-  
 }
 /* =============================================================== */
 
+if (showGameOver) {
+  const boxW = 260, boxH = 160;
+  const boxX = (canvasRef.width - boxW) / 2;
+  const boxY = (canvasRef.height - boxH) / 2;
+
+  // 背景
+  ctxRef.fillStyle = 'rgba(0, 0, 0, 0.85)';
+  ctxRef.fillRect(boxX, boxY, boxW, boxH);
+
+  // 文本
+  ctxRef.fillStyle = '#FFF';
+  ctxRef.font = '24px sans-serif';
+  ctxRef.textAlign = 'center';
+  ctxRef.fillText('游戏失败', boxX + boxW / 2, boxY + 50);
+
+  // 按钮
+  ctxRef.fillStyle = '#F33';
+  drawRoundedRect(ctxRef, boxX + 60, boxY + 100, 140, 40, 10, true, false);
+  ctxRef.fillStyle = '#FFF';
+  ctxRef.font = '18px sans-serif';
+  ctxRef.fillText('回到主页', boxX + boxW / 2, boxY + 120);
+}
   
 }
 
@@ -366,6 +427,26 @@ function onTouch(e) {
   const xTouch = touch.clientX;
   const yTouch = touch.clientY;
 
+  if (showGameOver) {
+    const boxX = (canvasRef.width - 260) / 2;
+    const boxY = (canvasRef.height - 160) / 2;
+  
+  
+    const btnX = boxX + 60;
+    const btnY = boxY + 100;
+    const btnW = 140;
+    const btnH = 40;
+  
+    if (
+      xTouch >= btnX && xTouch <= btnX + btnW &&
+      yTouch >= btnY && yTouch <= btnY + btnH
+    ) {
+      switchPageFn('home'); // ✅ 返回主页
+    }
+  
+    return; // 🚫 拦截所有后续点击行为
+  }
+  
   if (xTouch >= 20 && xTouch <= 120 && yTouch >= 20 && yTouch <= 80) {
     switchPageFn('home');
     return;
@@ -430,11 +511,18 @@ function onTouch(e) {
                 // === 玩家本次有效消除计数 ===
               gaugeCount++;
               if (gaugeCount >= 5) {
-                startAttackEffect(attackGaugeDamage);  // 动画&伤害
+                startAttackEffect(attackGaugeDamage);
                 gaugeCount = 0;
                 gaugeFlashTime = Date.now();
-              }
               
+                // 每次攻击机会 -1
+                turnsLeft--;
+              
+                // 若时间耗尽但怪物未死 ⇒ 游戏失败
+                if (turnsLeft <= 0 && !isMonsterDead()) {
+                  showGameOver = true;
+                }
+              }              
 
            
             processClearAndDrop();
@@ -524,7 +612,9 @@ function checkAndClearMatches () {
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
     addCoins(getMonsterGold());   // 改为读取怪物自身掉落
-    loadMonster(getNextLevel());
+    const nextLevel = getNextLevel();   // ✅ 定义 nextLevel
+    const m = loadMonster(nextLevel);   // ✅ 正确传入
+    turnsLeft = m.skill.cooldown;
   } else {
     monsterTurn();
   }
@@ -744,3 +834,4 @@ function startAttackEffect(dmg) {
 }
 
 export { monsterHitFlashTime };
+

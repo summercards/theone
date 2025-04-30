@@ -16,8 +16,8 @@ const normalNames = [
 //   dmg = dmgBase + dmgPerLevel * (levelInSegment)
 // cooldown 可分别设定
 export const tierConfigs = [
-  { hpBase: 300,  hpPerLevel: 120, dmgBase: 25, dmgPerLevel: 6,  cooldown: 2 }, // 1-9
-  { hpBase: 500,  hpPerLevel: 130, dmgBase: 35, dmgPerLevel: 7,  cooldown: 2 }, // 11-19
+  { hpBase: 5300,  hpPerLevel: 120, dmgBase: 25, dmgPerLevel: 6,  cooldown: 2 }, // 1-9
+  { hpBase: 5500,  hpPerLevel: 130, dmgBase: 35, dmgPerLevel: 7,  cooldown: 2 }, // 11-19
   { hpBase: 700,  hpPerLevel: 140, dmgBase: 45, dmgPerLevel: 8,  cooldown: 2 }, // 21-29
   { hpBase: 900,  hpPerLevel: 150, dmgBase: 55, dmgPerLevel: 9,  cooldown: 2 }, // 31-39
   { hpBase: 1100, hpPerLevel: 160, dmgBase: 65, dmgPerLevel: 10, cooldown: 2 }, // 41-49
@@ -57,7 +57,8 @@ function createMonster({
     maxHp,
     sprite,
     isBoss,
-    gold,                        // ★ 新字段
+    gold,                        // ★ 掉落金币
+    turns: cooldown,             // ✅ 玩家可操作的初始回合数
     skill: {
       name: isBoss ? `${name} Fury` : `${name} Strike`,
       desc: `每${cooldown}回合${isBoss ? '对全体' : ''}造成${damage}点伤害`,
@@ -73,7 +74,7 @@ function createMonster({
 for (let lv = 1; lv <= 70; lv++) {
   if (lv % 10 === 0) {
     // ---------- Boss ----------
-    const idx = lv / 10 - 1; // 0-6
+    const idx = lv / 10 - 1;
     const def = bossDefs[idx];
     monsters.push(
       createMonster({
@@ -85,14 +86,14 @@ for (let lv = 1; lv <= 70; lv++) {
         damage: def.dmg + 15 * idx,
         cooldown: def.cooldown,
         isBoss: true,
-        gold: Math.round(30 + lv * 3)   // ★ Boss 掉落
+        gold: Math.round(30 + lv * 3)
       })
     );
   } else {
     // ---------- 普通怪 ----------
-    const tierIdx = Math.floor((lv - 1) / 10); // 0-6
+    const tierIdx = Math.floor((lv - 1) / 10);
     const tier = tierConfigs[tierIdx];
-    const levelInSegment = (lv - 1) % 10; // 0-8
+    const levelInSegment = (lv - 1) % 10;
     const baseName = normalNames[(lv - 1) % normalNames.length];
     monsters.push(
       createMonster({
@@ -103,7 +104,7 @@ for (let lv = 1; lv <= 70; lv++) {
         sprite: `${baseName.toLowerCase()}.png`,
         damage: tier.dmgBase + tier.dmgPerLevel * levelInSegment,
         cooldown: tier.cooldown,
-        gold: Math.round(5 + lv * 1.5)  // ★ 普通怪掉落
+        gold: Math.round(5 + lv * 1.5)
       })
     );
   }
@@ -113,7 +114,7 @@ for (let lv = 1; lv <= 70; lv++) {
 // 71-77：Boss Rush（前述 Boss * 1.2）
 // ------------------------------------------------------------
 for (let i = 0; i < 7; i++) {
-  const src = monsters.find(m => m.level === (i + 1) * 10); // 对应原 Boss
+  const src = monsters.find(m => m.level === (i + 1) * 10);
   monsters.push(
     createMonster({
       id: 71 + i,
@@ -124,7 +125,7 @@ for (let i = 0; i < 7; i++) {
       damage: Math.floor(src.skill.damage * 1.2),
       cooldown: src.skill.cooldown,
       isBoss: true,
-      gold: Math.round(src.gold * 1.2) // ★ 掉落也放大
+      gold: Math.round(src.gold * 1.2)
     })
   );
 }
