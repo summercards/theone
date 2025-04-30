@@ -16,24 +16,24 @@ const normalNames = [
 //   dmg = dmgBase + dmgPerLevel * (levelInSegment)
 // cooldown 可分别设定
 export const tierConfigs = [
-  { hpBase: 5300,  hpPerLevel: 120, dmgBase: 25, dmgPerLevel: 6,  cooldown: 2 }, // 1-9
-  { hpBase: 5500,  hpPerLevel: 130, dmgBase: 35, dmgPerLevel: 7,  cooldown: 2 }, // 11-19
-  { hpBase: 700,  hpPerLevel: 140, dmgBase: 45, dmgPerLevel: 8,  cooldown: 2 }, // 21-29
-  { hpBase: 900,  hpPerLevel: 150, dmgBase: 55, dmgPerLevel: 9,  cooldown: 2 }, // 31-39
-  { hpBase: 1100, hpPerLevel: 160, dmgBase: 65, dmgPerLevel: 10, cooldown: 2 }, // 41-49
-  { hpBase: 1300, hpPerLevel: 170, dmgBase: 75, dmgPerLevel: 11, cooldown: 2 }, // 51-59
-  { hpBase: 1500, hpPerLevel: 180, dmgBase: 85, dmgPerLevel: 12, cooldown: 2 }  // 61-69
+  { hpBase: 1300,  hpPerLevel: 120, dmgBase: 25, dmgPerLevel: 6,  cooldown: 2 }, // 1-9
+  { hpBase: 1500,  hpPerLevel: 130, dmgBase: 35, dmgPerLevel: 7,  cooldown: 2 }, // 11-19
+  { hpBase: 2700,  hpPerLevel: 140, dmgBase: 45, dmgPerLevel: 8,  cooldown: 2 }, // 21-29
+  { hpBase: 2900,  hpPerLevel: 150, dmgBase: 55, dmgPerLevel: 9,  cooldown: 2 }, // 31-39
+  { hpBase: 3100, hpPerLevel: 160, dmgBase: 65, dmgPerLevel: 10, cooldown: 2 }, // 41-49
+  { hpBase: 3300, hpPerLevel: 170, dmgBase: 75, dmgPerLevel: 11, cooldown: 2 }, // 51-59
+  { hpBase: 5500, hpPerLevel: 180, dmgBase: 85, dmgPerLevel: 12, cooldown: 2 }  // 61-69
 ];
 
 // ★ Boss 定义（10、20 … 70）★
 export const bossDefs = [
-  { name: 'Ancient Treant',   baseHp: 2000, hpInc: 200, dmg: 150, cooldown: 3 },
-  { name: 'Cavern Hydra',     baseHp: 2200, hpInc: 220, dmg: 165, cooldown: 3 },
-  { name: 'Sky Lord',         baseHp: 2400, hpInc: 240, dmg: 180, cooldown: 3 },
-  { name: 'Inferno Behemoth', baseHp: 2600, hpInc: 260, dmg: 195, cooldown: 3 },
-  { name: 'Abyss Leviathan',  baseHp: 2800, hpInc: 280, dmg: 210, cooldown: 3 },
-  { name: 'Titan Colossus',   baseHp: 3000, hpInc: 300, dmg: 225, cooldown: 3 },
-  { name: 'Void Dragon',      baseHp: 3200, hpInc: 320, dmg: 240, cooldown: 3 }
+  { name: 'Ancient Treant',   baseHp: 12000, hpInc: 200, dmg: 150, cooldown: 3 },
+  { name: 'Cavern Hydra',     baseHp: 12200, hpInc: 220, dmg: 165, cooldown: 3 },
+  { name: 'Sky Lord',         baseHp: 22400, hpInc: 240, dmg: 180, cooldown: 3 },
+  { name: 'Inferno Behemoth', baseHp: 22600, hpInc: 260, dmg: 195, cooldown: 3 },
+  { name: 'Abyss Leviathan',  baseHp: 22800, hpInc: 280, dmg: 210, cooldown: 3 },
+  { name: 'Titan Colossus',   baseHp: 33000, hpInc: 300, dmg: 225, cooldown: 3 },
+  { name: 'Void Dragon',      baseHp: 33200, hpInc: 320, dmg: 240, cooldown: 3 }
 ];
 
 // ------------------------------------------------------------

@@ -53,6 +53,8 @@ const gridSize = 5;
 let gridData = [];
 let selected = null;
 
+
+
 export function initGamePage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -70,6 +72,14 @@ export function initGamePage(ctx, switchPage, canvas) {
   drawGame();
 }
 
+function releaseAllReadySkills() {
+  const charges = getCharges();
+  for (let i = 0; i < 5; i++) {
+    if (charges[i] >= 100) {
+      releaseHeroSkill(i);
+    }
+  }
+}
 
 function initGrid() {
   const blocks = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -515,13 +525,7 @@ function onTouch(e) {
                 gaugeCount = 0;
                 gaugeFlashTime = Date.now();
               
-                // 每次攻击机会 -1
-                turnsLeft--;
-              
-                // 若时间耗尽但怪物未死 ⇒ 游戏失败
-                if (turnsLeft <= 0 && !isMonsterDead()) {
-                  showGameOver = true;
-                }
+
               }              
 
            
@@ -598,6 +602,8 @@ function checkAndClearMatches () {
 
     // b) 给英雄充能
     const chargesNow = getCharges();
+    // === 技能释放应该在伤害前处理 ===
+releaseAllReadySkills();
     const heroes     = getSelectedHeroes();
 
     heroes.forEach((hero, i) => {
@@ -609,6 +615,9 @@ function checkAndClearMatches () {
     });
   }
 
+// ✅ 在这里释放所有准备好的技能（蓄力满）
+releaseAllReadySkills();
+
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
     addCoins(getMonsterGold());   // 改为读取怪物自身掉落
@@ -616,7 +625,7 @@ function checkAndClearMatches () {
     const m = loadMonster(nextLevel);   // ✅ 正确传入
     turnsLeft = m.skill.cooldown;
   } else {
-    monsterTurn();
+
   }
 
   return clearedCount > 0;
@@ -830,6 +839,22 @@ function startAttackEffect(dmg) {
     createFloatingText(`-${pendingDamage}`, endX, endY - 40);
 
     pendingDamage = 0;
+
+    if (isMonsterDead()) {
+      addCoins(getMonsterGold());
+      const nextLevel = getNextLevel();
+      const m = loadMonster(nextLevel);
+      turnsLeft = m.skill.cooldown;
+    } else {
+      turnsLeft--; // 🟡 仅当怪物未死时扣回合
+
+      if (turnsLeft <= 0) {
+        showGameOver = true;
+      } else {
+        monsterTurn(); // 回合怪物出手
+      }
+    }
+
   });
 }
 
