@@ -20,6 +20,7 @@ import BlockConfig from './data/block_config.js';   // ← 已有就保留
 import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导入
 
 
+
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
 let damagePopTime       = 0;    // 最近一次数值变化时刻（ms）
@@ -333,6 +334,13 @@ for (let idx = 0; idx < 5; idx++) {
       img.src   = `assets/icons/${hero.icon}`;
       img.onload = () => { heroImageCache[hero.id] = img; };
     }
+    
+      // 等级文本
+  ctxRef.fillStyle = '#FFD700';
+  ctxRef.font = '12px sans-serif';
+  ctxRef.textAlign = 'center';
+  ctxRef.fillText(`Lv.${hero.level}`, x + iconSize / 2, y - 6);
+
   }
 
 }
@@ -841,6 +849,8 @@ function startAttackEffect(dmg) {
     pendingDamage = 0;
 
     if (isMonsterDead()) {
+      const exp = m?.exp || 50;            // ⬅️ m 是当前怪物（你也可以用 currentMonster）
+      rewardExpToHeroes(exp);              // ⬅️ 调用奖励函数
       addCoins(getMonsterGold());
       const nextLevel = getNextLevel();
       const m = loadMonster(nextLevel);
@@ -855,6 +865,16 @@ function startAttackEffect(dmg) {
       }
     }
 
+  });
+}
+
+function rewardExpToHeroes(expAmount) {
+  const heroes = getSelectedHeroes();
+  heroes.forEach(hero => {
+    if (hero) {
+      hero.gainExp(expAmount);
+      console.log(`${hero.name} 获得经验 +${expAmount}，当前等级 Lv.${hero.level}`);
+    }
   });
 }
 

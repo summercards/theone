@@ -12,6 +12,8 @@ export function loadMonster(level = 1) {
   monster = JSON.parse(JSON.stringify(proto));
   monster.hp = monster.maxHp;
   turnCounter = 0;
+    // ✅ 加入经验字段（如果数据里没有，就用默认值）
+    monster.exp = proto.exp ?? (30 + level * 5);  // 你可以改为固定值如 50
   return monster;
 }
 

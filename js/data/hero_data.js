@@ -9,17 +9,23 @@ const HeroData = {
       role: "战士",
       rarity: "SR",
       attributes: { physical: 500 },
-    
+      level: 1,
+      exp: 0,
+      expToNextLevel: 100,
+      levelUpConfig: {
+        attributeGrowth: {
+          physical: 50
+        },
+        unlockSkills: {}
+      },
       skill: {
         name: "破甲斩",
         description: "将自身物攻注入伤害槽",
-        /* ------------------- 新写法 ------------------- */
         effect: {
-          type: "addGauge",       // ← 新类型：向伤害槽加数值
-          source: "physical",     // 用哪项属性：physical / magical / 固定数字
-          scale: 1                // 倍率；1 = 原值，0.5 = 一半，可选
+          type: "addGauge",
+          source: "physical",
+          scale: 1
         },
-        /* --------------------------------------------- */
         cooldown: 3
       }
     },
@@ -33,12 +39,24 @@ const HeroData = {
         physical: 8,
         magical: 5
       },
+      level: 1,
+      exp: 0,
+      expToNextLevel: 100,
+      levelUpConfig: {
+        attributeGrowth: {
+          physical: 2,
+          magical: 1
+        },
+        unlockSkills: {
+          3: "piercingRain"
+        }
+      },
       skill: {
         name: "贯穿射击",
         description: "将当前伤害池翻倍",
         effect: {
-          type: "mulGauge",   // ← 新类型：乘以系数
-          factor: 2           // 乘 2；改成 1.5 就是 +50%
+          type: "mulGauge",
+          factor: 2
         },
         cooldown: 2
       }
@@ -52,6 +70,17 @@ const HeroData = {
       attributes: {
         physical: 2,
         magical: 10
+      },
+      level: 1,
+      exp: 0,
+      expToNextLevel: 100,
+      levelUpConfig: {
+        attributeGrowth: {
+          magical: 3
+        },
+        unlockSkills: {
+          4: "meteorStorm"
+        }
       },
       skill: {
         name: "火球术",
@@ -73,6 +102,16 @@ const HeroData = {
         physical: 7,
         magical: 3
       },
+      level: 1,
+      exp: 0,
+      expToNextLevel: 100,
+      levelUpConfig: {
+        attributeGrowth: {
+          physical: 3,
+          magical: 1
+        },
+        unlockSkills: {}
+      },
       skill: {
         name: "盾击",
         description: "用盾牌击晕敌人",
@@ -92,6 +131,17 @@ const HeroData = {
       attributes: {
         physical: 10,
         magical: 2
+      },
+      level: 1,
+      exp: 0,
+      expToNextLevel: 100,
+      levelUpConfig: {
+        attributeGrowth: {
+          physical: 4
+        },
+        unlockSkills: {
+          5: "shadowKill"
+        }
       },
       skill: {
         name: "暗影突袭",

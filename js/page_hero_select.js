@@ -62,8 +62,8 @@ function onTouch(e) {
       if (selectedHeroes.some(h => h && h.id === hero.id)) return;
       const empty = selectedHeroes.findIndex(h => h === null);
       if (empty !== -1) {
-        selectedHeroes[empty] = hero;
-        HeroState.setSelectedHeroes(selectedHeroes);
+        selectedHeroes[empty] = hero.id;  // ⬅️ 存英雄 ID，而非整个对象
+        HeroState.setSelectedHeroes(selectedHeroes);  // ⬅️ 传入 ID 数组，内部生成 HeroState 实例
         return render();
       }
     }
@@ -115,7 +115,9 @@ function render() {
     ctx.lineWidth = 3;
     drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
     slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
-    if (selectedHeroes[i]) drawIcon(ctx, selectedHeroes[i], sx, sy);
+  
+    const heroObj = selectedHeroes[i] && HeroData.getHeroById(selectedHeroes[i]);
+    if (heroObj) drawIcon(ctx, heroObj, sx, sy);
   }
 
   drawText(ctx, '英雄池（点击添加）',

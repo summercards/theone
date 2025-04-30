@@ -1,14 +1,66 @@
-let selectedHeroes = [null, null, null, null, null];
+const HeroData = require('./hero_data.js');
 
-function setSelectedHeroes(heroes) {
-  selectedHeroes = heroes;
+class HeroState {
+  constructor(id) {
+    const baseData = HeroData.getHeroById(id);
+    this.id = baseData.id;
+    this.name = baseData.name;
+    this.icon = baseData.icon;
+    this.role = baseData.role;
+    this.rarity = baseData.rarity;
+    this.skill = baseData.skill;
+    this.attributes = { ...baseData.attributes };
+    this.level = baseData.level || 1;
+    this.exp = baseData.exp || 0;
+    this.expToNextLevel = baseData.expToNextLevel || 100;
+    this.levelUpConfig = baseData.levelUpConfig || {};
+  }
+
+  gainExp(amount) {
+    this.exp += amount;
+    while (this.exp >= this.expToNextLevel) {
+      this.exp -= this.expToNextLevel;
+      this.levelUp();
+    }
+  }
+
+  levelUp() {
+    this.level++;
+    const growth = this.levelUpConfig.attributeGrowth || {};
+    for (const key in growth) {
+      if (!this.attributes[key]) this.attributes[key] = 0;
+      this.attributes[key] += growth[key];
+    }
+    if (this.levelUpConfig.unlockSkills?.[this.level]) {
+      console.log(`${this.name} 解锁技能：${this.levelUpConfig.unlockSkills[this.level]}`);
+    }
+    this.expToNextLevel = Math.floor(this.expToNextLevel * 1.2);
+  }
 }
 
+// ================== 英雄选择状态管理 ==================
+let selectedHeroes = [null, null, null, null, null];
+
+/**
+ * 设置选中的英雄 ID 列表，转换为 HeroState 实例
+ * @param {Array<string>} heroes - 英雄ID数组（最多5个）
+ */
+function setSelectedHeroes(heroes) {
+  selectedHeroes = heroes.map(id => {
+    return id ? new HeroState(id) : null;
+  });
+}
+
+/**
+ * 获取当前的 HeroState 实例数组
+ * @returns {Array<HeroState|null>}
+ */
 function getSelectedHeroes() {
   return selectedHeroes;
 }
 
 module.exports = {
+  HeroState,
   setSelectedHeroes,
   getSelectedHeroes
 };
