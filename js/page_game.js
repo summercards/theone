@@ -114,7 +114,7 @@ export function drawGame() {
       if (selected && selected.row === row && selected.col === col) {
         ctxRef.strokeStyle = '#00FF00';
         ctxRef.lineWidth = 4;
-        ctxRef.strokeRect(x, y, blockSize - 4, blockSize - 4);
+        drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, false, true);
       }
     }
   }
