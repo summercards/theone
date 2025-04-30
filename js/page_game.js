@@ -8,7 +8,8 @@ import {updateAllEffects,drawAllEffects,createExplosion,
 import { getSelectedHeroes } from './data/hero_state.js';
 import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
-import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel } from './data/monster_state.js';
+import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel, getMonsterGold } from './data/monster_state.js';
+import { addCoins, getSessionCoins, commitSessionCoins } from './data/coin_state.js';
 import { drawMonsterSprite } from './ui/monster_ui.js';
 import HeroData   from './data/hero_data.js';
 import BlockConfig from './data/block_config.js';   // ← 已有就保留
@@ -190,6 +191,13 @@ ctxRef.textBaseline= 'middle';
 ctxRef.translate(gaugeX + gaugeW / 2, gaugeY + gaugeH / 2);
 ctxRef.scale(fontScale, fontScale);
 ctxRef.fillText(`${attackDisplayDamage}`, 0, 0);
+  /* === 本局金币 HUD ============================== */
+  ctxRef.resetTransform?.();      // 小程序 2.32 起支持；低版本可再 setTransform(1…)
+  ctxRef.fillStyle   = '#FFD700';
+  ctxRef.font        = '18px IndieFlower, sans-serif';
+  ctxRef.textAlign   = 'left';
+  ctxRef.textBaseline= 'top';
+  ctxRef.fillText(`金币: ${getSessionCoins()}`, 26, 116);
 ctxRef.restore();
 /* ======================================================== */
 
@@ -234,7 +242,7 @@ for (let i = 0; i < 5; i++) {
     const barW = iconSize;                 // 同头像宽
     const barH = 6;                        // 条高度
     const barX = x;                        // 与头像左对齐
-    const barY = y + iconSize + 16;        // 位于编号下方少许
+    const barY = y + iconSize + 6;        // 位于编号下方少许
   
     // 背景框
     ctxRef.fillStyle = '#333';
@@ -277,12 +285,7 @@ for (let idx = 0; idx < 5; idx++) {
     }
   }
 
-  // — 槽位编号 —
-  ctxRef.fillStyle   = '#FFF';
-  ctxRef.font        = '12px sans-serif';
-  ctxRef.textAlign   = 'center';
-  ctxRef.textBaseline= 'top';
-  ctxRef.fillText(i + 1, x + iconSize / 2, y + iconSize + 2);
+  
 }
 /* =============================================================== */
 
@@ -520,6 +523,7 @@ function checkAndClearMatches () {
 
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
+    addCoins(getMonsterGold());   // 改为读取怪物自身掉落
     loadMonster(getNextLevel());
   } else {
     monsterTurn();
@@ -651,12 +655,19 @@ export function onTouchend(e){
   onTouch(e);
 }
 
-export default {
-  init: initGamePage,
-  update: updateGamePage,
-  draw: drawGame,
-  onTouchend
-};
+
+
+function destroyGamePage() {
+    commitSessionCoins();
+  }
+  
+  export default {
+    init: initGamePage,
+    update: updateGamePage,
+    draw: drawGame,
+    onTouchend,
+    destroy: destroyGamePage
+  };
 
 function releaseHeroSkill(slotIndex) {
   const hero = getSelectedHeroes()[slotIndex];

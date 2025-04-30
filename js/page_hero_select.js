@@ -1,5 +1,7 @@
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 
+import { getTotalCoins } from './data/coin_state.js';
+
 function drawText(ctx, text, x, y,
   font = '16px IndieFlower, sans-serif', color = '#FFF',
   hAlign = 'left', vAlign = 'alphabetic') {
@@ -89,6 +91,13 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#2E003E';
   drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, 8, true, false);
+
+    // --- 总金币显示 ---
+  drawText(ctx,
+           `金币: ${getTotalCoins()}`,
+           canvas.width - 306, 116,
+           '18px IndieFlower', '#FFD700',
+           'right', 'top');
 
   const PAD_X = 20;
   const ICON = 60;

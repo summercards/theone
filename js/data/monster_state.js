@@ -42,3 +42,9 @@ export function monsterTurn() {
 export function getNextLevel() {
   return currentLevel + 1;
 }
+
+
+// 当前怪物的掉落金币
+export function getMonsterGold() {
+  return monster?.gold ?? 0;
+}
