@@ -2,6 +2,8 @@ let ctxRef;
 let switchPageFn;
 let canvasRef;
 
+const { drawRoundedRect } = require('./utils/canvas_utils.js');
+
 export function initHomePage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -10,20 +12,7 @@ export function initHomePage(ctx, switchPage, canvas) {
   drawHomeUI();
 }
 
-// 辅助函数：绘制圆角矩形
-function drawRoundedRect(ctx, x, y, width, height, radius) {
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
-}
+
 
 function drawHomeUI() {
   const btnWidth = 300;

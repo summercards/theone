@@ -1,3 +1,4 @@
+const { drawRoundedRect } = require('./utils/canvas_utils.js');
 
 // === 变更：把另外两个特效工具也引进来
 import {updateAllEffects,drawAllEffects,createExplosion,
@@ -104,7 +105,7 @@ export function drawGame() {
       const y = startY + row * blockSize;
 
       ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
-      ctxRef.fillRect(x, y, blockSize - 4, blockSize - 4);
+      drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, true, false);
 
       ctxRef.fillStyle = 'white';
       ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
@@ -140,7 +141,7 @@ function drawUI() {
 
   // 绘制主页按钮
   ctxRef.fillStyle = '#888';
-  ctxRef.fillRect(20, 20, 100, 60); // 绘制按钮背景
+  drawRoundedRect(ctxRef, 20, 20, 100, 60, 10, true, false); // 圆角半径为 10
   ctxRef.fillStyle = 'white';
   ctxRef.font = '24px sans-serif';
   //ctxRef.fillText('主页', 40, 60); // 绘制按钮文本
@@ -219,10 +220,11 @@ for (let i = 0; i < 5; i++) {
 
   // — 背板框（空位也画） —
   ctxRef.fillStyle = '#111';
-  ctxRef.fillRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
+  drawRoundedRect(ctxRef, x - 2, y - 2, iconSize + 4, iconSize + 4, 6, true, false);
   ctxRef.strokeStyle = '#888';
-  ctxRef.lineWidth   = 2;
-  ctxRef.strokeRect(x - 2, y - 2, iconSize + 4, iconSize + 4);
+  ctxRef.lineWidth = 2;
+  drawRoundedRect(ctxRef, x - 2, y - 2, iconSize + 4, iconSize + 4, 6, false, true);
+  
 
 
 
@@ -236,7 +238,7 @@ for (let i = 0; i < 5; i++) {
   
     // 背景框
     ctxRef.fillStyle = '#333';
-    ctxRef.fillRect(barX, barY, barW, barH);
+    drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, true, false);
 
    // 若蓄力满，画闪烁边框
 if (percent >= 100) {
@@ -260,7 +262,7 @@ for (let idx = 0; idx < 5; idx++) {
     // 进度边框
     ctxRef.strokeStyle = '#888';
     ctxRef.lineWidth = 1;
-    ctxRef.strokeRect(barX, barY, barW, barH);
+    drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, false, true);
   
 
   // — 已选英雄头像 —
@@ -319,7 +321,7 @@ function animateSwap(src, dst, callback, rollback = false) {
         const block = gridData[row][col];
 
         ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
-        ctxRef.fillRect(x, y, blockSize - 4, blockSize - 4);
+        drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, true, false);
         ctxRef.fillStyle = 'white';
         ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
         ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
@@ -675,7 +677,7 @@ function releaseHeroSkill(slotIndex) {
     attackGaugeDamage = Math.round(attackGaugeDamage * (eff.factor ?? 1));
     damagePopTime     = Date.now();   // 触发数字弹跳
     break;
-    
+
     /* --------------- ② 新增 addGauge -------------- */
     case 'addGauge': {
       let add = 0;

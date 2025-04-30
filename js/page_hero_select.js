@@ -1,63 +1,40 @@
+const { drawRoundedRect } = require('./utils/canvas_utils.js');
 
-function drawRoundedRect(ctx, x, y, width, height, radius = 10, fill = true, stroke = true) {
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
-  if (fill) ctx.fill();
-  if (stroke) ctx.stroke();
-}
-
-
-
-/* ===================== 通用文字绘制 ===================== */
 function drawText(ctx, text, x, y,
   font = '16px IndieFlower, sans-serif', color = '#FFF',
   hAlign = 'left', vAlign = 'alphabetic') {
-  ctx.fillStyle    = color;
-  ctx.font         = font;
-  ctx.textAlign    = hAlign;
+  ctx.fillStyle = color;
+  ctx.font = font;
+  ctx.textAlign = hAlign;
   ctx.textBaseline = vAlign;
   ctx.fillText(text, x, y);
 }
 
-/* ===================== 依赖模块 ========================= */
 const HeroState = require('./data/hero_state.js');
-const HeroData  = require('./data/hero_data.js');
+const HeroData = require('./data/hero_data.js');
 
-/* ===================== 选择页状态 ======================= */
 const heroImageCache = {};
-let   selectedHeroes = [null, null, null, null, null];
+let selectedHeroes = [null, null, null, null, null];
 
-let slotRects   = [];
-let iconRects   = [];
+let slotRects = [];
+let iconRects = [];
 let btnPrevRect = null;
 let btnNextRect = null;
 
 const HERO_PER_PAGE = 10;
-const TOTAL_PAGES   = 3;
-let   pageIndex     = 0;
+const TOTAL_PAGES = 3;
+let pageIndex = 0;
 
 let ctxRef, canvasRef, switchPageFn;
 
-/* ===================== 入口 ============================= */
 function initHeroSelectPage(ctx, switchPage, canvas) {
-  ctxRef       = ctx;
-  canvasRef    = canvas;
+  ctxRef = ctx;
+  canvasRef = canvas;
   switchPageFn = switchPage;
-
   canvas.addEventListener('touchstart', onTouch);
   render();
 }
 
-/* ===================== 触控处理 ========================= */
 function onTouch(e) {
   const { clientX: x, clientY: y } = e.touches[0];
 
@@ -102,32 +79,30 @@ function onTouch(e) {
   }
 }
 
-/* ===================== 工具 ============================= */
 function hit(px, py, r) {
   return r && px >= r.x && px <= r.x + r.width &&
          py >= r.y && py <= r.y + r.height;
 }
 
-/* ===================== 主渲染 =========================== */
 function render() {
   const ctx = ctxRef, canvas = canvasRef;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#2B0000';
+  ctx.fillStyle = '#2E003E';
   drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, 8, true, false);
 
-  const PAD_X     = 20;
-  const ICON      = 60;
-  const GAP       = 15;
+  const PAD_X = 20;
+  const ICON = 60;
+  const GAP = 15;
   const topOffset = 80;
 
   drawText(ctx, '出战英雄（点击移除）',
-           PAD_X, 280 + topOffset, '16px IndieFlower', '#FFD', 'left', 'top');
+    PAD_X, 280 + topOffset, '16px IndieFlower', '#DCC6F0', 'left', 'top');
 
   slotRects.length = 0;
   for (let i = 0; i < 5; i++) {
     const sx = PAD_X + i * (ICON + GAP);
     const sy = 300 + topOffset;
-    ctx.strokeStyle = '#FF0000';
+    ctx.strokeStyle = '#A64AC9';
     ctx.lineWidth = 3;
     drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
     slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
@@ -135,9 +110,9 @@ function render() {
   }
 
   drawText(ctx, '英雄池（点击添加）',
-           PAD_X, 420 + topOffset - 20, '16px IndieFlower', '#FFD', 'left', 'top');
+    PAD_X, 420 + topOffset - 20, '16px IndieFlower', '#DCC6F0', 'left', 'top');
 
-  const startIdx   = pageIndex * HERO_PER_PAGE;
+  const startIdx = pageIndex * HERO_PER_PAGE;
   const pageHeroes = HeroData.heroes.slice(startIdx, startIdx + HERO_PER_PAGE);
   while (pageHeroes.length < HERO_PER_PAGE) pageHeroes.push(null);
 
@@ -145,18 +120,18 @@ function render() {
   pageHeroes.forEach((hero, i) => {
     const row = Math.floor(i / 5);
     const col = i % 5;
-    const ix  = PAD_X + col * (ICON + GAP);
-    const iy  = 420 + topOffset + row * (ICON + 30);
-    ctx.strokeStyle = '#FF6666';
+    const ix = PAD_X + col * (ICON + GAP);
+    const iy = 420 + topOffset + row * (ICON + 30);
+    ctx.strokeStyle = '#C084FC';
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, ix, iy, ICON, ICON, 8, false, true);
 
     if (hero) drawIcon(ctx, hero, ix, iy);
     else {
-      ctx.fillStyle = '#800000';
+      ctx.fillStyle = '#4B0073';
       drawRoundedRect(ctx, ix + 4, iy + 4, ICON - 8, ICON - 8, 8, true, false);
       drawText(ctx, '?', ix + ICON / 2, iy + ICON / 2,
-               '20px IndieFlower', '#FFF', 'center', 'middle');
+        '20px IndieFlower', '#FFF', 'center', 'middle');
     }
     iconRects.push({ rect: { x: ix, y: iy, width: ICON, height: ICON }, hero });
   });
@@ -165,65 +140,87 @@ function render() {
   btnPrevRect = { x: PAD_X, y: btnY, width: 40, height: 40 };
   btnNextRect = { x: canvas.width - PAD_X - 40, y: btnY, width: 40, height: 40 };
 
-  ctx.fillStyle = pageIndex > 0 ? '#AA0000' : '#300';
+  ctx.fillStyle = pageIndex > 0 ? '#7E30B3' : '#300';
   drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, 40, 40, 8, true, false);
   drawText(ctx, '<', btnPrevRect.x + 20, btnPrevRect.y + 20,
-           '24px IndieFlower', '#FFF', 'center', 'middle');
+    '24px IndieFlower', '#FFF', 'center', 'middle');
 
-  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#AA0000' : '#300';
+  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#7E30B3' : '#300';
   drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, 40, 40, 8, true, false);
   drawText(ctx, '>', btnNextRect.x + 20, btnNextRect.y + 20,
-           '24px IndieFlower', '#FFF', 'center', 'middle');
+    '24px IndieFlower', '#FFF', 'center', 'middle');
 
   drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
-           canvas.width / 2, btnPrevRect.y + 20,
-           '14px IndieFlower', '#FFD', 'center', 'middle');
+    canvas.width / 2, btnPrevRect.y + 20,
+    '14px IndieFlower', '#DCC6F0', 'center', 'middle');
 
   const confirmX = canvas.width / 2 - 80;
   const confirmY = canvas.height - 80;
-  ctx.fillStyle  = '#CC0000';
+  ctx.fillStyle = '#912BB0';
   drawRoundedRect(ctx, confirmX, confirmY, 160, 50, 8, true, false);
   drawText(ctx, '确认出战', confirmX + 80, confirmY + 25,
-           '18px IndieFlower', '#FFF', 'center', 'middle');
+    '18px IndieFlower', '#FFF', 'center', 'middle');
 }
 
 /* ===================== 头像绘制 ========================= */
 function drawIcon(ctx, hero, x, y) {
   const ICON = 60;
-  const rarityColor = { SSR: '#FF0000', SR: '#AA2222', R: '#882222' }[hero.rarity] || '#660000';
+  const radius = 12;
+  const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
 
   if (heroImageCache[hero.id]) {
-    ctx.fillStyle = '#000';
-    drawRoundedRect(ctx, x - 2, y - 2, ICON + 4, ICON + 4, 8, true, false);
+    // 圆角剪裁头像图像
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + ICON - radius, y);
+    ctx.quadraticCurveTo(x + ICON, y, x + ICON, y + radius);
+    ctx.lineTo(x + ICON, y + ICON - radius);
+    ctx.quadraticCurveTo(x + ICON, y + ICON, x + ICON - radius, y + ICON);
+    ctx.lineTo(x + radius, y + ICON);
+    ctx.quadraticCurveTo(x, y + ICON, x, y + ICON - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.clip();
     ctx.drawImage(heroImageCache[hero.id], x, y, ICON, ICON);
+    ctx.restore();
 
+    // 稀有度边框
     ctx.strokeStyle = rarityColor;
-    ctx.lineWidth   = 3;
-    drawRoundedRect(ctx, x - 1, y - 1, ICON + 2, ICON + 2, 8, false, true);
+    ctx.lineWidth = 5;
+    drawRoundedRect(ctx, x, y, ICON, ICON, radius, false, true);
 
+    // 顶部属性
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    drawRoundedRect(ctx, x, y - 14, ICON, 14, 8, true, false);
+    drawRoundedRect(ctx, x, y - 14, ICON, 14, 4, true, false);
     drawText(ctx, `物:${hero.attributes.physical} 魔:${hero.attributes.magical}`,
-             x + 4, y - 3, '10px IndieFlower', '#FFD', 'left', 'bottom');
+      x + 4, y - 3, '10px IndieFlower', '#FFD', 'left', 'bottom');
 
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    drawRoundedRect(ctx, x, y + ICON - 20, ICON, 20, 8, true, false);
-    drawText(ctx, hero.role, x + 4, y + ICON - 14,
-             '10px IndieFlower', '#FFF', 'left', 'bottom');
-    drawText(ctx, hero.name, x + 4, y + ICON - 3,
-             '10px IndieFlower', '#FFF', 'left', 'bottom');
+    // 职业和名字加粗描边
+    ctx.font = 'bold 10px IndieFlower';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#000';
+    ctx.fillStyle = '#FFF';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+
+    ctx.strokeText(hero.role, x + 4, y + ICON - 14);
+    ctx.fillText(hero.role, x + 4, y + ICON - 14);
+    ctx.strokeText(hero.name, x + 4, y + ICON - 3);
+    ctx.fillText(hero.name, x + 4, y + ICON - 3);
     return;
   }
 
   const img = wx.createImage();
-  img.src   = `assets/icons/${hero.icon}`;
+  img.src = `assets/icons/${hero.icon}`;
   img.onload = () => { heroImageCache[hero.id] = img; render(); };
 }
 
 /* ===================== 导出 ============================= */
 export default {
-  init   : initHeroSelectPage,
-  update : () => {},
-  draw   : () => render(),
+  init: initHeroSelectPage,
+  update: () => { },
+  draw: () => render(),
   destroy: () => canvasRef.removeEventListener('touchstart', onTouch)
 };

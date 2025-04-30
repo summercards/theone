@@ -1,3 +1,4 @@
+const { drawRoundedRect } = require('../utils/canvas_utils.js');
 // ui/monster_ui.js —— 怪物精灵 + 血条绘制
 import { getMonster } from '../data/monster_state.js';
 import { monsterHitFlashTime } from '../page_game.js';  // ← 只需引用，不要再定义
@@ -40,10 +41,10 @@ export function drawMonsterSprite(ctx, canvas) {
   const hpRatio = monster.hp / monster.maxHp;
 
   ctx.fillStyle = '#000';
-  ctx.fillRect(x, y + SPR_H + 6, BAR_W, BAR_H);
+  drawRoundedRect(ctx, x, y + SPR_H + 6, BAR_W, BAR_H, 6, true, false);
 
   ctx.fillStyle = '#ff4444';
-  ctx.fillRect(x, y + SPR_H + 6, BAR_W * hpRatio, BAR_H);
+  drawRoundedRect(ctx, x, y + SPR_H + 6, BAR_W * hpRatio, BAR_H, 6, true, false);
 
   /* ---------- 5. 名称 + 等级 ---------- */
   ctx.fillStyle = '#fff';
