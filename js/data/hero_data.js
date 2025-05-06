@@ -9,12 +9,12 @@ const HeroData = {
       rarity: "SR",
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
-      attributes: { physical: 200 },
+      attributes: { physical: 8 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
-        attributeGrowth: { physical: 50 },
+        attributeGrowth: { physical: 2 },
         unlockSkills: {}
       },
       skill: {
