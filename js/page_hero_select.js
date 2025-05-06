@@ -275,7 +275,7 @@ function render() {
 
   /* ---------- 顶部金币数 ---------- */
   drawText(ctx, `金币: ${getTotalCoins()}`,
-           canvas.width - 30, 30,
+           canvas.width - 280, 80,
            '18px IndieFlower', '#FFD700', 'right', 'top');
 
   const PAD_X = 20;
