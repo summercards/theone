@@ -21,6 +21,14 @@ export function getTotalCoins() {
   return totalCoins;
 }
 
+/** 尝试消费金币。不足返回 false 并不扣款 */
+export function spendCoins(amount) {
+    if (totalCoins < amount) return false;
+    totalCoins -= amount;
+    wx.setStorageSync(STORAGE_KEY, totalCoins);
+    return true;
+  }
+  
 /** 结束一局游戏时调用，把 session 写入本地并清零 */
 export function commitSessionCoins() {
   totalCoins   += sessionCoins;
