@@ -9,7 +9,7 @@ const HeroData = {
       rarity: "SR",
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
-      attributes: { physical: 10 },
+      attributes: { physical: 200 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,

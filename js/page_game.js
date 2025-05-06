@@ -1,6 +1,7 @@
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 
 
+
 let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
 let showGameOver = false;     // 是否触发失败弹窗
 
@@ -18,8 +19,8 @@ import { drawMonsterSprite } from './ui/monster_ui.js';
 import HeroData   from './data/hero_data.js';
 import BlockConfig from './data/block_config.js';   // ← 已有就保留
 import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导入
-
-
+import { getLogs } from './utils/battle_log.js';
+import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
@@ -41,7 +42,10 @@ const BLOCK_DAMAGE_MAP = Object.fromEntries(
 /* 攻击槽：累积伤害数值 */
 let attackGaugeDamage = 0;
 
-
+export function addToAttackGauge(value) {
+  attackGaugeDamage += value;
+  damagePopTime = Date.now(); // 让数字弹跳动画正常
+}
 
 
 
@@ -327,11 +331,7 @@ if (percent >= 100) {
 }
 
 // === 蓄力满自动释放技能（单独一层） ===
-for (let idx = 0; idx < 5; idx++) {
-  if (getCharges()[idx] >= 100) {
-    releaseHeroSkill(idx);
-  }
-}
+
 
   
     // 填充进度
@@ -376,6 +376,17 @@ ctxRef.shadowBlur = 0;
 
 }
 /* =============================================================== */
+
+// ✅ 简单粗暴显示日志：取最近 6 条，左下角打印
+const logs = getLogs().slice(-6);
+ctxRef.font = '12px monospace';
+ctxRef.fillStyle = '#0F0';
+ctxRef.textAlign = 'left';
+
+for (let i = 0; i < logs.length; i++) {
+  ctxRef.fillText(logs[i], 12, canvasRef.height - 100 + i * 14);
+}
+
 
 if (showGameOver) {
   const boxW = 260, boxH = 160;
@@ -633,29 +644,48 @@ function checkAndClearMatches () {
 
   /* === ③ 如果有消除，就累伤害 / 加蓄力 === */
   if (clearedCount > 0) {
-    // a) 累伤害
     Object.keys(colorCounter).forEach(letter => {
-      attackGaugeDamage += colorCounter[letter] * (BLOCK_DAMAGE_MAP[letter] || 0);
+      const baseDamage = (BLOCK_DAMAGE_MAP[letter] || 0);
+      const count = colorCounter[letter];
+      const added = baseDamage * count;
+      attackGaugeDamage += added;
+
+      logBattle(`方块[${letter}] ×${count} → 攻击槽 +${added}`);
+
+      // ✅ 触发额外方块特效
+      const config = BlockConfig[letter];
+      if (config?.onEliminate) {
+        config.onEliminate(count);
+      }
     });
+
     damagePopTime = Date.now();
 
     // b) 给英雄充能
+    console.log('[调试] colorCounter =', colorCounter);
     const chargesNow = getCharges();
-    // === 技能释放应该在伤害前处理 ===
-releaseAllReadySkills();
     const heroes     = getSelectedHeroes();
 
     heroes.forEach((hero, i) => {
       if (!hero) return;
       const gained = Object.keys(colorCounter)
+      
+      
         .filter(l => BLOCK_ROLE_MAP[l] === hero.role)
         .reduce((sum, l) => sum + colorCounter[l], 0);
-      if (gained) setCharge(i, chargesNow[i] + gained * 20);      // 20% × 方块数
-    });
-  }
 
-// ✅ 在这里释放所有准备好的技能（蓄力满）
-releaseAllReadySkills();
+        console.log(`[调试] ${hero.name}(${hero.role}) gained =`, gained); 
+        
+      if (gained) {
+        const gain = gained * 20;
+        setCharge(i, chargesNow[i] + gain);
+        logBattle(`${hero.name} 蓄力 +${gain}（来源方块：${gained} 个 ${hero.role} 色）`);
+      }
+    });
+
+    // ✅ 蓄力完成后，释放所有已满英雄技能
+    releaseAllReadySkills();
+  }
 
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
@@ -664,11 +694,12 @@ releaseAllReadySkills();
     const m = loadMonster(nextLevel);   // ✅ 正确传入
     turnsLeft = m.skill.cooldown;
   } else {
-
+    // 敌人仍存活：怪物回合已由其他逻辑处理（如 turnsLeft）
   }
 
   return clearedCount > 0;
 }
+
 
 
 
@@ -817,9 +848,10 @@ function releaseHeroSkill(slotIndex) {
   switch (eff.type) {
     /* ----------------- ① 通用伤害 ----------------- */
     case 'physicalDamage':
-    case 'magicalDamage':
-      dealDamage(eff.amount);
-      break;
+      case 'magicalDamage':
+        dealDamage(eff.amount);
+        logBattle(`${hero.name} 释放技能：造成${eff.type === 'physicalDamage' ? '物理' : '法术'}伤害 ${eff.amount} 点`);
+        break;
 
         /* ---------- 新增：翻倍伤害槽 ---------- */
   case 'mulGauge':

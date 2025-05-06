@@ -1,3 +1,8 @@
+import BlockConfig from '../data/block_config.js';
+
+/**
+ * 查找网格中连续3个及以上的匹配
+ */
 export function findMatches(grid) {
   const matched = [];
   const size = grid.length;
@@ -27,22 +32,44 @@ export function findMatches(grid) {
   return matched;
 }
 
+/**
+ * 应用匹配结果并触发方块对应的效果（如伤害条、治疗等）
+ */
 export function applyMatches(grid, matched) {
   const size = grid.length;
   let changed = false;
 
+  // 统计每种类型的被消除数量
+  const eliminatedCounts = {};
+
   for (let i = 0; i < size; i++) {
     for (let j = 0; j < size; j++) {
       if (matched[i][j]) {
+        const blockType = grid[i][j];
+        if (blockType) {
+          eliminatedCounts[blockType] = (eliminatedCounts[blockType] || 0) + 1;
+        }
+
         grid[i][j] = null;
         changed = true;
       }
     }
   }
 
+  // 遍历执行每种被消除方块的 onEliminate 特效
+  for (const [type, count] of Object.entries(eliminatedCounts)) {
+    const config = BlockConfig[type];
+    if (config?.onEliminate) {
+      config.onEliminate(count);
+    }
+  }
+
   return changed;
 }
 
+/**
+ * 下落逻辑 + 新方块生成
+ */
 export function collapseGrid(grid, blocks) {
   const size = grid.length;
 

@@ -2,6 +2,7 @@
 let lastAdTime = 0; // 上次点击时间戳
 const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
 
+
 // ======================= 资源与常量 =======================
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 const { getTotalCoins }   = require('./data/coin_state.js');
