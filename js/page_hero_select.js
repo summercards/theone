@@ -66,15 +66,32 @@ function onTouch(e) {
   for (const { rect, hero } of iconRects) {
     if (hero && hit(x, y, rect)) {
 
-      // === 🔒 若英雄被锁，先尝试解锁 ===
-      if (hero.locked) {
-        const state = new HeroState(hero.id);
-        if (state.tryUnlock()) {        // 解锁成功
-          hero.locked = false;
-          return render();
-        }
-        return;                         // 金币不足 → 提示后退出
+// === 🔒 若英雄被锁，先弹确认框 ===
+if (hero.locked) {
+  const cost = hero.unlockCost || 0;
+  const coins = getTotalCoins();
+  wx.showModal({
+    title: '✨ 解锁英雄 ✨',            // 加 Emoji + 两侧空格让标题更醒目
+    content: `解锁「${hero.name}」\n需要  ${cost} 金币\n\n确定要花费吗？`,
+    showCancel: true,
+    cancelText: '算了吧',
+    confirmText: '花费解锁',
+    confirmColor: '#B44CFF',           // 亮紫 #B44CFF
+    cancelColor:  '#FFD54F',           // 金黄 #FFD54F
+    success(res) {
+      if (!res.confirm) return;        // 点击“算了吧”或空白
+      if (getTotalCoins() < cost) {
+        return wx.showToast({ title: '金币不足', icon: 'none' });
       }
+      const state = new HeroState(hero.id);
+      if (state.tryUnlock()) {
+        hero.locked = false;
+        render();
+      }
+    }
+  });
+  return;                                       // 不再向下执行
+}
 
       // === 已解锁：加入出战列表 ===
       if (selectedHeroes.includes(hero.id)) return;      // 已选中
