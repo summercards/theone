@@ -22,6 +22,7 @@ let btnPrevRect = null;
 let btnNextRect = null;
 let pageIndex   = 0;
 
+
 let ctxRef, canvasRef, switchPageFn;
 let showUpgradeButtons = false;         // 是否显示“升级”按钮
 

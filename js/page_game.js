@@ -486,14 +486,14 @@ function onTouch(e) {
     const btnW = 140;
     const btnH = 40;
   
-    if (
-      xTouch >= 20 && xTouch <= 120 &&
-      yTouch >= 100 && yTouch <= 140
-    ) {
-      switchPageFn('home'); // ✅ 返回主页
-    }
-  
-    return; // 🚫 拦截所有后续点击行为
+  // ✅ 使用绘制时同一套坐标
+  if (
+    xTouch >= btnX && xTouch <= btnX + btnW &&
+    yTouch >= btnY && yTouch <= btnY + btnH
+  ) {
+    switchPageFn('home');   // 返回主页
+  }
+  return;                   // 拦截其它点击
   }
   
   if (xTouch >= 20 && xTouch <= 120 && yTouch >= 20 && yTouch <= 80) {
