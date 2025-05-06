@@ -21,6 +21,9 @@ let iconRects  = [];
 let btnPrevRect = null;
 let btnNextRect = null;
 let pageIndex   = 0;
+/* ---------- 弹窗状态 ---------- */
+let unlockDialog = { show: false, hero: null, okRect: null, cancelRect: null };
+
 
 
 let ctxRef, canvasRef, switchPageFn;
@@ -38,6 +41,35 @@ function initHeroSelectPage(ctx, switchPage, canvas) {
 // ======================= 触摸 / 点击 ======================
 function onTouch(e) {
   const { clientX: x, clientY: y } = e.touches[0];
+
+    // ---------- 若弹窗已开启，优先处理弹窗 ----------
+    if (unlockDialog.show) {
+      // 点坐标
+      const px = x, py = y;
+      const { okRect, cancelRect } = unlockDialog;
+  
+      // 点击确定
+      if (hit(px, py, okRect)) {
+        const hero  = unlockDialog.hero;
+        const cost  = hero.unlockCost || 0;
+        const coins = getTotalCoins();
+        unlockDialog.show = false;
+        if (coins < cost) {
+          wx.showToast({ title: '金币不足', icon: 'none' });
+          return render();
+        }
+        const st = new HeroState(hero.id);
+        if (st.tryUnlock()) hero.locked = false;
+        return render();
+      }
+  
+      // 点击取消按钮或蒙层空白
+      if (!hit(px, py, okRect)) {
+        unlockDialog.show = false;
+        return render();
+      }
+    }
+  
 
   /* ---------- 已选槽位：点击移除 ---------- */
   for (let i = 0; i < slotRects.length; i++) {
@@ -71,27 +103,12 @@ function onTouch(e) {
 if (hero.locked) {
   const cost = hero.unlockCost || 0;
   const coins = getTotalCoins();
-  wx.showModal({
-    title: '✨ 解锁英雄 ✨',            // 加 Emoji + 两侧空格让标题更醒目
-    content: `解锁「${hero.name}」\n需要  ${cost} 金币\n\n确定要花费吗？`,
-    showCancel: true,
-    cancelText: '算了吧',
-    confirmText: '花费解锁',
-    confirmColor: '#B44CFF',           // 亮紫 #B44CFF
-    cancelColor:  '#FFD54F',           // 金黄 #FFD54F
-    success(res) {
-      if (!res.confirm) return;        // 点击“算了吧”或空白
-      if (getTotalCoins() < cost) {
-        return wx.showToast({ title: '金币不足', icon: 'none' });
-      }
-      const state = new HeroState(hero.id);
-      if (state.tryUnlock()) {
-        hero.locked = false;
-        render();
-      }
-    }
-  });
-  return;                                       // 不再向下执行
+// === 🔒 被锁，打开自绘弹窗 ===
+if (hero.locked) {
+  unlockDialog = { show: true, hero };   // 记录当前要解锁的英雄
+  return render();                       // 立即刷新，让弹窗画出来
+}
+
 }
 
       // === 已解锁：加入出战列表 ===
@@ -237,7 +254,64 @@ function render() {
   drawRoundedRect(ctx, confirmX, confirmY, 160, 50, 8, true, false);
   drawText(ctx, '确认出战', confirmX + 80, confirmY + 25,
     '18px IndieFlower', '#FFF', 'center', 'middle');
+    // 如需弹窗则绘制
+  drawUnlockDialog(ctx, canvas);
 }
+
+function drawUnlockDialog(ctx, canvas) {
+  if (!unlockDialog.show) return;          // 没开启不画
+
+  const { hero } = unlockDialog;
+  const cost = hero.unlockCost || 0;
+
+  /* ——— 1. 半透明遮罩 ——— */
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  /* ——— 2. 主卡片 ——— */
+  const W = 270, H = 180, R = 14;
+  const x = (canvas.width - W) / 2;
+  const y = (canvas.height - H) / 2;
+
+  ctx.fillStyle = '#4A007F';
+  drawRoundedRect(ctx, x, y, W, H, R, true, false);
+
+  /* ——— 3. 标题 ——— */
+  drawText(ctx, '解锁英雄', x + W / 2, y + 36,
+    'bold 20px PingFang SC', '#FFD54F', 'center', 'middle');
+
+  /* ——— 4. 内容 ——— */
+  drawText(ctx, `解锁「${hero.name}」需要`, x + W / 2, y + 76,
+    '15px PingFang SC', '#FFFFFF', 'center', 'middle');
+  drawText(ctx, `${cost} 金币，确定继续？`, x + W / 2, y + 100,
+    '15px PingFang SC', '#FFFFFF', 'center', 'middle');
+
+  /* ——— 5. 两个按钮 ——— */
+  const btnW = 100, btnH = 36, gap = 26;
+  const btnY = y + H - 56;
+  const cancelX = x + (W - 2 * btnW - gap) / 2;
+  const okX     = cancelX + btnW + gap;
+
+  // 取消
+  ctx.strokeStyle = '#DCC6F0';
+  ctx.lineWidth   = 2;
+  drawRoundedRect(ctx, cancelX, btnY, btnW, btnH, 6, false, true);
+  drawText(ctx, '取消', cancelX + btnW / 2, btnY + btnH / 2 + 1,
+    '15px PingFang SC', '#DCC6F0', 'center', 'middle');
+
+  // 确定
+  ctx.fillStyle = '#B44CFF';
+  drawRoundedRect(ctx, okX, btnY, btnW, btnH, 6, true, false);
+  drawText(ctx, '确定', okX + btnW / 2, btnY + btnH / 2 + 1,
+    '15px PingFang SC', '#FFFFFF', 'center', 'middle');
+
+  // 保存按钮热区
+  unlockDialog.cancelRect = { x: cancelX, y: btnY, width: btnW, height: btnH };
+  unlockDialog.okRect     = { x: okX,     y: btnY, width: btnW, height: btnH };
+}
+
 
 // ======================= 绘制单个头像 ====================
 function drawIcon(ctx, hero, x, y) {
