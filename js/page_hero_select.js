@@ -492,9 +492,9 @@ function drawIcon(ctx, hero, x, y) {
   /* --------- 锁定遮罩 --------- */
   if (hero.locked) {
     ctx.save();
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.95;
     ctx.fillStyle = '#000';
-    ctx.fillRect(x, y, ICON, ICON);
+    drawRoundedRect(ctx, x, y, ICON, ICON, 8, true, false);  // ✅ 圆角遮罩
     ctx.globalAlpha = 1;
     const lockSize = ICON * 0.5;
     ctx.drawImage(lockIconImg,
