@@ -1,3 +1,7 @@
+// === 全局冷却控制（可放在文件顶部或函数外部） ===
+let lastAdTime = 0; // 上次点击时间戳
+const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
+
 // ======================= 资源与常量 =======================
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 const { getTotalCoins }   = require('./data/coin_state.js');
@@ -94,6 +98,68 @@ function onTouch(e) {
     showUpgradeButtons = !showUpgradeButtons;
     return render();
   }
+// ---------- 点击“看广告得金币” ----------
+
+// 全局冷却控制（若已声明，可略）
+if (typeof globalThis.lastAdTime === 'undefined') {
+  globalThis.lastAdTime = 0;
+}
+const AD_COOLDOWN = 30 * 1000; // 30秒冷却时间
+
+if (hit(x, y, globalThis.adBtnRect)) {
+  const now = Date.now();
+  if (now - globalThis.lastAdTime < AD_COOLDOWN) {
+    wx.showToast({ title: '请稍后再试', icon: 'none' });
+    return;
+  }
+
+  globalThis.lastAdTime = now; // 记录点击时间
+
+  // ✅ 当前为模拟广告播放流程，开发阶段使用
+  // ✅ 正式发布前可替换为 wx.createRewardedVideoAd 逻辑（见下方注释）
+  wx.showModal({
+    title: '🎁 免费金币',
+    content: '观看一段广告可获得100金币，是否继续？',
+    confirmText: '观看完成',
+    cancelText: '取消',
+    success(res) {
+      if (res.confirm) {
+        const coins = getTotalCoins();
+        wx.setStorageSync('totalCoins', coins + 100);
+        wx.showToast({ title: '金币 +100', icon: 'success' });
+        render();
+      } else {
+        wx.showToast({ title: '观看未完成', icon: 'none' });
+      }
+    }
+  });
+
+  /*
+  // ✅ 正式上线请使用真实广告 API 替换上方模拟逻辑：
+  const videoAd = wx.createRewardedVideoAd({ adUnitId: 'your-real-ad-id' });
+
+  videoAd.onError(err => {
+    wx.showToast({ title: '广告加载失败', icon: 'none' });
+  });
+
+  videoAd.load().then(() => videoAd.show())
+    .catch(() => wx.showToast({ title: '广告展示失败', icon: 'none' }));
+
+  videoAd.onClose(res => {
+    if (res && res.isEnded) {
+      const coins = getTotalCoins();
+      wx.setStorageSync('totalCoins', coins + 100);
+      wx.showToast({ title: '金币 +100', icon: 'success' });
+      render();
+    } else {
+      wx.showToast({ title: '观看未完成', icon: 'none' });
+    }
+  });
+  */
+
+  return;
+}
+
 
   /* ---------- 英雄头像区 ---------- */
   for (const { rect, hero } of iconRects) {
@@ -103,11 +169,53 @@ function onTouch(e) {
 if (hero.locked) {
   const cost = hero.unlockCost || 0;
   const coins = getTotalCoins();
+
 // === 🔒 被锁，打开自绘弹窗 ===
 if (hero.locked) {
-  unlockDialog = { show: true, hero };   // 记录当前要解锁的英雄
-  return render();                       // 立即刷新，让弹窗画出来
+  if (hero.unlockBy === 'ad') {
+    // 先弹出提示框而不是直接播放广告
+    wx.showModal({
+      title: '🎥 解锁英雄',
+      content: `解锁「${hero.name}」需要观看一段广告，是否继续？`,
+      cancelText: '取消',
+      confirmText: '立即观看',
+      success(res) {
+        if (res.confirm) {
+          const videoAd = wx.createRewardedVideoAd({ adUnitId: 'adunit-0123456789abcdef' });
+
+          videoAd.onError(err => {
+            wx.showToast({ title: '广告加载失败', icon: 'none' });
+          });
+
+          videoAd.load()
+            .then(() => videoAd.show())
+            .catch(() => {
+              wx.showToast({ title: '广告展示失败', icon: 'none' });
+            });
+
+          videoAd.onClose(res => {
+            if (res && res.isEnded) {
+              const state = new HeroState(hero.id);
+              if (state.tryUnlock()) {
+                hero.locked = false;
+                render();
+              }
+            } else {
+              wx.showToast({ title: '观看未完成', icon: 'none' });
+            }
+          });
+        }
+      }
+    });
+
+    return; // ⛔ 防止后续加入出战队列
+  } else {
+    unlockDialog = { show: true, hero };
+    return render();
+  }
 }
+
+
 
 }
 
@@ -174,28 +282,36 @@ function render() {
   const GAP   = 15;
   const topOffset = 80;
 
-  /* ---------- 已选英雄 5 槽 ---------- */
-  drawText(ctx, '出战英雄（点击移除）', PAD_X, 280 + topOffset,
-           '16px IndieFlower', '#DCC6F0', 'left', 'top');
+/* ---------- 已选英雄 5 槽 ---------- */
+drawText(ctx, '出战英雄（点击移除）', PAD_X, 280 + topOffset,
+         '16px IndieFlower', '#DCC6F0', 'left', 'top');
 
-  slotRects.length = 0;
-  for (let i = 0; i < 5; i++) {
-    const sx = PAD_X + i * (ICON + GAP);
-    const sy = 300 + topOffset;
-    ctx.strokeStyle = '#A64AC9';
-    ctx.lineWidth = 3;
-    drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
-    slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
-    const heroObj = selectedHeroes[i] && HeroData.getHeroById(selectedHeroes[i]);
-    if (heroObj) drawIcon(ctx, heroObj, sx, sy);
+slotRects.length = 0;
+for (let i = 0; i < 5; i++) {
+  const sx = PAD_X + i * (ICON + GAP);
+  const sy = 300 + topOffset;
+
+  ctx.strokeStyle = '#A64AC9';
+  ctx.lineWidth = 3;
+  drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
+  slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
+
+  // ✅ 使用 HeroState 读取实时状态（包括是否解锁）
+  const heroId = selectedHeroes[i];
+  if (heroId) {
+    const heroObj = new HeroState(heroId);
+    drawIcon(ctx, heroObj, sx, sy);
   }
+}
+
 
   /* ---------- 英雄池 ---------- */
   drawText(ctx, '英雄池（点击添加）', PAD_X, 420 + topOffset - 20,
            '16px IndieFlower', '#DCC6F0', 'left', 'top');
 
   const startIdx = pageIndex * HERO_PER_PAGE;
-  const pageHeroes = HeroData.heroes.slice(startIdx, startIdx + HERO_PER_PAGE);
+  const rawHeroes = HeroData.heroes.slice(startIdx, startIdx + HERO_PER_PAGE);
+  const pageHeroes = rawHeroes.map(h => h ? new HeroState(h.id) : null);
   while (pageHeroes.length < HERO_PER_PAGE) pageHeroes.push(null);
 
   iconRects.length = 0;
@@ -256,6 +372,22 @@ function render() {
     '18px IndieFlower', '#FFF', 'center', 'middle');
     // 如需弹窗则绘制
   drawUnlockDialog(ctx, canvas);
+
+    /* ---------- 看广告得金币按钮 ---------- */
+    const adBtnRect = { x: canvas.width - 20 - 80, 
+      y: upgradeToggleRect.y,
+      width: 80, height: 50 };
+ctx.fillStyle = '#FFD700';
+drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y,
+  adBtnRect.width, adBtnRect.height, 8, true, false);
+drawText(ctx, '看广告得金币',
+adBtnRect.x + adBtnRect.width / 2,
+adBtnRect.y + 25,
+'18px IndieFlower', '#000', 'center', 'middle');
+
+// 存储按钮热区
+globalThis.adBtnRect = adBtnRect;
+
 }
 
 function drawUnlockDialog(ctx, canvas) {

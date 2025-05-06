@@ -55,7 +55,7 @@ const HeroData = {
       role: "法师",
       rarity: "SSR",
       locked: true,
-      unlockCost: 500,
+      unlockBy: "ad",
       attributes: { physical: 2, magical: 10 },
       level: 1,
       exp: 0,
