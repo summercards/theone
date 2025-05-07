@@ -39,13 +39,15 @@ function initHeroSelectPage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   canvasRef = canvas;
   switchPageFn = switchPage;
-  canvas.addEventListener('touchstart', onTouch);
   render();
 }
 
 // ======================= 触摸 / 点击 ======================
 function onTouch(e) {
-  const { clientX: x, clientY: y } = e.touches[0];
+  if (!e.changedTouches || !e.changedTouches[0]) return;
+  const { clientX: x, clientY: y } = e.changedTouches[0];
+
+  console.log('[DEBUG] 用户触摸了坐标：', x, y);
 
     // ---------- 若弹窗已开启，优先处理弹窗 ----------
     if (unlockDialog.show) {
@@ -75,6 +77,7 @@ function onTouch(e) {
       }
     }
   
+
 
   /* ---------- 已选槽位：点击移除 ---------- */
   for (let i = 0; i < slotRects.length; i++) {
@@ -261,6 +264,9 @@ if (hero.locked) {
   }
 }
 
+function onTouchend(e) {
+  onTouch(e); // ✅ 复用已有点击处理逻辑
+}
 // 命中测试
 function hit(px, py, r) {
   return r && px >= r.x && px <= r.x + r.width &&
@@ -569,5 +575,8 @@ module.exports = {
   init:    initHeroSelectPage,
   update:  () => {},
   draw:    () => render(),
-  destroy: () => canvasRef.removeEventListener('touchstart', onTouch)
+  destroy: () => {},
+  onTouchend,
+  touchend: onTouchend   // ✅ 必须导出这个字段
 };
+

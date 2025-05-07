@@ -1,10 +1,9 @@
-const { drawRoundedRect } = require('./utils/canvas_utils.js');
-
-
-
+let __blockSize = 0;
+let __gridStartX = 0;
+let __gridStartY = 0;
 let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
 let showGameOver = false;     // 是否触发失败弹窗
-
+const { drawRoundedRect } = require('./utils/canvas_utils.js');
 // === 变更：把另外两个特效工具也引进来
 import {updateAllEffects,drawAllEffects,createExplosion,
     createProjectile,     // ← 飞弹
@@ -120,9 +119,9 @@ export function drawGame() {
   const startX = (canvasRef.width - blockSize * gridSize) / 2;
   const startY = canvasRef.height - blockSize * gridSize - 60;
 
-  window.__blockSize = blockSize;
-  window.__gridStartX = startX;
-  window.__gridStartY = startY;
+  __blockSize = blockSize;
+  __gridStartX = startX;
+  __gridStartY = startY;
 
   // 绘制方块
   for (let row = 0; row < gridSize; row++) {
@@ -416,9 +415,9 @@ if (showGameOver) {
 function animateSwap(src, dst, callback, rollback = false) {
   const steps = 10;
   let currentStep = 0;
-  const blockSize = window.__blockSize;
-  const startX = window.__gridStartX;
-  const startY = window.__gridStartY;
+  const blockSize = __blockSize;
+  const startX = __gridStartX;
+  const startY = __gridStartY;
 
   const drawWithOffset = (offsetX1, offsetY1, offsetX2, offsetY2) => {
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);
@@ -540,9 +539,9 @@ function onTouch(e) {
 /* ===================================================== */
 
 
-  const blockSize = window.__blockSize;
-  const startX = window.__gridStartX;
-  const startY = window.__gridStartY;
+const blockSize = __blockSize;
+const startX = __gridStartX;
+const startY = __gridStartY;
 
   const col = Math.floor((xTouch - startX) / blockSize);
   const row = Math.floor((yTouch - startY) / blockSize);
@@ -631,8 +630,8 @@ function checkAndClearMatches () {
       if (!toClear[r][c]) continue;
 
       createExplosion(
-        window.__gridStartX + c * window.__blockSize + window.__blockSize / 2,
-        window.__gridStartY + r * window.__blockSize + window.__blockSize / 2
+        __gridStartX + c * __blockSize + __blockSize / 2,
+        __gridStartY + r * __blockSize + __blockSize / 2
       );
 
       const letter            = gridData[r][c];
@@ -711,9 +710,9 @@ function dropBlocks() {
         for (let k = row - 1; k >= 0; k--) {
           if (gridData[k][col] !== null) {
             gridData[row][col] = gridData[k][col];
-            const blockSize = window.__blockSize;
-const startX = window.__gridStartX;
-const startY = window.__gridStartY;
+            const blockSize = __blockSize;
+            const startX = __gridStartX;
+            const startY = __gridStartY;
 
 
             gridData[k][col] = null;
@@ -835,6 +834,7 @@ function destroyGamePage() {
     update: updateGamePage,
     draw: drawGame,
     onTouchend,
+    touchend: onTouchend, 
     destroy: destroyGamePage
   };
 

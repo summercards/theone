@@ -54,6 +54,7 @@ function onTouch(e) {
   const btnHeight = 100;
   const x = (canvasRef.width - btnWidth) / 2;
   const y = canvasRef.height * 0.6;
+  console.log('[DEBUG] 首页按钮点击检测中...');
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= y && yTouch <= y + btnHeight) {
     switchPageFn('heroSelect');
@@ -70,5 +71,6 @@ export default {
   init: initHomePage,
   update: updateHomePage,
   draw: drawHomeUI,
-  onTouchend
+  onTouchend,
+  touchend: onTouchend  // ✅ 加上这一行
 };

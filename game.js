@@ -27,17 +27,16 @@ function switchPage(name){
 switchPage('home');
 
 // 统一事件代理
-['touchstart','touchmove','touchend'].forEach(type=>{
-  canvas.addEventListener(type,e=>{
-    const fn = currentPageModule['on'+type[0].toUpperCase()+type.slice(1)];
-    if (typeof fn === 'function'){
-      const bubble = fn(e) === false;
-      if(!bubble){
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    }
-  });
+wx.onTouchStart(e => {
+  currentPageModule.touchstart && currentPageModule.touchstart(e);
+});
+
+wx.onTouchMove(e => {
+  currentPageModule.touchmove && currentPageModule.touchmove(e);
+});
+
+wx.onTouchEnd(e => {
+  currentPageModule.touchend && currentPageModule.touchend(e);
 });
 
 // 主循环
