@@ -276,46 +276,53 @@ function hit(px, py, r) {
 // ======================= 渲染 =============================
 function render() {
   const ctx = ctxRef, canvas = canvasRef;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // 清除变换
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // === 自适应尺寸参数 ===
+  const ICON = Math.floor(canvas.width / 6.5);  // 更大头像
+  const GAP = Math.floor(ICON * 0.22);                         // 稍微紧凑
+  const PAD_X = Math.floor((canvas.width - (ICON * 5 + GAP * 4)) / 2);
+  const topOffset = Math.floor(canvas.height * 0.35);        // 更靠上
+  const selectedY = topOffset + ICON + 20;                    // 出战槽区域位置下调一点
+
+
   ctx.fillStyle = '#2E003E';
   drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, 8, true, false);
 
-  /* ---------- 顶部金币数 ---------- */
+  // 顶部金币
   drawText(ctx, `金币: ${getTotalCoins()}`,
-           canvas.width - 280, 80,
+           canvas.width - PAD_X, topOffset,
            '18px IndieFlower', '#FFD700', 'right', 'top');
 
-  const PAD_X = 20;
-  const GAP   = 15;
-  const topOffset = 80;
-
-/* ---------- 已选英雄 5 槽 ---------- */
-drawText(ctx, '出战英雄（点击移除）', PAD_X, 280 + topOffset,
-         '16px IndieFlower', '#DCC6F0', 'left', 'top');
-
-slotRects.length = 0;
-for (let i = 0; i < 5; i++) {
-  const sx = PAD_X + i * (ICON + GAP);
-  const sy = 300 + topOffset;
-
-  ctx.strokeStyle = '#A64AC9';
-  ctx.lineWidth = 3;
-  drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
-  slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
-
-  // ✅ 使用 HeroState 读取实时状态（包括是否解锁）
-  const heroId = selectedHeroes[i];
-  if (heroId) {
-    const heroObj = new HeroState(heroId);
-    drawIcon(ctx, heroObj, sx, sy);
-  }
-}
-
-
-  /* ---------- 英雄池 ---------- */
-  drawText(ctx, '英雄池（点击添加）', PAD_X, 420 + topOffset - 20,
+  // 出战槽标题
+  drawText(ctx, '出战英雄（点击移除）', PAD_X, selectedY - 20,
            '16px IndieFlower', '#DCC6F0', 'left', 'top');
 
+  // 出战槽
+  slotRects.length = 0;
+  for (let i = 0; i < 5; i++) {
+    const sx = PAD_X + i * (ICON + GAP);
+    const sy = selectedY;
+
+    ctx.strokeStyle = '#A64AC9';
+    ctx.lineWidth = 3;
+    drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
+    slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
+
+    const heroId = selectedHeroes[i];
+    if (heroId) {
+      const heroObj = new HeroState(heroId);
+      drawIcon(ctx, heroObj, sx, sy);
+    }
+  }
+
+  // 英雄池标题
+  const poolStartY = selectedY + ICON + 35;// 英雄池更贴出战区
+  drawText(ctx, '英雄池（点击添加）', PAD_X, poolStartY - 20,
+           '16px IndieFlower', '#DCC6F0', 'left', 'top');
+
+  // 英雄池头像区域
   const startIdx = pageIndex * HERO_PER_PAGE;
   const rawHeroes = HeroData.heroes.slice(startIdx, startIdx + HERO_PER_PAGE);
   const pageHeroes = rawHeroes.map(h => h ? new HeroState(h.id) : null);
@@ -326,7 +333,8 @@ for (let i = 0; i < 5; i++) {
     const row = Math.floor(i / 5);
     const col = i % 5;
     const ix = PAD_X + col * (ICON + GAP);
-    const iy = 420 + topOffset + row * (ICON + 30);
+    const iy = poolStartY + row * (ICON + ICON * 0.5);
+
     ctx.strokeStyle = '#C084FC';
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, ix, iy, ICON, ICON, 8, false, true);
@@ -341,61 +349,70 @@ for (let i = 0; i < 5; i++) {
     iconRects.push({ rect: { x: ix, y: iy, width: ICON, height: ICON }, hero });
   });
 
-  /* ---------- 翻页按钮 ---------- */
-  const btnY = 420 + topOffset + 2 * (ICON + 30) + 10;
-  btnPrevRect = { x: PAD_X, y: btnY, width: 40, height: 40 };
-  btnNextRect = { x: canvas.width - PAD_X - 40, y: btnY, width: 40, height: 40 };
+  // 翻页按钮
+  const btnY = poolStartY + ICON * 2.5 + 10;
+  btnPrevRect = { x: PAD_X, y: btnY, width: ICON * 0.8, height: ICON * 0.8 };
+  btnNextRect = { x: canvas.width - PAD_X - ICON * 0.8, y: btnY, width: ICON * 0.8, height: ICON * 0.8 };
 
   ctx.fillStyle = pageIndex > 0 ? '#7E30B3' : '#300';
-  drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, 40, 40, 8, true, false);
-  drawText(ctx, '<', btnPrevRect.x + 20, btnPrevRect.y + 20,
+  drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 8, true, false);
+  drawText(ctx, '<', btnPrevRect.x + btnPrevRect.width / 2, btnPrevRect.y + btnPrevRect.height / 2,
     '24px IndieFlower', '#FFF', 'center', 'middle');
 
   ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#7E30B3' : '#300';
-  drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, 40, 40, 8, true, false);
-  drawText(ctx, '>', btnNextRect.x + 20, btnNextRect.y + 20,
+  drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 8, true, false);
+  drawText(ctx, '>', btnNextRect.x + btnNextRect.width / 2, btnNextRect.y + btnNextRect.height / 2,
     '24px IndieFlower', '#FFF', 'center', 'middle');
 
   drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
-    canvas.width / 2, btnPrevRect.y + 20,
+    canvas.width / 2, btnY + btnPrevRect.height / 2,
     '14px IndieFlower', '#DCC6F0', 'center', 'middle');
 
-  /* ---------- 升级按钮显示开关 ---------- */
-  const upgradeToggleRect = { x: PAD_X, y: canvas.height - 80, width: 80, height: 50 };
+  // 升级按钮开关
+  const toggleY = canvas.height - ICON * 1.5;
+  const upgradeToggleRect = {
+    x: PAD_X,
+    y: toggleY,
+    width: ICON * 1.2,
+    height: ICON * 0.8
+  };
   ctx.fillStyle = '#FFD700';
   drawRoundedRect(ctx, upgradeToggleRect.x, upgradeToggleRect.y,
                   upgradeToggleRect.width, upgradeToggleRect.height, 8, true, false);
   drawText(ctx, showUpgradeButtons ? '隐藏' : '升级',
     upgradeToggleRect.x + upgradeToggleRect.width / 2,
-    upgradeToggleRect.y + 25,
+    upgradeToggleRect.y + upgradeToggleRect.height / 2,
     '18px IndieFlower', '#000', 'center', 'middle');
 
-  /* ---------- 确认按钮 ---------- */
-  const confirmX = canvas.width / 2 - 80;
-  const confirmY = canvas.height - 80;
+  // 确认按钮
+  const confirmX = canvas.width / 2 - ICON * 1.5;
+  const confirmY = toggleY;
   ctx.fillStyle = '#912BB0';
-  drawRoundedRect(ctx, confirmX, confirmY, 160, 50, 8, true, false);
-  drawText(ctx, '确认出战', confirmX + 80, confirmY + 25,
+  drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 0.8, 6, true, false);
+  drawText(ctx, '确认出战', confirmX + ICON * 1.5, confirmY + ICON * 0.4,
     '18px IndieFlower', '#FFF', 'center', 'middle');
-    // 如需弹窗则绘制
+
+  // 广告按钮
+  const adBtnRect = {
+    x: canvas.width - PAD_X - ICON * 1.2,
+    y: toggleY,
+    width: ICON * 1.2,
+    height: ICON * 0.8
+  };
+  ctx.fillStyle = '#FFD700';
+  drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
+  drawText(ctx, '看广告得金币',
+    adBtnRect.x + adBtnRect.width / 2,
+    adBtnRect.y + adBtnRect.height / 2,
+    '18px IndieFlower', '#000', 'center', 'middle');
+
+  globalThis.adBtnRect = adBtnRect;
+
+  // 解锁弹窗
   drawUnlockDialog(ctx, canvas);
-
-    /* ---------- 看广告得金币按钮 ---------- */
-    const adBtnRect = { x: canvas.width - 20 - 80, 
-      y: upgradeToggleRect.y,
-      width: 80, height: 50 };
-ctx.fillStyle = '#FFD700';
-drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y,
-  adBtnRect.width, adBtnRect.height, 8, true, false);
-drawText(ctx, '看广告得金币',
-adBtnRect.x + adBtnRect.width / 2,
-adBtnRect.y + 25,
-'18px IndieFlower', '#000', 'center', 'middle');
-
-// 存储按钮热区
-globalThis.adBtnRect = adBtnRect;
-
 }
+
+
 
 function drawUnlockDialog(ctx, canvas) {
   if (!unlockDialog.show) return;          // 没开启不画
