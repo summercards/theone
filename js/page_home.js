@@ -9,10 +9,9 @@ export function initHomePage(ctx, switchPage, canvas) {
   switchPageFn = switchPage;
   canvasRef = canvas;
 
+  canvas.addEventListener('touchend', onTouchend); // ✅ 注册事件
   drawHomeUI();
 }
-
-
 
 function drawHomeUI() {
   const btnWidth = 300;
@@ -66,9 +65,15 @@ export function onTouchend(e) {
   onTouch(e);
 }
 
+// ✅ 清理事件监听器
+export function destroyHomePage() {
+  canvasRef.removeEventListener('touchend', onTouchend);
+}
+
 export default {
   init: initHomePage,
   update: updateHomePage,
   draw: drawHomeUI,
-  onTouchend
+  onTouchend,
+  destroy: destroyHomePage
 };
