@@ -513,26 +513,30 @@ function drawIcon(ctx, hero, x, y) {
   drawText(ctx, attrText, x + 4, y + ICON + 6,
     '12px IndieFlower', '#FFF', 'left', 'top');
 
-  /* --------- 升级按钮 --------- */
-  if (showUpgradeButtons && !hero.locked) {
-    const btnText    = '升级';
-    ctx.font         = '12px IndieFlower';
-    const textWidth  = ctx.measureText(btnText).width;
-    const btnPadding = 8;
-    const btnW = textWidth + btnPadding * 4;
-    const btnH = 22;
-    const btnX = x + ICON / 2 - btnW / 2;
-    const btnY = y + ICON + 4;
+/* --------- 升级按钮 --------- */
+if (showUpgradeButtons && !hero.locked) {
+  const btnText    = '升级';
+  ctx.font         = '12px IndieFlower';
+  ctx.textBaseline = 'middle';
+  const textWidth  = ctx.measureText(btnText).width;
+  const btnPadding = 8;
+  const btnW = textWidth + btnPadding * 4;
+  const btnH = 22;
+  const btnX = x + ICON / 2 - btnW / 2;
+  const btnY = y + ICON + 4;
 
-    ctx.fillStyle = '#FFD700';
-    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 4, true, false);
-    drawText(ctx, btnText, btnX + btnW / 2, btnY + 2,
-      '12px IndieFlower', '#000', 'center', 'top');
+  ctx.fillStyle = '#FFD700';
+  drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 4, true, false);
 
-    hero.upgradeButtonRect = { x: btnX, y: btnY, width: btnW, height: btnH };
-  } else {
-    hero.upgradeButtonRect = null;
-  }
+  // 将 drawText 的 textBaseline 设置为 'middle'，y 改为按钮中线
+  drawText(ctx, btnText, btnX + btnW / 2, btnY + btnH / 2,
+    '12px IndieFlower', '#000', 'center', 'middle');
+
+  hero.upgradeButtonRect = { x: btnX, y: btnY, width: btnW, height: btnH };
+} else {
+  hero.upgradeButtonRect = null;
+}
+
 
   /* --------- 等级角标 --------- */
   const level = saved?.level ?? hero.level ?? 1;

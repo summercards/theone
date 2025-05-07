@@ -942,4 +942,4 @@ function rewardExpToHeroes(expAmount) {
 }
 
 export { monsterHitFlashTime };
-
+export { gridData, gridSize };
