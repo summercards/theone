@@ -490,9 +490,12 @@ function drawIcon(ctx, hero, x, y) {
     ctx.drawImage(heroImageCache[hero.id], x, y, ICON, ICON);
     ctx.restore();
   } else {
-    const img = wx.createImage();
-    img.src = `assets/icons/${hero.icon}`;
-    img.onload = () => { heroImageCache[hero.id] = img; render(); };
+    const cachedImg = globalThis.imageCache[hero.icon];
+    if (cachedImg) {
+      ctx.drawImage(cachedImg, x, y, ICON, ICON);
+    } else {
+      // 兜底方案：可以显示 loading 占位图或忽略
+    }
   }
 
   /* --------- 品质描边 --------- */

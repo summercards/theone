@@ -349,9 +349,12 @@ if (percent >= 100) {
     if (heroImageCache[hero.id]) {
       ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
     } else {
-      const img = wx.createImage();
-      img.src   = `assets/icons/${hero.icon}`;
-      img.onload = () => { heroImageCache[hero.id] = img; };
+      const cachedImg = globalThis.imageCache[hero.icon];
+      if (cachedImg) {
+        ctxRef.drawImage(globalThis.imageCache[hero.icon], x, y, iconSize, iconSize);
+      } else {
+        // 兜底方案：可以显示 loading 占位图或忽略
+      }
     }
 
 // 等级文本（样式统一：右上角内侧 + 发光 + 黑描边）
