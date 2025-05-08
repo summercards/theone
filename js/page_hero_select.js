@@ -469,42 +469,39 @@ function drawUnlockDialog(ctx, canvas) {
 }
 
 
-// ======================= 绘制单个头像 ====================
 function drawIcon(ctx, hero, x, y) {
-  /* --------- 图片 --------- */
-  if (heroImageCache[hero.id]) {
-    ctx.save();
-    ctx.beginPath();
-    const r = 12;
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + ICON - r, y);
-    ctx.quadraticCurveTo(x + ICON, y, x + ICON, y + r);
-    ctx.lineTo(x + ICON, y + ICON - r);
-    ctx.quadraticCurveTo(x + ICON, y + ICON, x + ICON - r, y + ICON);
-    ctx.lineTo(x + r, y + ICON);
-    ctx.quadraticCurveTo(x, y + ICON, x, y + ICON - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(heroImageCache[hero.id], x, y, ICON, ICON);
-    ctx.restore();
-  } else {
-    const cachedImg = globalThis.imageCache[hero.icon];
-    if (cachedImg) {
-      ctx.drawImage(cachedImg, x, y, ICON, ICON);
-    } else {
-      // 兜底方案：可以显示 loading 占位图或忽略
-    }
-  }
+  const r = 8; // 圆角半径
+  const img = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
 
-  /* --------- 品质描边 --------- */
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + ICON - r, y);
+  ctx.quadraticCurveTo(x + ICON, y, x + ICON, y + r);
+  ctx.lineTo(x + ICON, y + ICON - r);
+  ctx.quadraticCurveTo(x + ICON, y + ICON, x + ICON - r, y + ICON);
+  ctx.lineTo(x + r, y + ICON);
+  ctx.quadraticCurveTo(x, y + ICON, x, y + ICON - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.clip();
+
+  if (img) {
+    ctx.drawImage(img, x, y, ICON, ICON);
+  } else {
+    ctx.fillStyle = '#444';
+    ctx.fillRect(x, y, ICON, ICON);
+  }
+  ctx.restore();
+
+  // 品质描边
   const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
   ctx.strokeStyle = rarityColor;
   ctx.lineWidth = 5;
   drawRoundedRect(ctx, x, y, ICON, ICON, 12, false, true);
 
-  /* --------- 名称 / 职业文本 --------- */
+  // 名称 / 职业
   ctx.font = 'bold 10px IndieFlower';
   ctx.lineWidth = 2;
   ctx.strokeStyle = '#000';
@@ -516,12 +513,12 @@ function drawIcon(ctx, hero, x, y) {
   ctx.strokeText(hero.name, x + 4, y + ICON - 3);
   ctx.fillText(hero.name,   x + 4, y + ICON - 3);
 
-  /* --------- 锁定遮罩 --------- */
+  // 锁定遮罩
   if (hero.locked) {
     ctx.save();
     ctx.globalAlpha = 0.95;
     ctx.fillStyle = '#000';
-    drawRoundedRect(ctx, x, y, ICON, ICON, 8, true, false);  // ✅ 圆角遮罩
+    drawRoundedRect(ctx, x, y, ICON, ICON, 8, true, false);
     ctx.globalAlpha = 1;
     const lockSize = ICON * 0.5;
     ctx.drawImage(lockIconImg,
@@ -531,7 +528,7 @@ function drawIcon(ctx, hero, x, y) {
     ctx.restore();
   }
 
-  /* --------- 属性文本 --------- */
+  // 属性文本
   const saved = wx.getStorageSync('heroProgress')?.[hero.id];
   const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
   const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
@@ -539,32 +536,29 @@ function drawIcon(ctx, hero, x, y) {
   drawText(ctx, attrText, x + 4, y + ICON + 6,
     '12px IndieFlower', '#FFF', 'left', 'top');
 
-/* --------- 升级按钮 --------- */
-if (showUpgradeButtons && !hero.locked) {
-  const btnText    = '升级';
-  ctx.font         = '12px IndieFlower';
-  ctx.textBaseline = 'middle';
-  const textWidth  = ctx.measureText(btnText).width;
-  const btnPadding = 8;
-  const btnW = textWidth + btnPadding * 4;
-  const btnH = 22;
-  const btnX = x + ICON / 2 - btnW / 2;
-  const btnY = y + ICON + 4;
+  // 升级按钮
+  if (showUpgradeButtons && !hero.locked) {
+    const btnText    = '升级';
+    ctx.font         = '12px IndieFlower';
+    ctx.textBaseline = 'middle';
+    const textWidth  = ctx.measureText(btnText).width;
+    const btnPadding = 8;
+    const btnW = textWidth + btnPadding * 4;
+    const btnH = 22;
+    const btnX = x + ICON / 2 - btnW / 2;
+    const btnY = y + ICON + 4;
 
-  ctx.fillStyle = '#FFD700';
-  drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 4, true, false);
+    ctx.fillStyle = '#FFD700';
+    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 4, true, false);
+    drawText(ctx, btnText, btnX + btnW / 2, btnY + btnH / 2,
+      '12px IndieFlower', '#000', 'center', 'middle');
 
-  // 将 drawText 的 textBaseline 设置为 'middle'，y 改为按钮中线
-  drawText(ctx, btnText, btnX + btnW / 2, btnY + btnH / 2,
-    '12px IndieFlower', '#000', 'center', 'middle');
+    hero.upgradeButtonRect = { x: btnX, y: btnY, width: btnW, height: btnH };
+  } else {
+    hero.upgradeButtonRect = null;
+  }
 
-  hero.upgradeButtonRect = { x: btnX, y: btnY, width: btnW, height: btnH };
-} else {
-  hero.upgradeButtonRect = null;
-}
-
-
-  /* --------- 等级角标 --------- */
+  // 等级角标
   const level = saved?.level ?? hero.level ?? 1;
   ctx.font = 'bold 11px IndieFlower';
   ctx.textAlign = 'right';
@@ -575,6 +569,7 @@ if (showUpgradeButtons && !hero.locked) {
   ctx.strokeText(`Lv.${level}`, x + ICON - 4, y + 4);
   ctx.fillText(`Lv.${level}`,   x + ICON - 4, y + 4);
 }
+
 
 // 绘制文本工具
 function drawText(ctx, text, x, y,

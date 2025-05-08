@@ -4,6 +4,7 @@ let __gridStartY = 0;
 let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
 let showGameOver = false;     // 是否触发失败弹窗
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
+const DEBUG = false; // 全局设置，生产时设为 false
 // === 变更：把另外两个特效工具也引进来
 import {updateAllEffects,drawAllEffects,createExplosion,
     createProjectile,     // ← 飞弹
@@ -379,14 +380,17 @@ ctxRef.shadowBlur = 0;
 }
 /* =============================================================== */
 
-// ✅ 简单粗暴显示日志：取最近 6 条，左下角打印
-const logs = getLogs().slice(-6);
-ctxRef.font = '12px monospace';
-ctxRef.fillStyle = '#0F0';
-ctxRef.textAlign = 'left';
 
-for (let i = 0; i < logs.length; i++) {
-  ctxRef.fillText(logs[i], 12, canvasRef.height - 100 + i * 14);
+// ✅ 简单粗暴显示日志：取最近 6 条，左下角打印
+if (DEBUG) {
+  const logs = getLogs().slice(-6);
+  ctxRef.font = '12px monospace';
+  ctxRef.fillStyle = '#0F0';
+  ctxRef.textAlign = 'left';
+
+  for (let i = 0; i < logs.length; i++) {
+    ctxRef.fillText(logs[i], 12, canvasRef.height - 100 + i * 14);
+  }
 }
 
 
