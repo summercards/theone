@@ -438,21 +438,27 @@ globalThis.layoutRects = layoutRects;
     '18px IndieFlower', '#000', 'center', 'middle');
 
   // 确认按钮
-  let confirmRect = {
-    x: canvas.width / 2 - ICON * 1.5,
-    y: toggleY,
-    width: ICON * 3,
-    height: ICON * 0.8
-  };
-  confirmRect = avoidOverlap(confirmRect, layoutRects);
-  layoutRects.push(confirmRect);
-  
-  const confirmX = confirmRect.x;
-  const confirmY = confirmRect.y;
-  ctx.fillStyle = '#912BB0';
-  drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 0.8, 6, true, false);
-  drawText(ctx, '确认出战', confirmX + ICON * 1.5, confirmY + ICON * 0.4,
-    '18px IndieFlower', '#FFF', 'center', 'middle');
+// ✅ 将确认按钮 Y 坐标与左侧“升级按钮”对齐
+const confirmY = upgradeToggleRect.y;
+
+let confirmRect = {
+  x: canvas.width / 2 - ICON * 1.5,
+  y: confirmY, // 👈 替换掉原来的 toggleY
+  width: ICON * 3,
+  height: ICON * 0.8
+};
+
+confirmRect = avoidOverlap(confirmRect, layoutRects);
+layoutRects.push(confirmRect);
+
+const confirmX = confirmRect.x;
+ctx.fillStyle = '#912BB0';
+drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 0.8, 6, true, false);
+drawText(ctx, '确认出战',
+         confirmX + ICON * 1.5,
+         confirmY + ICON * 0.4,
+         '18px IndieFlower', '#FFF', 'center', 'middle');
+
 
   // 广告按钮
   let adBtnRect = {
@@ -613,9 +619,23 @@ function drawIcon(ctx, hero, x, y, size = ICON) {
       const btnW = textWidth + btnPadding * 4;
       const btnH = 22;
   
-      let btnRect = { x: x + size / 2 - btnW / 2, y: y + size + 4, width: btnW, height: btnH };
-      btnRect = avoidOverlap(btnRect, globalThis.layoutRects);
-      globalThis.layoutRects.push(btnRect);
+// ✅ 升级按钮：固定在头像下方，不做避让
+let btnRect = {
+  x: x + size / 2 - btnW / 2,
+  y: y + size + 6, // 头像底部往下偏移 6 像素
+  width: btnW,
+  height: btnH
+};
+
+// 不调用 avoidOverlap，保持位置稳定
+ctx.fillStyle = '#FFD700';
+drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
+drawText(ctx, btnText, btnRect.x + btnW / 2, btnRect.y + btnH / 2,
+  '12px IndieFlower', '#000', 'center', 'middle');
+
+// 保存按钮点击区域（用于 onTouch 判断）
+hero.upgradeButtonRect = { x: btnRect.x, y: btnRect.y, width: btnW, height: btnH };
+
   
       ctx.fillStyle = '#FFD700';
       drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
