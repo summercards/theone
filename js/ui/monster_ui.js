@@ -33,73 +33,59 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
 
 /** 主绘制函数 */
 export function drawMonsterSprite(ctx, canvas) {
-  const monster = getMonster();
-  if (!monster || !canvas) return;
-
-  const layoutRects = globalThis.layoutRects || [];
-
-  // 加载怪物贴图
-  if (!monsterImageCache[monster.id]) {
-    const img = wx.createImage();
-    img.src = `assets/monsters/${monster.sprite}`;
-    monsterImageCache[monster.id] = img;
+    const monster = getMonster();
+    if (!monster || !canvas) return;
+  
+    const layoutRects = globalThis.layoutRects || [];
+  
+    // 加载图片（如未缓存）
+    if (!monsterImageCache[monster.id]) {
+      const img = wx.createImage();
+      img.src = `assets/monsters/${monster.sprite}`;
+      monsterImageCache[monster.id] = img;
+    }
+    const img = monsterImageCache[monster.id];
+  
+    const SPR_W = 120;
+    const SPR_H = 120;
+    let x = (canvas.width - SPR_W) / 2;
+    let y = 48; // ⬅️ 初始位置设得靠近顶部
+    y = Math.min(y, canvas.height - 500);  // ✅ 防止怪物图层被挤到底部
+  
+    // 自动避开已有 UI 区域（如棋盘）
+    const monsterRect = avoidOverlap(
+      { x, y, width: SPR_W, height: SPR_H + 50 },
+      layoutRects
+    );
+    x = monsterRect.x;
+    y = monsterRect.y;
+    layoutRects.push(monsterRect); // 记录区域，供后续 UI 使用
+  
+    // 闪白处理（受击动画）
+    const flash = Date.now() - monsterHitFlashTime < 200;
+    ctx.save();
+    if (flash) ctx.filter = 'brightness(2)';
+    if (img && img.width) ctx.drawImage(img, x, y, SPR_W, SPR_H);
+    ctx.restore();
+  
+    // 血条位置
+    const BAR_W = 280;
+    const BAR_H = 12;
+    const BAR_OFFSET_Y = 18;
+    const barX = (canvas.width - BAR_W) / 2;
+    const barY = y + SPR_H + BAR_OFFSET_Y;
+  
+    const hpRatio = monster.hp / monster.maxHp;
+    ctx.fillStyle = '#000';
+    drawRoundedRect(ctx, barX, barY, BAR_W, BAR_H, 10, true, false);
+    ctx.fillStyle = '#ff4444';
+    drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
+  
+    // 文字信息
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${monster.hp} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
+    ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, barY + BAR_H + 8);
   }
-  const img = monsterImageCache[monster.id];
-
-  // 怪物贴图位置
-  const SPR_W = 120;
-  const SPR_H = 120;
-  let x = (canvas.width - SPR_W) / 2;
-  let y = 128;
-
-  const monsterRect = avoidOverlap(
-    { x, y, width: SPR_W, height: SPR_H + 50 },
-    layoutRects
-  );
-  x = monsterRect.x;
-  y = monsterRect.y;
-  layoutRects.push(monsterRect);
-
-  // 绘制贴图（含受击闪白）
-  const flash = Date.now() - monsterHitFlashTime < 200;
-  ctx.save();
-  if (flash) ctx.filter = 'brightness(2)';
-  if (img && img.width) ctx.drawImage(img, x, y, SPR_W, SPR_H);
-  ctx.restore();
-
-  // 血条避让
-  const BAR_W = 280;
-  const BAR_H = 12;
-  const BAR_OFFSET_Y = 18;
-
-  let barRect = {
-    x: (canvas.width - BAR_W) / 2,
-    y: y + SPR_H + BAR_OFFSET_Y,
-    width: BAR_W,
-    height: BAR_H + 22
-  };
-
-  barRect = avoidOverlap(barRect, layoutRects, 12);
-  layoutRects.push(barRect);
-
-  const barX = barRect.x;
-  const barY = barRect.y;
-  const hpRatio = monster.hp / monster.maxHp;
-
-  // 血条绘制
-  ctx.fillStyle = '#000';
-  drawRoundedRect(ctx, barX, barY, BAR_W, BAR_H, 10, true, false);
-
-  ctx.fillStyle = '#ff4444';
-  drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
-
-  // 血量文字
-  ctx.fillStyle = '#fff';
-  ctx.font = '12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${monster.hp} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
-  ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, barY + BAR_H + 8);
-
-  // ✅ 写回全局，避免棋盘遮挡
-  globalThis.layoutRects = layoutRects;
-}
+  

@@ -148,24 +148,20 @@ function initGrid() {
 }
 
 export function drawGame() {
+  // ✅ 插入这行：每一帧初始化 layoutRects，避免旧数据干扰
+  globalThis.layoutRects = [];
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   // 创建背景层并清空画布
   ctxRef.fillStyle = '#001';
   ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
 
-
-
-  
-
-
-
   const maxWidth = canvasRef.width * 0.9;
-  const maxHeight = canvasRef.height * 0.6;
+  const maxHeight = canvasRef.height - 420;
   const blockSize = Math.floor(Math.min(maxWidth, maxHeight) / gridSize);
   const startX = (canvasRef.width - blockSize * gridSize) / 2;
-  const baseStartY = canvasRef.height - blockSize * gridSize - 60;
-  const minBottomPadding = 20;
-  const startY = Math.min(baseStartY, canvasRef.height - blockSize * gridSize - minBottomPadding);
+  const topSafeArea = 180; // 防止覆盖怪物与上方UI
+  const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - 100);
+  
   
 
   const layoutRects = globalThis.layoutRects || [];  // 🔄 读取已有布局
@@ -247,6 +243,7 @@ function drawUI() {
   });
   //绘制怪物图层
   drawMonsterSprite(ctxRef, canvasRef); 
+ 
 
 // 主页按钮绘制（紫色样式 + 返回箭头）
 const btnX = 20;
@@ -281,7 +278,7 @@ const iconSize    = 48;                    // 头像边长，可调
 const spacing     = 12;                    // 槽位间隔
 const totalWidth  = 5 * iconSize + 4 * spacing;
 const startXHero  = (canvasRef.width - totalWidth) / 2;
-const topMargin   = 350;                   // 保持原位置
+const topMargin = __gridStartY - 100;               // 保持原位置
 
 /* === 攻击槽（累计伤害） ===================================== */
 const gaugeW = 180, gaugeH = 14;
@@ -614,7 +611,7 @@ function onTouch(e) {
   const spacing  = 12;
   const totalWidth = 5 * iconSize + 4 * spacing;
   const startXHero = (canvasRef.width - totalWidth) / 2;
-  const topMargin  = 350;
+  const topMargin = __gridStartY - 100;
 
   const heroes = getSelectedHeroes();
   for (let i = 0; i < 5; i++) {
