@@ -159,8 +159,9 @@ export function drawGame() {
   const maxHeight = canvasRef.height - 420;
   const blockSize = Math.floor(Math.min(maxWidth, maxHeight) / gridSize);
   const startX = (canvasRef.width - blockSize * gridSize) / 2;
-  const topSafeArea = 180; // 防止覆盖怪物与上方UI
-  const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - 100);
+  const topSafeArea = 220; // 怪物区向上留空间
+const bottomPadding = 40; // 更贴近底部
+const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - bottomPadding);
   
   
 
@@ -189,6 +190,7 @@ export function drawGame() {
   __blockSize = actualBlockSize;
   __gridStartX = boardX;
   __gridStartY = boardY;
+  globalThis.__gridStartY = boardY;
   
 
 
@@ -277,7 +279,7 @@ const iconSize    = 48;                    // 头像边长，可调
 const spacing     = 12;                    // 槽位间隔
 const totalWidth  = 5 * iconSize + 4 * spacing;
 const startXHero  = (canvasRef.width - totalWidth) / 2;
-const topMargin = __gridStartY - 100;               // 保持原位置
+const topMargin = __gridStartY - 80;               // 保持原位置
 
 /* === 攻击槽（累计伤害） ===================================== */
 const gaugeW = 180, gaugeH = 14;
@@ -344,16 +346,19 @@ ctxRef.scale(fontScale, fontScale);
 ctxRef.strokeText(`${attackDisplayDamage}`, 0, 0);
 const atkW = fontSize * 4;
 const atkH = fontSize * 1.3;
+// === 攻击数字位置（浮在头像栏和血条之间） ===
+const anchorTop = __gridStartY - 100;  // 头像栏顶部
+const anchorBottom = __gridStartY - 200; // 血条下沿
+const centerY = (anchorTop + anchorBottom) / 2;
+
 const atkRect = {
   x: canvas.width / 2 - atkW / 2,
-  y: 60,
+  y: centerY - atkH / 2,
   width: atkW,
   height: atkH
 };
-const adjustedAtk = avoidOverlap(atkRect, layoutRects);
-layoutRects.push(adjustedAtk);
-ctxRef.fillText(`${attackDisplayDamage}`, adjustedAtk.x + atkW / 2, adjustedAtk.y + atkH / 2);
 
+ctxRef.fillText(`${attackDisplayDamage}`, atkRect.x + atkW / 2, atkRect.y + atkH / 2);
 
 ctxRef.restore();
 
@@ -376,26 +381,29 @@ ctxRef.textAlign = 'right';
 ctxRef.fillText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
 
 /* --- 操作计数展示 --- */
+// === 操作计数展示（固定在棋盘上方） ===
 const countText = `${gaugeCount}/5`;
-// 文字位置：伤害数字下方 18px，可自行调整
-const countY = gaugeY + gaugeH + 98;
 
 // 闪烁：触发后 600 ms 内黄白交替
 let color = '#FFF';
 if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
   color = (Date.now() % 200 < 100) ? '#FFD700' : '#FFF';
 } else if (gaugeFlashTime && Date.now() - gaugeFlashTime >= 600) {
-  gaugeFlashTime = 0;            // 结束闪烁
+  gaugeFlashTime = 0;
 }
 
-ctxRef.fillStyle   = color;
-ctxRef.font        = '14px sans-serif';
-ctxRef.textAlign   = 'center';
-ctxRef.textBaseline= 'middle';
-const countRect = { x: gaugeX, y: countY - 20, width: gaugeW, height: 30 };
-const adjusted = avoidOverlap(countRect, layoutRects);
-layoutRects.push(adjusted);
-ctxRef.fillText(countText, adjusted.x + gaugeW / 2, adjusted.y + 20);
+// 设置文字样式
+ctxRef.fillStyle = color;
+ctxRef.font = '14px sans-serif';
+ctxRef.textAlign = 'center';
+ctxRef.textBaseline = 'middle';
+
+// ✅ 直接居中固定在棋盘上方 20px
+const countX = canvasRef.width / 2;
+const countY = __gridStartY - 10;
+
+ctxRef.fillText(countText, countX, countY);
+
 
 
 
@@ -996,7 +1004,7 @@ function startAttackEffect(dmg) {
 
   // ③ 发射飞弹：起点 = 伤害数字中心，终点 = 怪物中心
   const startX = canvasRef.width / 2;
-  const startY = 290;                            
+  const startY = __gridStartY - 40;  // 让它从计数器区域或头像栏中飞出                           
   const endX   = canvasRef.width / 2;
   const endY   = 120;                           // 怪物中心高度，按你的 UI 调
 

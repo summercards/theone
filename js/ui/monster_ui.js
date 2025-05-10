@@ -49,7 +49,8 @@ export function drawMonsterSprite(ctx, canvas) {
   const SPR_W = 120;
   const SPR_H = 120;
   let x = (canvas.width - SPR_W) / 2;
-  let y = 48; // 初始靠近顶部
+  let gridTop = globalThis.__gridStartY || (canvas.height * 0.7);  // Fallback
+let y = Math.max(32, gridTop - 320);  // 让怪物始终在棋盘上方一定高度
 
   // 自动避让：优先占位
   const monsterRect = avoidOverlap(
