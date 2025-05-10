@@ -29,7 +29,50 @@ let pageIndex   = 0;
 /* ---------- 弹窗状态 ---------- */
 let unlockDialog = { show: false, hero: null, okRect: null, cancelRect: null };
 
-
+function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
+    let attempt = 0;
+    while (attempt < maxTries) {
+      let collision = false;
+      for (const o of others) {
+        const overlapX = rect.x < o.x + o.width + minGap &&
+                         rect.x + rect.width + minGap > o.x;
+        const overlapY = rect.y < o.y + o.height + minGap &&
+                         rect.y + rect.height + minGap > o.y;
+        if (overlapX && overlapY) {
+          rect.y = o.y + o.height + minGap; // 往下偏移
+          collision = true;
+          break;
+        }
+      }
+      if (!collision) break;
+      attempt++;
+    }
+    return rect;
+  }
+  
+  function scaleToAvoidOverlap(rect, others, minScale = 0.6, step = 0.05) {
+    let scale = 1.0;
+    while (scale >= minScale) {
+      const testRect = {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width * scale,
+        height: rect.height * scale
+      };
+      const overlaps = others.some(o =>
+        testRect.x < o.x + o.width &&
+        testRect.x + testRect.width > o.x &&
+        testRect.y < o.y + o.height &&
+        testRect.y + testRect.height > o.y
+      );
+      if (!overlaps) {
+        return { ...testRect, scale };
+      }
+      scale -= step;
+    }
+    return { ...rect, scale: minScale };
+  }
+  
 
 let ctxRef, canvasRef, switchPageFn;
 let showUpgradeButtons = false;         // 是否显示“升级”按钮
@@ -276,6 +319,7 @@ function hit(px, py, r) {
 // ======================= 渲染 =============================
 function render() {
   const ctx = ctxRef, canvas = canvasRef;
+  const layoutRects = []; // 🆕 用于记录每个模块的占位区域，避免互相遮挡
   ctx.setTransform(1, 0, 0, 1, 0, 0); // 清除变换
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -332,23 +376,29 @@ function render() {
   pageHeroes.forEach((hero, i) => {
     const row = Math.floor(i / 5);
     const col = i % 5;
-    const ix = PAD_X + col * (ICON + GAP);
-    const iy = poolStartY + row * (ICON + ICON * 0.5);
-
+    let ix = PAD_X + col * (ICON + GAP);
+    let iy = poolStartY + row * (ICON + ICON * 0.5);
+    let iconRect = { x: ix, y: iy, width: ICON, height: ICON };
+    const scaled = scaleToAvoidOverlap(iconRect, layoutRects);
+    layoutRects.push({ x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height });
+    
     ctx.strokeStyle = '#C084FC';
     ctx.lineWidth = 2;
-    drawRoundedRect(ctx, ix, iy, ICON, ICON, 8, false, true);
+    drawRoundedRect(ctx, scaled.x, scaled.y, scaled.width, scaled.height, 8, false, true);
+    
+    if (hero) drawIcon(ctx, hero, scaled.x, scaled.y, scaled.scale);
 
-    if (hero) drawIcon(ctx, hero, ix, iy);
     else {
       ctx.fillStyle = '#4B0073';
       drawRoundedRect(ctx, ix + 4, iy + 4, ICON - 8, ICON - 8, 8, true, false);
       drawText(ctx, '?', ix + ICON / 2, iy + ICON / 2,
         '20px IndieFlower', '#FFF', 'center', 'middle');
     }
-    iconRects.push({ rect: { x: ix, y: iy, width: ICON, height: ICON }, hero });
-  });
+    iconRects.push({ rect: { x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height }, hero });
 
+  });
+// 🟡 插入在这里，确保 drawIcon 后才能访问
+globalThis.layoutRects = layoutRects;
   // 翻页按钮
   const btnY = poolStartY + ICON * 2.5 + 10;
   btnPrevRect = { x: PAD_X, y: btnY, width: ICON * 0.8, height: ICON * 0.8 };
@@ -370,12 +420,14 @@ function render() {
 
   // 升级按钮开关
   const toggleY = canvas.height - ICON * 1.5;
-  const upgradeToggleRect = {
+  let upgradeToggleRect = {
     x: PAD_X,
     y: toggleY,
     width: ICON * 1.2,
     height: ICON * 0.8
   };
+  upgradeToggleRect = avoidOverlap(upgradeToggleRect, layoutRects);
+  layoutRects.push(upgradeToggleRect);
   ctx.fillStyle = '#FFD700';
   drawRoundedRect(ctx, upgradeToggleRect.x, upgradeToggleRect.y,
                   upgradeToggleRect.width, upgradeToggleRect.height, 8, true, false);
@@ -385,20 +437,32 @@ function render() {
     '18px IndieFlower', '#000', 'center', 'middle');
 
   // 确认按钮
-  const confirmX = canvas.width / 2 - ICON * 1.5;
-  const confirmY = toggleY;
+  let confirmRect = {
+    x: canvas.width / 2 - ICON * 1.5,
+    y: toggleY,
+    width: ICON * 3,
+    height: ICON * 0.8
+  };
+  confirmRect = avoidOverlap(confirmRect, layoutRects);
+  layoutRects.push(confirmRect);
+  
+  const confirmX = confirmRect.x;
+  const confirmY = confirmRect.y;
   ctx.fillStyle = '#912BB0';
   drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 0.8, 6, true, false);
   drawText(ctx, '确认出战', confirmX + ICON * 1.5, confirmY + ICON * 0.4,
     '18px IndieFlower', '#FFF', 'center', 'middle');
 
   // 广告按钮
-  const adBtnRect = {
+  let adBtnRect = {
     x: canvas.width - PAD_X - ICON * 1.2,
     y: toggleY,
     width: ICON * 1.2,
     height: ICON * 0.8
   };
+  adBtnRect = avoidOverlap(adBtnRect, layoutRects);
+  layoutRects.push(adBtnRect);
+
   ctx.fillStyle = '#FFD700';
   drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
   drawText(ctx, '看广告得金币',
@@ -469,7 +533,7 @@ function drawUnlockDialog(ctx, canvas) {
 }
 
 
-function drawIcon(ctx, hero, x, y) {
+function drawIcon(ctx, hero, x, y, scale = 1) {
   const r = 8; // 圆角半径
   const img = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
 
@@ -545,8 +609,12 @@ function drawIcon(ctx, hero, x, y) {
     const btnPadding = 8;
     const btnW = textWidth + btnPadding * 4;
     const btnH = 22;
-    const btnX = x + ICON / 2 - btnW / 2;
-    const btnY = y + ICON + 4;
+   
+    let btnRect = { x: x + ICON / 2 - btnW / 2, y: y + ICON + 4, width: btnW, height: btnH };
+btnRect = avoidOverlap(btnRect, globalThis.layoutRects);
+const btnX = btnRect.x;
+const btnY = btnRect.y;
+globalThis.layoutRects.push(btnRect);
 
     ctx.fillStyle = '#FFD700';
     drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 4, true, false);
