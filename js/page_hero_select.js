@@ -386,7 +386,8 @@ function render() {
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, scaled.x, scaled.y, scaled.width, scaled.height, 8, false, true);
     
-    if (hero) drawIcon(ctx, hero, scaled.x, scaled.y, scaled.scale);
+    if (hero) drawIcon(ctx, hero, scaled.x, scaled.y, scaled.width);
+
 
     else {
       ctx.fillStyle = '#4B0073';
@@ -533,110 +534,111 @@ function drawUnlockDialog(ctx, canvas) {
 }
 
 
-function drawIcon(ctx, hero, x, y, scale = 1) {
-  const r = 8; // 圆角半径
-  const img = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + ICON - r, y);
-  ctx.quadraticCurveTo(x + ICON, y, x + ICON, y + r);
-  ctx.lineTo(x + ICON, y + ICON - r);
-  ctx.quadraticCurveTo(x + ICON, y + ICON, x + ICON - r, y + ICON);
-  ctx.lineTo(x + r, y + ICON);
-  ctx.quadraticCurveTo(x, y + ICON, x, y + ICON - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-  ctx.clip();
-
-  if (img) {
-    ctx.drawImage(img, x, y, ICON, ICON);
-  } else {
-    ctx.fillStyle = '#444';
-    ctx.fillRect(x, y, ICON, ICON);
-  }
-  ctx.restore();
-
-  // 品质描边
-  const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
-  ctx.strokeStyle = rarityColor;
-  ctx.lineWidth = 5;
-  drawRoundedRect(ctx, x, y, ICON, ICON, 12, false, true);
-
-  // 名称 / 职业
-  ctx.font = 'bold 10px IndieFlower';
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = '#000';
-  ctx.fillStyle = '#FFF';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
-  ctx.strokeText(hero.role, x + 4, y + ICON - 14);
-  ctx.fillText(hero.role,   x + 4, y + ICON - 14);
-  ctx.strokeText(hero.name, x + 4, y + ICON - 3);
-  ctx.fillText(hero.name,   x + 4, y + ICON - 3);
-
-  // 锁定遮罩
-  if (hero.locked) {
+function drawIcon(ctx, hero, x, y, size = ICON) {
+    const r = 8;
+    const img = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
+  
+    // ==== 圆角裁剪区域 ====
     ctx.save();
-    ctx.globalAlpha = 0.95;
-    ctx.fillStyle = '#000';
-    drawRoundedRect(ctx, x, y, ICON, ICON, 8, true, false);
-    ctx.globalAlpha = 1;
-    const lockSize = ICON * 0.5;
-    ctx.drawImage(lockIconImg,
-                  x + (ICON - lockSize) / 2,
-                  y + (ICON - lockSize) / 2,
-                  lockSize, lockSize);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + size - r, y);
+    ctx.quadraticCurveTo(x + size, y, x + size, y + r);
+    ctx.lineTo(x + size, y + size - r);
+    ctx.quadraticCurveTo(x + size, y + size, x + size - r, y + size);
+    ctx.lineTo(x + r, y + size);
+    ctx.quadraticCurveTo(x, y + size, x, y + size - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.clip();
+  
+    // ==== 头像图像 ====
+    if (img) {
+      ctx.drawImage(img, x, y, size, size);
+    } else {
+      ctx.fillStyle = '#444';
+      ctx.fillRect(x, y, size, size);
+    }
     ctx.restore();
-  }
-
-  // 属性文本
-  const saved = wx.getStorageSync('heroProgress')?.[hero.id];
-  const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
-  const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
-  let attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
-  drawText(ctx, attrText, x + 4, y + ICON + 6,
-    '12px IndieFlower', '#FFF', 'left', 'top');
-
-  // 升级按钮
-  if (showUpgradeButtons && !hero.locked) {
-    const btnText    = '升级';
-    ctx.font         = '12px IndieFlower';
-    ctx.textBaseline = 'middle';
-    const textWidth  = ctx.measureText(btnText).width;
-    const btnPadding = 8;
-    const btnW = textWidth + btnPadding * 4;
-    const btnH = 22;
-   
-    let btnRect = { x: x + ICON / 2 - btnW / 2, y: y + ICON + 4, width: btnW, height: btnH };
-btnRect = avoidOverlap(btnRect, globalThis.layoutRects);
-const btnX = btnRect.x;
-const btnY = btnRect.y;
-globalThis.layoutRects.push(btnRect);
-
+  
+    // ==== 品质描边 ====
+    const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
+    ctx.strokeStyle = rarityColor;
+    ctx.lineWidth = 5;
+    drawRoundedRect(ctx, x, y, size, size, 8, false, true);
+  
+    // ==== 名称 / 职业 ====
+    ctx.font = 'bold 10px IndieFlower';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#000';
+    ctx.fillStyle = '#FFF';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.strokeText(hero.role, x + 4, y + size - 14);
+    ctx.fillText(hero.role,   x + 4, y + size - 14);
+    ctx.strokeText(hero.name, x + 4, y + size - 3);
+    ctx.fillText(hero.name,   x + 4, y + size - 3);
+  
+    // ==== 锁定遮罩 ====
+    if (hero.locked) {
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = '#000';
+      drawRoundedRect(ctx, x, y, size, size, 8, true, false);
+      ctx.globalAlpha = 1;
+  
+      const lockSize = size * 0.5;
+      ctx.drawImage(lockIconImg,
+        x + (size - lockSize) / 2,
+        y + (size - lockSize) / 2,
+        lockSize, lockSize);
+      ctx.restore();
+    }
+  
+    // ==== 属性文本 ====
+    const saved = wx.getStorageSync('heroProgress')?.[hero.id];
+    const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
+    const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
+    const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
+    drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
+  
+    // ==== 升级按钮 ====
+    if (showUpgradeButtons && !hero.locked) {
+      const btnText = '升级';
+      ctx.font = '12px IndieFlower';
+      ctx.textBaseline = 'middle';
+      const textWidth = ctx.measureText(btnText).width;
+      const btnPadding = 8;
+      const btnW = textWidth + btnPadding * 4;
+      const btnH = 22;
+  
+      let btnRect = { x: x + size / 2 - btnW / 2, y: y + size + 4, width: btnW, height: btnH };
+      btnRect = avoidOverlap(btnRect, globalThis.layoutRects);
+      globalThis.layoutRects.push(btnRect);
+  
+      ctx.fillStyle = '#FFD700';
+      drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
+      drawText(ctx, btnText, btnRect.x + btnW / 2, btnRect.y + btnH / 2,
+        '12px IndieFlower', '#000', 'center', 'middle');
+  
+      hero.upgradeButtonRect = { x: btnRect.x, y: btnRect.y, width: btnW, height: btnH };
+    } else {
+      hero.upgradeButtonRect = null;
+    }
+  
+    // ==== 等级角标 ====
+    const level = saved?.level ?? hero.level ?? 1;
+    ctx.font = 'bold 11px IndieFlower';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
     ctx.fillStyle = '#FFD700';
-    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 4, true, false);
-    drawText(ctx, btnText, btnX + btnW / 2, btnY + btnH / 2,
-      '12px IndieFlower', '#000', 'center', 'middle');
-
-    hero.upgradeButtonRect = { x: btnX, y: btnY, width: btnW, height: btnH };
-  } else {
-    hero.upgradeButtonRect = null;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.strokeText(`Lv.${level}`, x + size - 4, y + 4);
+    ctx.fillText(`Lv.${level}`,   x + size - 4, y + 4);
   }
-
-  // 等级角标
-  const level = saved?.level ?? hero.level ?? 1;
-  ctx.font = 'bold 11px IndieFlower';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#FFD700';
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 2;
-  ctx.strokeText(`Lv.${level}`, x + ICON - 4, y + 4);
-  ctx.fillText(`Lv.${level}`,   x + ICON - 4, y + 4);
-}
+  
 
 
 // 绘制文本工具
