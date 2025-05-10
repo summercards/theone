@@ -241,9 +241,8 @@ function drawUI() {
     width: __blockSize * gridSize,
     height: __blockSize * gridSize
   });
-  //绘制怪物图层
-  drawMonsterSprite(ctxRef, canvasRef); 
- 
+
+
 
 // 主页按钮绘制（紫色样式 + 返回箭头）
 const btnX = 20;
@@ -270,7 +269,7 @@ ctxRef.textBaseline = 'middle';
 // 显示“←主页”
 ctxRef.fillText('主页', btnX + btnW / 2, btnY + btnH / 2);
 
-
+drawMonsterSprite(ctxRef, canvasRef); 
 
 /* === 出战栏：固定 5 槽位 + 编号（原来绿色框位置） ================ */
 const heroes      = getSelectedHeroes();   // 长度固定 5
@@ -283,7 +282,11 @@ const topMargin = __gridStartY - 100;               // 保持原位置
 /* === 攻击槽（累计伤害） ===================================== */
 const gaugeW = 180, gaugeH = 14;
 const gaugeX = (canvasRef.width - gaugeW) / 2;
-const gaugeY = topMargin - 39;
+
+// 动态避让，攻击槽是一个长条
+const gaugeRect = avoidOverlap({ x: gaugeX, y: 60, width: gaugeW, height: gaugeH + 30 }, layoutRects);
+layoutRects.push(gaugeRect);
+const gaugeY = gaugeRect.y;
 
 /* ==== 累积伤害滚动 & 动画 ================================ */
 // 1. 动态数值逼近
@@ -514,6 +517,7 @@ function animateSwap(src, dst, callback, rollback = false) {
   const startY = __gridStartY;
 
   const drawWithOffset = (offsetX1, offsetY1, offsetX2, offsetY2) => {
+    globalThis.layoutRects = [];  // ✅ 补这一句！每帧动画中也要清空 layoutRects
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);
     // 只绘制当前正在移动的方块
     ctxRef.fillStyle = '#001';
@@ -611,7 +615,9 @@ function onTouch(e) {
   const spacing  = 12;
   const totalWidth = 5 * iconSize + 4 * spacing;
   const startXHero = (canvasRef.width - totalWidth) / 2;
-  const topMargin = __gridStartY - 100;
+  // 自动避让：让头像栏不压住上方任何 UI
+const maxBottom = layoutRects.reduce((max, r) => Math.max(max, r.y + r.height), 0);
+const topMargin = maxBottom + 12; // 往下留 12px 缝隙
 
   const heroes = getSelectedHeroes();
   for (let i = 0; i < 5; i++) {
