@@ -311,12 +311,16 @@ if (Date.now() - damagePopTime < popDur) {
 const baseFont = attackDisplayDamage > 500 ? 28 : 20;
 const fontSize = Math.floor(baseFont * fontScale);
 
-ctxRef.save();
+// === 攻击数值巢显示（固定相对位置 + 居中 + 动态样式） ===
+
+ctxRef.save();                         // 保存 canvas 当前状态
+ctxRef.setTransform(1, 0, 0, 1, 0, 0); // 重置任何缩放或位移
+
 ctxRef.font = `bold ${fontSize}px sans-serif`;
 ctxRef.textAlign = 'center';
 ctxRef.textBaseline = 'middle';
 
-// 渐变色与发光根据伤害等级调整
+// 渐变色与发光（根据伤害等级调整）
 let gradient, shadowColor;
 if (attackDisplayDamage > 500) {
   gradient = ctxRef.createLinearGradient(0, 0, 0, fontSize);
@@ -333,34 +337,20 @@ if (attackDisplayDamage > 500) {
 ctxRef.fillStyle = gradient;
 ctxRef.shadowColor = shadowColor;
 ctxRef.shadowBlur = attackDisplayDamage > 500 ? 12 : 6;
-
-// 描边（黑边加粗）
 ctxRef.lineWidth = 4;
 ctxRef.strokeStyle = '#000';
 
-// 平移 + 缩放
-ctxRef.translate(gaugeX + gaugeW / 2, gaugeY + gaugeH / 2);
-ctxRef.scale(fontScale, fontScale);
+// 可调节参数：决定攻击数字区域（相对棋盘位置）
+const DAMAGE巢顶部 = __gridStartY - 170;  // 距离棋盘顶部的像素（靠近血条）
+const DAMAGE巢底部 = __gridStartY - 80;   // 距离棋盘顶部的像素（靠近头像栏）
+const centerY = (DAMAGE巢顶部 + DAMAGE巢底部) / 2;  // 中间点
 
-// 渲染描边 + 填充
-ctxRef.strokeText(`${attackDisplayDamage}`, 0, 0);
-const atkW = fontSize * 4;
-const atkH = fontSize * 1.3;
-// === 攻击数字位置（浮在头像栏和血条之间） ===
-const anchorTop = __gridStartY - 100;  // 头像栏顶部
-const anchorBottom = __gridStartY - 200; // 血条下沿
-const centerY = (anchorTop + anchorBottom) / 2;
+// 渲染攻击数字（带描边 + 填充）
+ctxRef.strokeText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
+ctxRef.fillText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
 
-const atkRect = {
-  x: canvas.width / 2 - atkW / 2,
-  y: centerY - atkH / 2,
-  width: atkW,
-  height: atkH
-};
+ctxRef.restore(); // 恢复 canvas 状态
 
-ctxRef.fillText(`${attackDisplayDamage}`, atkRect.x + atkW / 2, atkRect.y + atkH / 2);
-
-ctxRef.restore();
 
 
 
