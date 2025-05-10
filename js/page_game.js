@@ -42,6 +42,51 @@ const BLOCK_DAMAGE_MAP = Object.fromEntries(
 /* 攻击槽：累积伤害数值 */
 let attackGaugeDamage = 0;
 
+function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
+    let attempt = 0;
+    while (attempt < maxTries) {
+      let collision = false;
+      for (const o of others) {
+        const overlapX = rect.x < o.x + o.width + minGap &&
+                         rect.x + rect.width + minGap > o.x;
+        const overlapY = rect.y < o.y + o.height + minGap &&
+                         rect.y + rect.height + minGap > o.y;
+        if (overlapX && overlapY) {
+          rect.y = o.y + o.height + minGap;
+          collision = true;
+          break;
+        }
+      }
+      if (!collision) break;
+      attempt++;
+    }
+    return rect;
+  }
+  
+  function scaleToAvoidOverlap(rect, others, minScale = 0.6, step = 0.05) {
+    let scale = 1.0;
+    while (scale >= minScale) {
+      const testRect = {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width * scale,
+        height: rect.height * scale
+      };
+      const overlaps = others.some(o =>
+        testRect.x < o.x + o.width &&
+        testRect.x + testRect.width > o.x &&
+        testRect.y < o.y + o.height &&
+        testRect.y + testRect.height > o.y
+      );
+      if (!overlaps) {
+        return { ...testRect, scale };
+      }
+      scale -= step;
+    }
+    return { ...rect, scale: minScale };
+  }
+  
+
 export function addToAttackGauge(value) {
   attackGaugeDamage += value;
   damagePopTime = Date.now(); // 让数字弹跳动画正常
@@ -118,30 +163,62 @@ export function drawGame() {
   const maxHeight = canvasRef.height * 0.6;
   const blockSize = Math.floor(Math.min(maxWidth, maxHeight) / gridSize);
   const startX = (canvasRef.width - blockSize * gridSize) / 2;
-  const startY = canvasRef.height - blockSize * gridSize - 60;
+  const baseStartY = canvasRef.height - blockSize * gridSize - 60;
+  const minBottomPadding = 20;
+  const startY = Math.min(baseStartY, canvasRef.height - blockSize * gridSize - minBottomPadding);
+  
 
-  __blockSize = blockSize;
-  __gridStartX = startX;
-  __gridStartY = startY;
+  const layoutRects = globalThis.layoutRects || [];  // 🔄 读取已有布局
+
+  let boardRect = {
+    x: startX,
+    y: startY,
+    width: blockSize * gridSize,
+    height: blockSize * gridSize
+  };
+  
+  // ✅ 使用缩放函数来避免遮挡
+  const scaledBoard = scaleToAvoidOverlap(boardRect, layoutRects);
+
+  
+  // 使用缩放后的位置与大小
+  const boardX = scaledBoard.x;
+  const boardY = scaledBoard.y;
+
+  
+  const boardScale = scaledBoard.scale;
+  const actualBlockSize = blockSize * boardScale;
+  
+  // 更新全局引用
+  __blockSize = actualBlockSize;
+  __gridStartX = boardX;
+  __gridStartY = boardY;
+  
+
+
+  __blockSize   = actualBlockSize;
+  __gridStartX  = boardX;
+  __gridStartY  = boardY;
 
   // 绘制方块
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
       const block = gridData[row][col];
-      const x = startX + col * blockSize;
-      const y = startY + row * blockSize;
 
+      const x = boardX + col * actualBlockSize;
+      const y = boardY + row * actualBlockSize;
+      
       ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
-      drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, true, false);
+      drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, true, false);
 
       ctxRef.fillStyle = 'white';
-      ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
-      ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
+      ctxRef.font = `${Math.floor(actualBlockSize / 2.5)}px sans-serif`;
+      ctxRef.fillText(block, x + actualBlockSize / 2.5, y + actualBlockSize / 1.5);
 
       if (selected && selected.row === row && selected.col === col) {
         ctxRef.strokeStyle = '#00FF00';
         ctxRef.lineWidth = 4;
-        drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, false, true);
+        drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, false, true);
       }
     }
   }
@@ -155,9 +232,19 @@ export function drawGame() {
 
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
+    
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
+  const ctx = ctxRef;
+  const canvas = canvasRef;
+  const layoutRects = globalThis.layoutRects || [];
 
- 
+   // ✅ 插入：让棋盘先声明其区域
+   layoutRects.push({
+    x: __gridStartX,
+    y: __gridStartY,
+    width: __blockSize * gridSize,
+    height: __blockSize * gridSize
+  });
   //绘制怪物图层
   drawMonsterSprite(ctxRef, canvasRef); 
 
@@ -255,7 +342,18 @@ ctxRef.scale(fontScale, fontScale);
 
 // 渲染描边 + 填充
 ctxRef.strokeText(`${attackDisplayDamage}`, 0, 0);
-ctxRef.fillText(`${attackDisplayDamage}`, 0, 0);
+const atkW = fontSize * 4;
+const atkH = fontSize * 1.3;
+const atkRect = {
+  x: canvas.width / 2 - atkW / 2,
+  y: 60,
+  width: atkW,
+  height: atkH
+};
+const adjustedAtk = avoidOverlap(atkRect, layoutRects);
+layoutRects.push(adjustedAtk);
+ctxRef.fillText(`${attackDisplayDamage}`, adjustedAtk.x + atkW / 2, adjustedAtk.y + atkH / 2);
+
 
 ctxRef.restore();
 
@@ -294,90 +392,79 @@ ctxRef.fillStyle   = color;
 ctxRef.font        = '14px sans-serif';
 ctxRef.textAlign   = 'center';
 ctxRef.textBaseline= 'middle';
-ctxRef.fillText(countText, gaugeX + gaugeW / 2, countY);
+const countRect = { x: gaugeX, y: countY - 20, width: gaugeW, height: 30 };
+const adjusted = avoidOverlap(countRect, layoutRects);
+layoutRects.push(adjusted);
+ctxRef.fillText(countText, adjusted.x + gaugeW / 2, adjusted.y + 20);
+
 
 
 for (let i = 0; i < 5; i++) {
-  const x = startXHero + i * (iconSize + spacing);
-  const y = topMargin;
-
-  // — 背板框（空位也画） —
-  ctxRef.fillStyle = '#111';
-  drawRoundedRect(ctxRef, x - 2, y - 2, iconSize + 4, iconSize + 4, 6, true, false);
-  ctxRef.strokeStyle = '#888';
-  ctxRef.lineWidth = 2;
-  drawRoundedRect(ctxRef, x - 2, y - 2, iconSize + 4, iconSize + 4, 6, false, true);
+    const x = startXHero + i * (iconSize + spacing);
+    const y = topMargin;
   
-
-
-
-    /* — 蓄力条 — */
-    const charges = getCharges();          // [0-100]
-    const percent = charges[i] || 0;       // 当前槽位蓄力
-    const barW = iconSize;                 // 同头像宽
-    const barH = 6;                        // 条高度
-    const barX = x;                        // 与头像左对齐
-    const barY = y + iconSize + 6;        // 位于编号下方少许
+    const rawRect = { x, y, width: iconSize, height: iconSize };
+    const scaled = scaleToAvoidOverlap(rawRect, layoutRects, 0.5); // 允许最小缩放到 50%
+    layoutRects.push({ x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height });
   
-    // 背景框
+    const sx = scaled.x;
+    const sy = scaled.y;
+    const size = scaled.width;
+  
+    // — 背板框（空位也画） —
+    ctxRef.fillStyle = '#111';
+    drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, true, false);
+    ctxRef.strokeStyle = '#888';
+    ctxRef.lineWidth = 2;
+    drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, false, true);
+  
+    // — 蓄力条 —
+    const charges = getCharges();
+    const percent = charges[i] || 0;
+    const barW = size;
+    const barH = 6;
+    const barX = sx;
+    const barY = sy + size + 6;
+  
     ctxRef.fillStyle = '#333';
     drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, true, false);
-
-   // 若蓄力满，画闪烁边框
-if (percent >= 100) {
-  ctxRef.strokeStyle = (Date.now() % 500 < 250) ? '#FF0' : '#F00'; // 闪黄红
-  ctxRef.lineWidth = 4;
-  ctxRef.strokeRect(x - 4, y - 4, iconSize + 8, iconSize + 8);
-}
-
-// === 蓄力满自动释放技能（单独一层） ===
-
-
   
-    // 填充进度
-    ctxRef.fillStyle = '#0F0';             // 绿色，可换
+    if (percent >= 100) {
+      ctxRef.strokeStyle = (Date.now() % 500 < 250) ? '#FF0' : '#F00';
+      ctxRef.lineWidth = 4;
+      ctxRef.strokeRect(sx - 4, sy - 4, size + 8, size + 8);
+    }
+  
+    ctxRef.fillStyle = '#0F0';
     ctxRef.fillRect(barX, barY, barW * (percent / 100), barH);
-  
-    // 进度边框
     ctxRef.strokeStyle = '#888';
     ctxRef.lineWidth = 1;
     drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, false, true);
   
-
-  // — 已选英雄头像 —
-  const hero = heroes[i];
-  if (hero) {
-    if (heroImageCache[hero.id]) {
-      ctxRef.drawImage(heroImageCache[hero.id], x, y, iconSize, iconSize);
-    } else {
-      const cachedImg = globalThis.imageCache[hero.icon];
-      if (cachedImg) {
-        ctxRef.drawImage(globalThis.imageCache[hero.icon], x, y, iconSize, iconSize);
-      } else {
-        // 兜底方案：可以显示 loading 占位图或忽略
+    // — 已选英雄头像 —
+    const hero = heroes[i];
+    if (hero) {
+      const cached = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
+      if (cached) {
+        ctxRef.drawImage(cached, sx, sy, size, size);
       }
+  
+      // 等级文本
+      const lvText = `Lv.${hero.level}`;
+      ctxRef.font = 'bold 11px IndieFlower, sans-serif';
+      ctxRef.textAlign = 'right';
+      ctxRef.textBaseline = 'top';
+      ctxRef.fillStyle = '#FFD700';
+      ctxRef.shadowColor = '#FFA500';
+      ctxRef.shadowBlur = 4;
+      ctxRef.strokeStyle = '#000';
+      ctxRef.lineWidth = 2;
+      ctxRef.strokeText(lvText, sx + size - 4, sy + 4);
+      ctxRef.fillText(lvText, sx + size - 4, sy + 4);
+      ctxRef.shadowBlur = 0;
     }
-
-// 等级文本（样式统一：右上角内侧 + 发光 + 黑描边）
-const lvText = `Lv.${hero.level}`;
-ctxRef.font = 'bold 11px IndieFlower, sans-serif';
-ctxRef.textAlign = 'right';
-ctxRef.textBaseline = 'top';
-ctxRef.fillStyle = '#FFD700';
-ctxRef.shadowColor = '#FFA500';
-ctxRef.shadowBlur = 4;
-ctxRef.strokeStyle = '#000';
-ctxRef.lineWidth = 2;
-
-ctxRef.strokeText(lvText, x + iconSize - 4, y + 4);
-ctxRef.fillText(lvText, x + iconSize - 4, y + 4);
-
-// 重置阴影，避免影响后续绘制
-ctxRef.shadowBlur = 0;
-
   }
-
-}
+  
 /* =============================================================== */
 
 
@@ -415,8 +502,11 @@ if (showGameOver) {
   ctxRef.fillStyle = '#FFF';
   ctxRef.font = '18px sans-serif';
   ctxRef.fillText('回到主页', boxX + boxW / 2, boxY + 120);
-}
   
+}
+
+  globalThis.layoutRects = layoutRects;
+
 }
 
 function animateSwap(src, dst, callback, rollback = false) {
