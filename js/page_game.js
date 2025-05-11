@@ -5,6 +5,9 @@ let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
 let showGameOver = false;     // 是否触发失败弹窗
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 const DEBUG = false; // 全局设置，生产时设为 false
+let showVictoryPopup = false;
+let earnedGold = 0;
+let levelJustCompleted = 0;
 // === 变更：把另外两个特效工具也引进来
 import {updateAllEffects,drawAllEffects,createExplosion,
     createProjectile,     // ← 飞弹
@@ -226,6 +229,48 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
 
   // 在单独的绘制层绘制UI元素
   drawUI();
+    // 👇 胜利弹窗绘制逻辑
+    if (showVictoryPopup) {
+      const boxW = 280, boxH = 200;
+      const boxX = (canvasRef.width - boxW) / 2;
+      const boxY = (canvasRef.height - boxH) / 2;
+    
+      // 半透明遮罩
+      ctxRef.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+    
+      // 弹窗主背景（深紫色）
+      ctxRef.fillStyle = '#331144';
+      drawRoundedRect(ctxRef, boxX, boxY, boxW, boxH, 14, true, false);
+    
+      // 标题文字（白色）
+      ctxRef.fillStyle = '#FFFFFF';
+      ctxRef.font = '22px sans-serif';
+      ctxRef.textAlign = 'center';
+      ctxRef.fillText(`第 ${levelJustCompleted} 关胜利！`, boxX + boxW / 2, boxY + 50);
+    
+      // 奖励金币文字（金黄）
+      ctxRef.fillStyle = '#FFD700';
+      ctxRef.font = '20px sans-serif';
+      ctxRef.fillText(`获得金币：+${earnedGold}`, boxX + boxW / 2, boxY + 90);
+    
+      // “下一关”按钮样式（黄色背景 + 白字）
+      const btnX = boxX + 70;
+      const btnY = boxY + 130;
+      const btnW = 140;
+      const btnH = 40;
+    
+      ctxRef.fillStyle = '#FFD700';
+      drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
+    
+      ctxRef.fillStyle = '#000';
+      ctxRef.font = 'bold 18px sans-serif';
+      ctxRef.fillText('下一关', boxX + boxW / 2, btnY + 26);
+    }
+    
+    
+    
+
 }
 
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
@@ -582,6 +627,35 @@ function onTouch(e) {
   const xTouch = touch.clientX;
   const yTouch = touch.clientY;
 
+  if (showVictoryPopup) {
+    const boxW = 280, boxH = 200;
+    const boxX = (canvasRef.width - boxW) / 2;
+    const boxY = (canvasRef.height - boxH) / 2;
+  
+    const btnX = boxX + 70;
+    const btnY = boxY + 130;
+    const btnW = 140;
+    const btnH = 40;
+  
+    if (
+      xTouch >= btnX && xTouch <= btnX + btnW &&
+      yTouch >= btnY && yTouch <= btnY + btnH
+    ) {
+      showVictoryPopup = false;
+      const nextLevel = getNextLevel();
+      const m = loadMonster(nextLevel);
+      turnsLeft = m.skill.cooldown;
+      drawGame();
+    }
+  
+    return;
+  }
+  
+  
+
+
+
+
   if (showGameOver) {
     const boxX = (canvasRef.width - 260) / 2;
     const boxY = (canvasRef.height - 160) / 2;
@@ -786,11 +860,13 @@ function checkAndClearMatches () {
 
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
-    addCoins(getMonsterGold());   // 改为读取怪物自身掉落
-    const nextLevel = getNextLevel();   // ✅ 定义 nextLevel
-    const m = loadMonster(nextLevel);   // ✅ 正确传入
-    turnsLeft = m.skill.cooldown;
-  } else {
+    earnedGold = getMonsterGold();         // 获取金币
+    addCoins(earnedGold);                  // 加入金币池
+    levelJustCompleted = getNextLevel() - 1; // 显示当前完成的是哪一关
+    showVictoryPopup = true;               // 显示胜利弹窗
+    return;                                // 暂停，等待点击继续
+  }
+   else {
     // 敌人仍存活：怪物回合已由其他逻辑处理（如 turnsLeft）
   }
 
@@ -1010,13 +1086,15 @@ function startAttackEffect(dmg) {
     pendingDamage = 0;
 
     if (isMonsterDead()) {
-      const exp = m?.exp || 50;            // ⬅️ m 是当前怪物（你也可以用 currentMonster）
-      rewardExpToHeroes(exp);              // ⬅️ 调用奖励函数
-      addCoins(getMonsterGold());
-      const nextLevel = getNextLevel();
-      const m = loadMonster(nextLevel);
-      turnsLeft = m.skill.cooldown;
-    } else {
+      earnedGold = getMonsterGold();
+      addCoins(earnedGold);
+      levelJustCompleted = getNextLevel() - 1;
+      showVictoryPopup = true;
+    
+      rewardExpToHeroes(50); // 或其他默认经验值
+    
+      return; // ❗很重要：停止继续 loadMonster
+    }else {
       turnsLeft--; // 🟡 仅当怪物未死时扣回合
 
       if (turnsLeft <= 0) {
