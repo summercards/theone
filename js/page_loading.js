@@ -22,6 +22,7 @@ blockLetters.forEach(letter => {
 
 // ② 添加 UI 图标（如锁图标、备用图等）
 preloadList.push({ key: 'lock.png', path: 'assets/ui/lock.png' });
+preloadList.push({ key: 'bg', path: 'assets/bg.png' });
 // preloadList.push({ key: 'fallback.png', path: 'assets/ui/fallback.png' }); // 可选占位图
 
 // ③ 创建全局缓存
