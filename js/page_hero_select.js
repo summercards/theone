@@ -1,7 +1,25 @@
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
 let lastAdTime = 0; // 上次点击时间戳
 const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
+let showUpgradeButtons = false;
+let showDialog = true;
 
+// 🗨️ 随机台词池（酒馆NPC）
+const barDialogLines = [
+  "欢迎来到地狱酒馆，勇者…你可真香。",
+  "这些英雄啊，有的英勇，有的…惨叫得很好听～",
+  "嘘——别太吵，隔壁桌刚签了灵魂契约。",
+  "金币不够？没关系…我接受别的“代价”。",
+  "选好了？可别怪我没提醒你，外面比我更危险哦♡",
+  "你看起来…像是会死得很精彩的人。",
+  "今晚是血月…最适合来点杀戮和红酒。",
+  "别盯着我看啦～会迷路的。",
+  "你也是来逃避命运的吗？我懂的。",
+  "想听个故事吗？关于堕落的天使和他爱上的猎人…"
+];
+
+// 🔁 页面刷新时选中一句（只选一次）
+let barDialogText = barDialogLines[Math.floor(Math.random() * barDialogLines.length)];
 
 // ======================= 资源与常量 =======================
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
@@ -75,14 +93,30 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
   
 
 let ctxRef, canvasRef, switchPageFn;
-let showUpgradeButtons = false;         // 是否显示“升级”按钮
+
 
 // ======================= 页面生命周期 =====================
 function initHeroSelectPage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   canvasRef = canvas;
   switchPageFn = switchPage;
-  render();
+
+  // ✅ 每隔一段时间让气泡显示一次
+  setInterval(() => {
+    // 1. 随机选择新对白
+    barDialogText = barDialogLines[Math.floor(Math.random() * barDialogLines.length)];
+    showDialog = true;
+    render(); // 显示气泡
+
+    // 2. 几秒后自动隐藏
+    setTimeout(() => {
+      showDialog = false;
+      render(); // 隐藏气泡
+    }, 4500); // 3秒显示时间
+
+  }, 8500); // 每8秒轮询一次
+
+  render(); // 首次渲染
 }
 
 // ======================= 触摸 / 点击 ======================
@@ -344,6 +378,39 @@ if (barImage && barImage.complete && barImage.width) {
 
   ctx.drawImage(barImage, x, y, IMG_W, IMG_H);
 }
+
+// ✅ 仅在 showDialog = true 时绘制对话气泡和箭头
+if (showDialog) {
+  const bubbleW = 280;
+  const bubbleH = 60;
+  const bubbleX = (canvas.width - bubbleW) / 2 + 20; // 居中微偏右
+  const bubbleY = canvas.height * 0.08;
+
+  // 圆角白底气泡框
+  ctx.save();
+  ctx.fillStyle = '#FFF';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+  ctx.shadowBlur = 4;
+  drawRoundedRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 12, true, false);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // 🔻 小箭头（三角形）指向角色头像
+  ctx.beginPath();
+  ctx.moveTo(bubbleX + bubbleW / 2 - 6, bubbleY + bubbleH);
+  ctx.lineTo(bubbleX + bubbleW / 2 + 6, bubbleY + bubbleH);
+  ctx.lineTo(bubbleX + bubbleW / 2, bubbleY + bubbleH + 10);
+  ctx.closePath();
+  ctx.fillStyle = '#FFF';
+  ctx.fill();
+
+  // 文本内容（对白）
+  drawText(ctx, barDialogText,
+    bubbleX + 14, bubbleY + 18,
+    '14px PingFang SC', '#000', 'left', 'top');
+}
+
+
 
 
 
