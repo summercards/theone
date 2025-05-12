@@ -3,6 +3,7 @@ let lastAdTime = 0; // 上次点击时间戳
 const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
 let showUpgradeButtons = false;
 let showDialog = true;
+let dialogInterval = null; // ✅ 放到最顶层作用域
 
 // 🗨️ 随机台词池（酒馆NPC）
 const barDialogLines = [
@@ -95,29 +96,38 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
 let ctxRef, canvasRef, switchPageFn;
 
 
-// ======================= 页面生命周期 =====================
-function initHeroSelectPage(ctx, switchPage, canvas) {
-  ctxRef = ctx;
-  canvasRef = canvas;
-  switchPageFn = switchPage;
 
-  // ✅ 每隔一段时间让气泡显示一次
-  setInterval(() => {
-    // 1. 随机选择新对白
-    barDialogText = barDialogLines[Math.floor(Math.random() * barDialogLines.length)];
-    showDialog = true;
-    render(); // 显示气泡
 
-    // 2. 几秒后自动隐藏
-    setTimeout(() => {
-      showDialog = false;
-      render(); // 隐藏气泡
-    }, 4500); // 3秒显示时间
 
-  }, 8500); // 每8秒轮询一次
 
-  render(); // 首次渲染
-}
+  function initHeroSelectPage(ctx, switchPage, canvas) {
+    ctxRef = ctx;
+    canvasRef = canvas;
+    switchPageFn = switchPage;
+  
+    dialogInterval = setInterval(() => {
+      barDialogText = barDialogLines[Math.floor(Math.random() * barDialogLines.length)];
+      showDialog = true;
+      render();
+  
+      setTimeout(() => {
+        showDialog = false;
+        render();
+      }, 4500);
+    }, 8500);
+  
+    render();
+  }
+  
+  function destroy() {
+    if (dialogInterval) {
+      clearInterval(dialogInterval);
+      dialogInterval = null;
+    }
+  }
+  
+
+
 
 // ======================= 触摸 / 点击 ======================
 function onTouch(e) {
@@ -766,11 +776,11 @@ const heroImageCache = {};
 
 // ======================= 导出接口 ========================
 module.exports = {
-  init:    initHeroSelectPage,
-  update:  () => {},
-  draw:    () => render(),
-  destroy: () => {},
+  init: initHeroSelectPage,
+  update: () => {},
+  draw: () => render(),
+  destroy: destroy,  // ✅ 正确导出
   onTouchend,
-  touchend: onTouchend   // ✅ 必须导出这个字段
+  touchend: onTouchend
 };
 
