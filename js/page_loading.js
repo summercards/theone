@@ -10,6 +10,16 @@ const preloadList = HeroData.heroes.map(hero => ({
   path: `assets/icons/${hero.icon}`
 }));
 
+// ✅ 添加 block 方块贴图
+const blockLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
+blockLetters.forEach(letter => {
+  preloadList.push({
+    key: `block_${letter}`,
+    path: `assets/blocks/${letter}.png`
+  });
+});
+
+
 // ② 添加 UI 图标（如锁图标、备用图等）
 preloadList.push({ key: 'lock.png', path: 'assets/ui/lock.png' });
 // preloadList.push({ key: 'fallback.png', path: 'assets/ui/fallback.png' }); // 可选占位图

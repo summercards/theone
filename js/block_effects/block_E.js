@@ -1,3 +1,12 @@
+const img_E = wx.createImage();
+img_E.src = "assets/blocks/E.png";
+
+export function renderBlockE(ctx, x, y, width, height) {
+  if (img_E.complete) {
+    ctx.drawImage(img_E, x, y, width, height);
+  }
+}
+
 import { gridData, gridSize, __gridStartX, __gridStartY, __blockSize } from '../page_game.js';
 import { createExplosion } from '../effects_engine.js';
 import { logBattle } from '../utils/battle_log.js';

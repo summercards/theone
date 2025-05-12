@@ -9,6 +9,19 @@ let showVictoryPopup = false;
 let earnedGold = 0;
 let levelJustCompleted = 0;
 // === 变更：把另外两个特效工具也引进来
+import { renderBlockA } from './block_effects/block_A.js';
+import { renderBlockB } from './block_effects/block_B.js';
+import { renderBlockC } from './block_effects/block_C.js';
+import { renderBlockD } from './block_effects/block_D.js';
+import { renderBlockE } from './block_effects/block_E.js';
+import { renderBlockF } from './block_effects/block_F.js';
+
+globalThis.renderBlockA = renderBlockA;
+globalThis.renderBlockB = renderBlockB;
+globalThis.renderBlockC = renderBlockC;
+globalThis.renderBlockD = renderBlockD;
+globalThis.renderBlockE = renderBlockE;
+globalThis.renderBlockF = renderBlockF;
 import {updateAllEffects,drawAllEffects,createExplosion,
     createProjectile,     // ← 飞弹
      createFloatingText    // ← 飘字
@@ -209,12 +222,25 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
       const x = boardX + col * actualBlockSize;
       const y = boardY + row * actualBlockSize;
       
-      ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
-      drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, true, false);
-
-      ctxRef.fillStyle = 'white';
-      ctxRef.font = `${Math.floor(actualBlockSize / 2.5)}px sans-serif`;
-      ctxRef.fillText(block, x + actualBlockSize / 2.5, y + actualBlockSize / 1.5);
+      const renderMap = {
+        A: globalThis.renderBlockA,
+        B: globalThis.renderBlockB,
+        C: globalThis.renderBlockC,
+        D: globalThis.renderBlockD,
+        E: globalThis.renderBlockE,
+        F: globalThis.renderBlockF,
+      };
+      const renderer = renderMap[block];
+      if (renderer) {
+        renderer(ctxRef, x, y, actualBlockSize, actualBlockSize);
+      } else {
+        ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
+        drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, true, false);
+        ctxRef.fillStyle = 'white';
+        ctxRef.font = `${Math.floor(actualBlockSize / 2.5)}px sans-serif`;
+        ctxRef.fillText(block, x + actualBlockSize / 2.5, y + actualBlockSize / 1.5);
+      }
+      
 
       if (selected && selected.row === row && selected.col === col) {
         ctxRef.strokeStyle = '#00FF00';
@@ -584,11 +610,26 @@ function animateSwap(src, dst, callback, rollback = false) {
         const y = startY + row * blockSize + offsetY;
         const block = gridData[row][col];
 
-        ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
-        drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, true, false);
-        ctxRef.fillStyle = 'white';
-        ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
-        ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
+        const renderMap = {
+          A: globalThis.renderBlockA,
+          B: globalThis.renderBlockB,
+          C: globalThis.renderBlockC,
+          D: globalThis.renderBlockD,
+          E: globalThis.renderBlockE,
+          F: globalThis.renderBlockF,
+        };
+        
+        const renderer = renderMap[block];
+        if (renderer) {
+          renderer(ctxRef, x, y, blockSize, blockSize);
+        } else {
+          ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
+          drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, true, false);
+          ctxRef.fillStyle = 'white';
+          ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
+          ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
+        }
+        
       }
     }
 

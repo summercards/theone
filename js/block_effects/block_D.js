@@ -1,4 +1,11 @@
-// js/block_effects/block_D.js
+const img_D = wx.createImage();
+img_D.src = "assets/blocks/D.png";
+
+export function renderBlockD(ctx, x, y, width, height) {
+  if (img_D.complete) {
+    ctx.drawImage(img_D, x, y, width, height);
+  }
+}
 
 import { addGold } from '../data/coin_state.js';
 import { logBattle } from '../utils/battle_log.js';

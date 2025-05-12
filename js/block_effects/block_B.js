@@ -1,4 +1,11 @@
-// js/block_effects/block_B.js
+const img_B = wx.createImage();
+img_B.src = "assets/blocks/B.png";
+
+export function renderBlockB(ctx, x, y, width, height) {
+  if (img_B.complete) {
+    ctx.drawImage(img_B, x, y, width, height);
+  }
+}
 
 import { getSelectedHeroes } from '../data/hero_state.js';
 import { addGold } from '../data/coin_state.js';

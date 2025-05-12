@@ -1,4 +1,11 @@
-// js/block_effects/block_F.js
+const img_F = wx.createImage();
+img_F.src = "assets/blocks/F.png";
+
+export function renderBlockF(ctx, x, y, width, height) {
+  if (img_F.complete) {
+    ctx.drawImage(img_F, x, y, width, height);
+  }
+}
 
 import { getSelectedHeroes } from '../data/hero_state.js';
 import { getCharges, setCharge } from '../data/hero_charge_state.js';
