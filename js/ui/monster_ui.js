@@ -37,6 +37,18 @@ export function drawMonsterSprite(ctx, canvas) {
   if (!monster || !canvas) return;
 
   const layoutRects = globalThis.layoutRects || [];
+  const bgImage = globalThis.imageCache['scene_bg01']; // 对应 key
+
+  const BG_W = 360; // 背景图宽度（可调整）
+  const BG_H = 160; // 背景图高度（可调整）
+  
+  if (bgImage && bgImage.complete && bgImage.width) {
+    let gridTop = globalThis.__gridStartY || (canvas.height * 0.8);
+    let bgX = (canvas.width - BG_W) / 2;
+    let bgY = Math.max(32, gridTop - 340);  // 保持与怪物一致的垂直逻辑
+  
+    ctx.drawImage(bgImage, bgX, bgY, BG_W, BG_H);
+  }
 
   // 加载图片（如未缓存）
   if (!monsterImageCache[monster.id]) {

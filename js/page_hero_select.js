@@ -334,6 +334,19 @@ function render() {
   ctx.fillStyle = '#2E003E';
   drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, 8, true, false);
 
+// ✅ 英雄选择界面顶部“酒吧背景图”
+const barImage = globalThis.imageCache['hero_window'];
+if (barImage && barImage.complete && barImage.width) {
+  const IMG_W = 390;
+  const IMG_H = 280; // 保持原图比例
+  const x = (canvas.width - IMG_W) / 2;
+  const y = canvas.height * 0.11;  // 顶部偏移，可根据实际位置微调
+
+  ctx.drawImage(barImage, x, y, IMG_W, IMG_H);
+}
+
+
+
   // 顶部金币
   drawText(ctx, `金币: ${getTotalCoins()}`,
            canvas.width - PAD_X, topOffset,
