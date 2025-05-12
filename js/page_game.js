@@ -641,11 +641,18 @@ function onTouch(e) {
       xTouch >= btnX && xTouch <= btnX + btnW &&
       yTouch >= btnY && yTouch <= btnY + btnH
     ) {
-      showVictoryPopup = false;
-      const nextLevel = getNextLevel();
-      const m = loadMonster(nextLevel);
-      turnsLeft = m.skill.cooldown;
-      drawGame();
+         showVictoryPopup = false;
+      
+         // ① 清空旧棋盘，避免残留 null
+         initGrid();                 // <— 新增
+      
+         // ② 载入下一关怪物
+         const nextLevel = getNextLevel();
+         const m = loadMonster(nextLevel);
+         turnsLeft = m.skill.cooldown;
+      
+         // ③ 刷新画面
+         drawGame();
     }
   
     return;
