@@ -419,6 +419,9 @@ const centerY = (DAMAGE巢顶部 + DAMAGE巢底部) / 2;  // 中间点
 // 渲染攻击数字（带描边 + 填充）
 ctxRef.strokeText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
 ctxRef.fillText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
+// 重置阴影效果，避免影响后续 UI 绘制
+ctxRef.shadowColor = 'transparent';
+ctxRef.shadowBlur = 0;
 
 ctxRef.restore(); // 恢复 canvas 状态
 
@@ -530,6 +533,7 @@ for (let i = 0; i < 5; i++) {
       ctxRef.lineWidth = 2;
       ctxRef.strokeText(lvText, sx + size - 4, sy + 4);
       ctxRef.fillText(lvText, sx + size - 4, sy + 4);
+      ctxRef.shadowColor = 'transparent';
       ctxRef.shadowBlur = 0;
     }
   }

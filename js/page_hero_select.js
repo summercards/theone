@@ -392,6 +392,7 @@ if (showDialog) {
   ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
   ctx.shadowBlur = 4;
   drawRoundedRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 12, true, false);
+  ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.restore();
 
