@@ -423,23 +423,31 @@ if (showDialog) {
   drawText(ctx, '出战英雄（点击移除）', PAD_X, selectedY - 20,
            '16px IndieFlower', '#DCC6F0', 'left', 'top');
 
-  // 出战槽
-  slotRects.length = 0;
-  for (let i = 0; i < 5; i++) {
-    const sx = PAD_X + i * (ICON + GAP);
-    const sy = selectedY;
+// 出战槽（灰底 + 紫边 + 英雄头像）
+slotRects.length = 0;
+for (let i = 0; i < 5; i++) {
+  const sx = PAD_X + i * (ICON + GAP);
+  const sy = selectedY;
 
-    ctx.strokeStyle = '#A64AC9';
-    ctx.lineWidth = 3;
-    drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
-    slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
+  // ✅ 灰色背景填充
+  ctx.fillStyle = '#2E2E2E'; // 深灰色背景，可根据主题调成 #3A3A3A 或 #444
+  drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, true, false);
 
-    const heroId = selectedHeroes[i];
-    if (heroId) {
-      const heroObj = new HeroState(heroId);
-      drawIcon(ctx, heroObj, sx, sy);
-    }
+  // ✅ 紫色描边
+  ctx.strokeStyle = '#A64AC9';
+  ctx.lineWidth = 3;
+  drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
+
+  // ✅ 点击热区记录
+  slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
+
+  // ✅ 绘制英雄头像（如已选中）
+  const heroId = selectedHeroes[i];
+  if (heroId) {
+    const heroObj = new HeroState(heroId);
+    drawIcon(ctx, heroObj, sx, sy);
   }
+}
 
   // 英雄池标题
   const poolStartY = selectedY + ICON + 35;// 英雄池更贴出战区
