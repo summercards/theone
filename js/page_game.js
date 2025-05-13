@@ -243,11 +243,16 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
       if (renderer) {
         renderer(ctxRef, x, y, actualBlockSize, actualBlockSize);
       } else {
+        // ✅ 无论 block 是否存在，都画一个灰底圆角方块
         ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
         drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, true, false);
-        ctxRef.fillStyle = 'white';
-        ctxRef.font = `${Math.floor(actualBlockSize / 2.5)}px sans-serif`;
-        ctxRef.fillText(block, x + actualBlockSize / 2.5, y + actualBlockSize / 1.5);
+      
+        // ✅ 仅当 block 存在（不是 null）时才画文字
+        if (block) {
+          ctxRef.fillStyle = 'white';
+          ctxRef.font = `${Math.floor(actualBlockSize / 2.5)}px sans-serif`;
+          ctxRef.fillText(block, x + actualBlockSize / 2.5, y + actualBlockSize / 1.5);
+        }
       }
       
 
@@ -517,7 +522,7 @@ for (let i = 0; i < 5; i++) {
       ctxRef.strokeRect(sx - 4, sy - 4, size + 8, size + 8);
     }
   
-    ctxRef.fillStyle = '#0F0';
+    ctxRef.fillStyle = '#00BFFF';
     ctxRef.fillRect(barX, barY, barW * (percent / 100), barH);
     ctxRef.strokeStyle = '#888';
     ctxRef.lineWidth = 1;
