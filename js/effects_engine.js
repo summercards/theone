@@ -41,17 +41,15 @@ export function drawAllEffects(ctx) {
     } else if (e.type === 'pop') {
         const elapsed = now - e.startTime;
         const p = Math.min(1, elapsed / e.duration); // 计算动画的进度
-      
+        
         // 弹性缩放效果：scale 是方块的放大倍数
-        const scale = 1 + Math.sin(p * Math.PI * 2) * (1 - p) * 1;  // 弹性强度增加
-      
-        // 让动画最终缩小到某个最小尺寸
-        const minScale = 1.6;  // 设置最小尺寸比例，例如 0.6 会让最小尺寸为 60% 
+        const scale = 1.2 - (p * (1.1 - 0.2));  // 计算逐渐缩小的比例，结束时最小为 0.2
+        
       
       
         ctx.save();
         ctx.translate(e.x, e.y);
-        ctx.scale(scale, scale);
+        ctx.scale(scale, scale); // 使用计算后的 scale 进行缩放
         ctx.translate(-e.size / 2, -e.size / 2);
       
         const renderMap = {
@@ -63,17 +61,17 @@ export function drawAllEffects(ctx) {
           F: globalThis.renderBlockF,
         };
         const renderer = renderMap[e.blockType];
-      
+
         if (renderer) {
           renderer(ctx, 0, 0, e.size, e.size);
         } else {
           ctx.fillStyle = '#999';
           ctx.fillRect(0, 0, e.size, e.size);
         }
-      
+        
         ctx.restore();
-      
-        if (p >= 1) remove.push(i);
+        
+        if (p >= 1) remove.push(i);  // 动画完成，移除特效
       }
 
     /* === 粒子 =========================================== */
