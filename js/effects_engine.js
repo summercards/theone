@@ -38,7 +38,43 @@ export function drawAllEffects(ctx) {
       ctx.textAlign   = 'center';
       ctx.fillText(e.text, e.x, e.y - t * 0.05);
       ctx.restore();
-    }
+    } else if (e.type === 'pop') {
+        const elapsed = now - e.startTime;
+        const p = Math.min(1, elapsed / e.duration); // 计算动画的进度
+      
+        // 弹性缩放效果：scale 是方块的放大倍数
+        const scale = 1 + Math.sin(p * Math.PI * 2) * (1 - p) * 1;  // 弹性强度增加
+      
+        // 让动画最终缩小到某个最小尺寸
+        const minScale = 1.6;  // 设置最小尺寸比例，例如 0.6 会让最小尺寸为 60% 
+      
+      
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.scale(scale, scale);
+        ctx.translate(-e.size / 2, -e.size / 2);
+      
+        const renderMap = {
+          A: globalThis.renderBlockA,
+          B: globalThis.renderBlockB,
+          C: globalThis.renderBlockC,
+          D: globalThis.renderBlockD,
+          E: globalThis.renderBlockE,
+          F: globalThis.renderBlockF,
+        };
+        const renderer = renderMap[e.blockType];
+      
+        if (renderer) {
+          renderer(ctx, 0, 0, e.size, e.size);
+        } else {
+          ctx.fillStyle = '#999';
+          ctx.fillRect(0, 0, e.size, e.size);
+        }
+      
+        ctx.restore();
+      
+        if (p >= 1) remove.push(i);
+      }
 
     /* === 粒子 =========================================== */
     else if (e.type === 'particle') {
@@ -61,11 +97,37 @@ export function createProjectile(x0, y0, x1, y1, duration, onArrive) {
 export function createFloatingText(text, x, y) {
   effects.push({ type:'float', text, x, y, startTime: Date.now() });
 }
-export function createExplosion(x, y, color='#FFD700') {
-  // 粒子
-  for (let i=0;i<8;i++){
-    const a=Math.random()*Math.PI*2, s=Math.random()*2+1;
-    effects.push({type:'particle', x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
-                  radius:4, color, alpha:1, life:30});
+
+export function createExplosion(x, y, color = '#FFD700') {
+    for (let i = 0; i < 8; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = Math.random() * 2 + 1;
+      effects.push({
+        type: 'particle',
+        x,
+        y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        radius: 4,
+        color,
+        alpha: 1,
+        life: 30
+      });
+    }
   }
-}
+  
+
+  export function createPopEffect(x, y, size, blockType, duration = 200, minScale = 0.6) {
+    effects.push({
+      type: 'pop',
+      x,
+      y,
+      size,
+      blockType,
+      startTime: Date.now(),
+      duration,
+      minScale
+    });
+  }
+
+  

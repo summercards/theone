@@ -25,10 +25,15 @@ globalThis.renderBlockC = renderBlockC;
 globalThis.renderBlockD = renderBlockD;
 globalThis.renderBlockE = renderBlockE;
 globalThis.renderBlockF = renderBlockF;
-import {updateAllEffects,drawAllEffects,createExplosion,
-    createProjectile,     // ← 飞弹
-     createFloatingText    // ← 飘字
-   } from './effects_engine.js';
+import {
+    updateAllEffects,
+    drawAllEffects,
+    createProjectile,
+    createFloatingText,
+    createPopEffect,
+    createExplosion           // ✅ 关键：补上这个
+  } from './effects_engine.js';
+  
 import { getSelectedHeroes } from './data/hero_state.js';
 import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
@@ -118,7 +123,7 @@ let ctxRef;
 let switchPageFn;
 let canvasRef;
 
-const gridSize = 5;
+const gridSize = 6;
 let gridData = [];
 let selected = null;
 
@@ -739,18 +744,21 @@ function checkAndClearMatches () {
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       if (!toClear[r][c]) continue;
-
-      createExplosion(
-        __gridStartX + c * __blockSize + __blockSize / 2,
-        __gridStartY + r * __blockSize + __blockSize / 2
-      );
-
-      const letter            = gridData[r][c];
-      colorCounter[letter]  = (colorCounter[letter] || 0) + 1;
-      gridData[r][c]         = null;
+  
+      const letter = gridData[r][c]; // ✅ 只声明一次
+  
+      const centerX = __gridStartX + c * __blockSize + __blockSize / 2;
+      const centerY = __gridStartY + r * __blockSize + __blockSize / 2;
+  
+      createPopEffect(centerX, centerY, __blockSize, letter); // ✅ 弹跳动画
+      createExplosion(centerX, centerY, BlockConfig[letter]?.color || '#FFD700'); // ✅ 彩色粒子效果
+  
+      colorCounter[letter] = (colorCounter[letter] || 0) + 1;
+      gridData[r][c] = null;
       clearedCount++;
     }
   }
+  
 
   /* === ③ 如果有消除，就累伤害 / 加蓄力 === */
   if (clearedCount > 0) {
