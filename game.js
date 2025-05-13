@@ -17,33 +17,51 @@ const pages = {
 let currentPageName   = 'home';
 let currentPageModule = pages.home;
 
-function switchPage(name){
+function switchPage(name, onFinish) {
   currentPageModule.destroy?.();
   currentPageName   = name;
   currentPageModule = pages[name];
   currentPageModule.init?.(ctx, switchPage, canvas);
+  if (typeof onFinish === 'function') {
+    setTimeout(onFinish, 0); // 👈 确保切换后再执行回调
+  }
 }
+
 
 // 初始页
 switchPage('loading'); // ⬅️ 启动先进入 loading 页面
 
 // 统一事件代理
 wx.onTouchStart(e => {
-  currentPageModule.touchstart && currentPageModule.touchstart(e);
+  if (typeof currentPageModule?.touchstart === 'function') {
+    currentPageModule.touchstart(e);
+  }
 });
 
 wx.onTouchMove(e => {
-  currentPageModule.touchmove && currentPageModule.touchmove(e);
+  if (typeof currentPageModule?.touchmove === 'function') {
+    currentPageModule.touchmove(e);
+  }
 });
 
 wx.onTouchEnd(e => {
-  currentPageModule.touchend && currentPageModule.touchend(e);
+  if (typeof currentPageModule?.touchend === 'function') {
+    currentPageModule.touchend(e);
+  }
 });
 
 // 主循环
-function loop(timestamp){
+function loop(timestamp) {
   requestAnimationFrame(loop);
-  currentPageModule.update?.(timestamp);
-  currentPageModule.draw?.(ctx);
+
+  // ✅ 判断是否存在当前页面并具备 update 和 draw 方法
+  if (currentPageModule?.update && currentPageModule?.draw) {
+    try {
+      currentPageModule.update(timestamp);
+      currentPageModule.draw(ctx);
+    } catch (err) {
+      console.error('[主循环错误]', err);
+    }
+  }
 }
 loop();

@@ -1,6 +1,9 @@
 let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
+let touchStart = null;     // 记录起始格子位置
+let dragStartX = 0;        // 记录滑动起点 X
+let dragStartY = 0;        // 记录滑动起点 Y
 let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
 let showGameOver = false;     // 是否触发失败弹窗
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
@@ -126,6 +129,10 @@ export function initGamePage(ctx, switchPage, canvas) {
   switchPageFn = switchPage;
   canvasRef = canvas;
 
+// ✅ 使用小游戏的全局触摸事件监听
+wx.onTouchStart(onTouch);
+wx.onTouchEnd(onTouchend);
+
   showGameOver = false;
   gaugeCount = 0;
   attackGaugeDamage = 0;
@@ -137,6 +144,8 @@ export function initGamePage(ctx, switchPage, canvas) {
   turnsLeft = m.skill.cooldown;
   drawGame();
 }
+
+
 
 function releaseAllReadySkills() {
   const charges = getCharges();
@@ -306,6 +315,7 @@ function drawUI() {
   const ctx = ctxRef;
   const canvas = canvasRef;
   const layoutRects = globalThis.layoutRects || [];
+  
 
    // ✅ 插入：让棋盘先声明其区域
    layoutRects.push({
@@ -668,159 +678,31 @@ function animateSwap(src, dst, callback, rollback = false) {
 }
 
 function onTouch(e) {
+  if (showGameOver || showVictoryPopup) return; // ✅ 游戏结束/胜利，不允许开始滑动
+
   const touch = e.changedTouches[0];
   const xTouch = touch.clientX;
   const yTouch = touch.clientY;
 
-  if (showVictoryPopup) {
-    const boxW = 280, boxH = 200;
-    const boxX = (canvasRef.width - boxW) / 2;
-    const boxY = (canvasRef.height - boxH) / 2;
-  
-    const btnX = boxX + 70;
-    const btnY = boxY + 130;
-    const btnW = 140;
-    const btnH = 40;
-  
-    if (
-      xTouch >= btnX && xTouch <= btnX + btnW &&
-      yTouch >= btnY && yTouch <= btnY + btnH
-    ) {
-         showVictoryPopup = false;
-      
-         // ① 清空旧棋盘，避免残留 null
-         initGrid();                 // <— 新增
-      
-         // ② 载入下一关怪物
-         const nextLevel = getNextLevel();
-         const m = loadMonster(nextLevel);
-         turnsLeft = m.skill.cooldown;
-      
-         // ③ 刷新画面
-         drawGame();
-    }
-  
-    return;
-  }
-  
-  
-
-
-
-
-  if (showGameOver) {
-    const boxX = (canvasRef.width - 260) / 2;
-    const boxY = (canvasRef.height - 160) / 2;
-  
-  
-    const btnX = boxX + 60;
-    const btnY = boxY + 100;
-    const btnW = 140;
-    const btnH = 40;
-  
-  // ✅ 使用绘制时同一套坐标
-  if (
-    xTouch >= btnX && xTouch <= btnX + btnW &&
-    yTouch >= btnY && yTouch <= btnY + btnH
-  ) {
-    switchPageFn('home');   // 返回主页
-  }
-  return;                   // 拦截其它点击
-  }
-  
-  if (xTouch >= 20 && xTouch <= 120 && yTouch >= 20 && yTouch <= 80) {
-    switchPageFn('home');
-    return;
-  }
-
-  /* === 点击头像 → 释放必杀 =============================== */
-{
-  const iconSize = 48;
-  const spacing  = 12;
-  const totalWidth = 5 * iconSize + 4 * spacing;
-  const startXHero = (canvasRef.width - totalWidth) / 2;
-  // 自动避让：让头像栏不压住上方任何 UI
-const maxBottom = layoutRects.reduce((max, r) => Math.max(max, r.y + r.height), 0);
-const topMargin = maxBottom + 12; // 往下留 12px 缝隙
-
-  const heroes = getSelectedHeroes();
-  for (let i = 0; i < 5; i++) {
-    const xIcon = startXHero + i * (iconSize + spacing);
-    const yIcon = topMargin;
-
-    if (
-      xTouch >= xIcon && xTouch <= xIcon + iconSize &&
-      yTouch >= yIcon && yTouch <= yIcon + iconSize
-    ) {
-      if (getCharges()[i] >= 100) {
-        releaseHeroSkill(i);  // 调用我们在步骤 2 新增的函数
-        drawGame();           // 立即刷新
-      }
-      return; // 点中了头像，无论是否释放技能，都不再处理网格点击
-    }
-  }
-}
-/* ===================================================== */
-
-
-const blockSize = __blockSize;
-const startX = __gridStartX;
-const startY = __gridStartY;
-
+  const blockSize = __blockSize;
+  const startX = __gridStartX;
+  const startY = __gridStartY;
   const col = Math.floor((xTouch - startX) / blockSize);
   const row = Math.floor((yTouch - startY) / blockSize);
 
-  if (row >= 0 && row < gridSize && col >= 0 && col < gridSize) {
-    if (!selected) {
-      selected = { row, col };
-      drawGame();
-    } else {
-      const dx = Math.abs(selected.col - col);
-      const dy = Math.abs(selected.row - row);
-      const isAdjacent = (dx + dy === 1);
-
-      if (isAdjacent) {
-        const src = { ...selected };
-        const dst = { row, col };
-
-        const temp = gridData[dst.row][dst.col];
-        gridData[dst.row][dst.col] = gridData[src.row][src.col];
-        gridData[src.row][src.col] = temp;
-
-        animateSwap(src, dst, () => {
-          if (checkAndClearMatches()) {
-            selected = null;
-
-                // === 玩家本次有效消除计数 ===
-              gaugeCount++;
-              if (gaugeCount >= 5) {
-                startAttackEffect(attackGaugeDamage);
-                gaugeCount = 0;
-                gaugeFlashTime = Date.now();
-              
-
-              }              
-
-           
-            processClearAndDrop();
-          } else {
-            const tempBack = gridData[dst.row][dst.col];
-            gridData[dst.row][dst.col] = gridData[src.row][src.col];
-            gridData[src.row][src.col] = tempBack;
-
-            animateSwap(src, dst, () => {
-              selected = null;
-              drawGame();
-            }, true);
-          }
-        });
-      } else {
-        selected = { row, col };
-        drawGame();
-      }
-    }
+  if (
+    row < 0 || row >= gridSize ||
+    col < 0 || col >= gridSize
+  ) {
+    return; // ⛳️ 不合法起点，忽略
   }
+
+  touchStart = { row, col };
+  dragStartX = xTouch;
+  dragStartY = yTouch;
 }
+
+
 
 // 其他函数保持不变
 
@@ -1045,15 +927,153 @@ export function updateGamePage() {
   updateAllEffects();
 }
 
-export function onTouchend(e){
-  onTouch(e);
+function onTouchend(e) {
+  const touch = e.changedTouches?.[0];
+  if (!touch) return;
+
+  const x = touch.clientX;
+  const y = touch.clientY;
+
+  // ✅ 胜利弹窗点击“下一关”
+  if (showVictoryPopup) {
+    const boxW = 280;
+    const boxH = 200;
+    const boxX = (canvasRef.width - boxW) / 2;
+    const boxY = (canvasRef.height - boxH) / 2;
+    const btnX = boxX + 70;
+    const btnY = boxY + 130;
+    const btnW = 140;
+    const btnH = 40;
+
+    const inVictoryBtn =
+      x >= btnX && x <= btnX + btnW &&
+      y >= btnY && y <= btnY + btnH;
+
+    if (inVictoryBtn) {
+      showVictoryPopup = false;
+
+      const monster = loadMonster(getNextLevel());
+      turnsLeft = monster.skill.cooldown;
+
+      initGrid();
+      drawGame(); // ✅ 立即刷新
+    }
+
+    return; // ❗ 禁止继续滑动行为
+  }
+
+  // ✅ 失败弹窗点击“回到主页”
+  if (showGameOver) {
+    const boxW = 260;
+    const boxH = 160;
+    const boxX = (canvasRef.width - boxW) / 2;
+    const boxY = (canvasRef.height - boxH) / 2;
+    const btnX = boxX + 60;
+    const btnY = boxY + 100;
+    const btnW = 140;
+    const btnH = 40;
+
+    const inGameOverBtn =
+      x >= btnX && x <= btnX + btnW &&
+      y >= btnY && y <= btnY + btnH;
+
+      if (inGameOverBtn) {
+        switchPageFn?.('home', () => {
+          destroyGamePage();
+        });
+      }
+      
+
+    return; // ❗ 禁止继续滑动行为
+  }
+
+  if (!touchStart) return;
+
+  // ✅ 滑动处理逻辑保持不变
+  const endX = touch.clientX;
+  const endY = touch.clientY;
+  const dx = endX - dragStartX;
+  const dy = endY - dragStartY;
+
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+
+  let target = null;
+
+  if (absX > absY) {
+    if (dx > 20 && touchStart.col < gridSize - 1) {
+      target = { row: touchStart.row, col: touchStart.col + 1 };
+    } else if (dx < -20 && touchStart.col > 0) {
+      target = { row: touchStart.row, col: touchStart.col - 1 };
+    }
+  } else {
+    if (dy > 20 && touchStart.row < gridSize - 1) {
+      target = { row: touchStart.row + 1, col: touchStart.col };
+    } else if (dy < -20 && touchStart.row > 0) {
+      target = { row: touchStart.row - 1, col: touchStart.col };
+    }
+  }
+
+  if (target) {
+    handleSwap(touchStart, target);
+  } else {
+    if (!selected) {
+      selected = touchStart;
+    } else {
+      const dx = Math.abs(selected.col - touchStart.col);
+      const dy = Math.abs(selected.row - touchStart.row);
+      const isAdjacent = (dx + dy === 1);
+      if (isAdjacent) {
+        handleSwap(selected, touchStart);
+      } else {
+        selected = touchStart;
+      }
+    }
+  }
+
+  touchStart = null;
 }
 
 
 
+function handleSwap(src, dst) {
+  const temp = gridData[dst.row][dst.col];
+  gridData[dst.row][dst.col] = gridData[src.row][src.col];
+  gridData[src.row][src.col] = temp;
+
+  animateSwap(src, dst, () => {
+    if (checkAndClearMatches()) {
+      selected = null;
+      gaugeCount++;
+      if (gaugeCount >= 5) {
+        startAttackEffect(attackGaugeDamage);
+        gaugeCount = 0;
+        gaugeFlashTime = Date.now();
+      }
+      processClearAndDrop();
+    } else {
+      // 撤销交换
+      const tempBack = gridData[dst.row][dst.col];
+      gridData[dst.row][dst.col] = gridData[src.row][src.col];
+      gridData[src.row][src.col] = tempBack;
+
+      animateSwap(src, dst, () => {
+        selected = null;
+        drawGame();
+      }, true);
+    }
+  });
+}
+
+
 function destroyGamePage() {
-    commitSessionCoins();
-  }
+  // ✅ 解绑触摸事件，避免重复绑定或内存泄漏
+  wx.offTouchStart(onTouch);
+  wx.offTouchEnd(onTouchend);
+
+  // ✅ 结算金币
+  commitSessionCoins();
+}
   
   export default {
     init: initGamePage,
