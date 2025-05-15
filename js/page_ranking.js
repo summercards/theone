@@ -2,7 +2,11 @@ let ctxRef;
 let switchPageFn;
 let canvasRef;
 
-const { drawRoundedRect } = require('./utils/canvas_utils.js'); // ✅ 引入你的圆角工具
+const { drawRoundedRect } = require('./utils/canvas_utils.js');
+const { shareMyStats } = require('./utils/share_utils.js');
+
+let rankingShareBtn = null;
+let rankingReturnBtn = null;
 
 export function initRankingPage(ctx, switchPage, canvas) {
   ctxRef = ctx;
@@ -10,7 +14,6 @@ export function initRankingPage(ctx, switchPage, canvas) {
   canvasRef = canvas;
 
   drawRankingUI();
-  canvasRef.addEventListener("touchstart", onTouch);
 }
 
 function drawRankingUI() {
@@ -44,7 +47,7 @@ function drawRankingUI() {
   ctxRef.fillText(`最高伤害：${stats.maxDamage}`, baseX, baseY + lineHeight);
   ctxRef.fillText(`最多金币：${stats.maxGold}`, baseX, baseY + lineHeight * 2);
 
-  // 📤 分享按钮（黄底圆角）
+  // 📤 分享按钮
   const shareBtnW = 140;
   const shareBtnH = 50;
   const shareBtnX = (canvasRef.width - shareBtnW) / 2;
@@ -60,7 +63,7 @@ function drawRankingUI() {
   ctxRef.textBaseline = "middle";
   ctxRef.fillText("分享", shareBtnX + shareBtnW / 2, shareBtnY + shareBtnH / 2);
 
-  // 🔙 返回按钮（紫底圆角）
+  // 🔙 返回按钮
   const returnBtnW = 140;
   const returnBtnH = 50;
   const returnBtnX = (canvasRef.width - returnBtnW) / 2;
@@ -73,36 +76,46 @@ function drawRankingUI() {
   ctxRef.fillStyle = "#fff";
   ctxRef.fillText("返回", returnBtnX + returnBtnW / 2, returnBtnY + returnBtnH / 2);
 
-  // ✅ 存储按钮交互区域
-  globalThis.rankingShareBtn = { x: shareBtnX, y: shareBtnY, width: shareBtnW, height: shareBtnH };
-  globalThis.rankingReturnBtn = { x: returnBtnX, y: returnBtnY, width: returnBtnW, height: returnBtnH };
+  // ✅ 存储交互区域（改为模块内变量）
+  rankingShareBtn = { x: shareBtnX, y: shareBtnY, width: shareBtnW, height: shareBtnH };
+  rankingReturnBtn = { x: returnBtnX, y: returnBtnY, width: returnBtnW, height: returnBtnH };
 }
 
 function onTouch(e) {
-  const touch = e.touches[0];
+  const touch = e.changedTouches[0];
   const x = touch.clientX;
   const y = touch.clientY;
 
-  const shareBtn = globalThis.rankingShareBtn;
-  const returnBtn = globalThis.rankingReturnBtn;
-
   if (
-    returnBtn &&
-    x >= returnBtn.x && x <= returnBtn.x + returnBtn.width &&
-    y >= returnBtn.y && y <= returnBtn.y + returnBtn.height
+    rankingReturnBtn &&
+    x >= rankingReturnBtn.x && x <= rankingReturnBtn.x + rankingReturnBtn.width &&
+    y >= rankingReturnBtn.y && y <= rankingReturnBtn.y + rankingReturnBtn.height
   ) {
     switchPageFn("home");
-    canvasRef.removeEventListener("touchstart", onTouch);
     return;
   }
 
   if (
-    shareBtn &&
-    x >= shareBtn.x && x <= shareBtn.x + shareBtn.width &&
-    y >= shareBtn.y && y <= shareBtn.y + shareBtn.height
+    rankingShareBtn &&
+    x >= rankingShareBtn.x && x <= rankingShareBtn.x + rankingShareBtn.width &&
+    y >= rankingShareBtn.y && y <= rankingShareBtn.y + rankingShareBtn.height
   ) {
-    const { shareMyStats } = require('./utils/share_utils.js');
     shareMyStats();
     return;
   }
 }
+
+// 🔄 保持 API 一致
+export function updateRankingPage() {}
+
+export function onTouchend(e) {
+  onTouch(e);
+}
+
+export default {
+  init: initRankingPage,
+  update: updateRankingPage,
+  draw: drawRankingUI,
+  onTouchend,
+  touchend: onTouchend,
+};
