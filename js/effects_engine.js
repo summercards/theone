@@ -29,12 +29,12 @@ export function drawAllEffects(ctx) {
 
     /* === Floating text ================================== */
     else if (e.type === 'float') {
-      const t = now - e.startTime, life = 800;
+      const t = now - e.startTime, life = 1800;
       if (t > life) { remove.push(i); return; }
       ctx.save();
       ctx.globalAlpha = 1 - t / life;
       ctx.fillStyle   = '#FF4444';
-      ctx.font        = 'bold 22px sans-serif';
+      ctx.font        = 'bold 52px sans-serif';
       ctx.textAlign   = 'center';
       ctx.fillText(e.text, e.x, e.y - t * 0.05);
       ctx.restore();

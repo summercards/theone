@@ -272,8 +272,7 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
     }
   }
 
-// 绘制特效（在方块之上）
-  drawAllEffects(ctxRef);
+
 
   // 在单独的绘制层绘制UI元素
   drawUI();
@@ -458,6 +457,31 @@ ctxRef.fillStyle = '#FFA';
 ctxRef.fillText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
 
 
+// === 左上角返回按钮（暗灰底小圆角 + 白色箭头） ====================
+const btnBackX = 20;
+const btnBackY = 20;
+const btnBackSize = 36;
+
+ctxRef.fillStyle = '#333'; // 暗灰底
+drawRoundedRect(ctxRef, btnBackX, btnBackY, btnBackSize, btnBackSize, 6);
+ctxRef.fill();
+
+ctxRef.fillStyle = '#FFF'; // 白色箭头
+ctxRef.font = '20px sans-serif';
+ctxRef.textAlign = 'center';
+ctxRef.textBaseline = 'middle';
+ctxRef.fillText('⟵', btnBackX + btnBackSize / 2, btnBackY + btnBackSize / 2);
+
+// 存按钮区域
+globalThis.backToHomeBtn = {
+  x: btnBackX,
+  y: btnBackY,
+  width: btnBackSize,
+  height: btnBackSize
+};
+
+
+
 
 /* --- 操作计数展示 --- */
 // === 操作计数展示（固定在棋盘上方） ===
@@ -602,7 +626,7 @@ if (showGameOver) {
 }
 
   globalThis.layoutRects = layoutRects;
-
+  drawAllEffects(ctxRef);
 }
 
 function animateSwap(src, dst, callback, rollback = false) {
@@ -1003,6 +1027,17 @@ function onTouchend(e) {
     return; // ❗ 禁止继续滑动行为
   }
 
+  // ✅ 检测是否点击了左上角“返回”按钮
+const btn = globalThis.backToHomeBtn;
+if (btn &&
+    x >= btn.x && x <= btn.x + btn.width &&
+    y >= btn.y && y <= btn.y + btn.height) {
+  switchPageFn?.('home', () => {
+    destroyGamePage(); // 清理资源
+  });
+  return; // ✅ 不再继续处理滑动
+}
+
   if (!touchStart) return;
 
   // ✅ 滑动处理逻辑保持不变
@@ -1150,7 +1185,7 @@ function startAttackEffect(dmg) {
     monsterHitFlashTime = Date.now();
 
     // 飘字
-    createFloatingText(`-${pendingDamage}`, endX, endY - 40);
+    createFloatingText(`-${pendingDamage}`, endX, endY + 50);
 
     pendingDamage = 0;
 
