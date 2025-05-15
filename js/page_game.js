@@ -1192,19 +1192,21 @@ function startAttackEffect(dmg) {
     pendingDamage = 0;
 
     if (isMonsterDead()) {
-      earnedGold = getMonsterGold();
-      addCoins(earnedGold);
-      levelJustCompleted = getNextLevel() - 1;
-      showVictoryPopup = true;
-    
-      rewardExpToHeroes(50); // 或其他默认经验值
-    
-      // ✅ 记录通关数据和伤害数据
-  // ✅ 正确使用 dmg 而不是 attackGaugeDamage
-  updatePlayerStats({
-    stage: levelJustCompleted,
-    damage: dmg
-  });
+        setTimeout(() => {
+          earnedGold = getMonsterGold();
+          addCoins(earnedGold);
+          levelJustCompleted = getNextLevel() - 1;
+          showVictoryPopup = true;
+      
+          rewardExpToHeroes(50);
+      
+          updatePlayerStats({
+            stage: levelJustCompleted,
+            damage: dmg
+          });
+      
+          drawGame(); // ✅ 立即刷新界面（否则可能不显示）
+        }, 600); // ✅ 延迟 600 毫秒后执行
     
       return; // ❗很重要：停止继续 loadMonster
     } else {
