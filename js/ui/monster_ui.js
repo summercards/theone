@@ -96,10 +96,26 @@ let y = Math.max(32, gridTop - 320);  // 让怪物始终在棋盘上方一定高
   ctx.fillStyle = '#ff4444';
   drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
 
-  // 文字信息
-  ctx.fillStyle = '#fff';
-  ctx.font = '12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${monster.hp} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
-  ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, barY + BAR_H + 8);
+// 文字信息
+ctx.fillStyle = '#fff';
+ctx.font = 'bold 14px sans-serif';
+ctx.textAlign = 'center';
+
+// 血量显示（仍在血条中心）
+ctx.lineWidth = 2;
+ctx.strokeStyle = '#000';
+ctx.strokeText(`${monster.hp} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
+ctx.fillStyle = '#fff';
+ctx.fillText(`${monster.hp} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
+
+// 名称 + 等级（移到怪物上方）
+const nameY = y - 16; // 位置：怪物图像正上方（可调）
+ctx.font = 'bold 18px sans-serif';
+ctx.lineWidth = 3;
+ctx.strokeStyle = '#000';
+ctx.strokeText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
+ctx.fillStyle = '#fff';
+ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
+
+  
 }

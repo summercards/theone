@@ -339,32 +339,6 @@ function drawUI() {
   });
 
 
-
-// 主页按钮绘制（紫色样式 + 返回箭头）
-const btnX = 20;
-const btnY = 50; // 👈 向下移动一点（原来是 20）
-const btnW = 50;
-const btnH = 40;
-
-// 背景（紫色按钮）
-ctxRef.fillStyle = '#9933CC'; // 与截图中按钮风格一致
-ctxRef.fillRect(btnX, btnY, btnW, btnH);
-
-// 可选：圆角处理
-ctxRef.lineJoin = 'round';
-ctxRef.lineWidth = 8;
-ctxRef.strokeStyle = '#9933CC';
-ctxRef.strokeRect(btnX + 1, btnY + 1, btnW - 2, btnH - 2);
-
-// 文字样式
-ctxRef.fillStyle = 'white';
-ctxRef.font = '18px sans-serif';
-ctxRef.textAlign = 'center';
-ctxRef.textBaseline = 'middle';
-
-// 显示“←主页”
-ctxRef.fillText('主页', btnX + btnW / 2, btnY + btnH / 2);
-
 drawMonsterSprite(ctxRef, canvasRef); 
 
 /* === 出战栏：固定 5 槽位 + 编号（原来绿色框位置） ================ */
@@ -453,19 +427,37 @@ ctxRef.restore(); // 恢复 canvas 状态
 
   /* === 本局金币 HUD ============================== */
   ctxRef.resetTransform?.();      // 小程序 2.32 起支持；低版本可再 setTransform(1…)
-  ctxRef.fillStyle   = '#FFD700';
-  ctxRef.font        = '18px IndieFlower, sans-serif';
-  ctxRef.textAlign   = 'left';
-  ctxRef.textBaseline= 'top';
+  ctxRef.font = 'bold 18px IndieFlower, sans-serif';
+  ctxRef.textAlign = 'left';
+  ctxRef.textBaseline = 'top';
+  
+  // 描边
+  ctxRef.lineWidth = 2;
+  ctxRef.strokeStyle = '#000';
+  ctxRef.strokeText(`金币: ${getSessionCoins()}`, 26, 116);
+  
+  // 填充
+  ctxRef.fillStyle = '#FFD700';
   ctxRef.fillText(`金币: ${getSessionCoins()}`, 26, 116);
 ctxRef.restore();
 /* ======================================================== */
 
 // === 回合 HUD ===
-ctxRef.fillStyle = '#FFA';
-ctxRef.font = '18px sans-serif';
+// === 回合 HUD（加粗 + 描边） ===
+ctxRef.font = 'bold 18px sans-serif';
 ctxRef.textAlign = 'right';
+ctxRef.textBaseline = 'top';
+
+// 描边
+ctxRef.lineWidth = 2;
+ctxRef.strokeStyle = '#000';
+ctxRef.strokeText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
+
+// 填充
+ctxRef.fillStyle = '#FFA';
 ctxRef.fillText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
+
+
 
 /* --- 操作计数展示 --- */
 // === 操作计数展示（固定在棋盘上方） ===
@@ -480,10 +472,18 @@ if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
 }
 
 // 设置文字样式
-ctxRef.fillStyle = color;
-ctxRef.font = '14px sans-serif';
+ctxRef.font = 'bold 16px sans-serif';
 ctxRef.textAlign = 'center';
 ctxRef.textBaseline = 'middle';
+
+// 描边
+ctxRef.lineWidth = 2;
+ctxRef.strokeStyle = '#000';
+ctxRef.strokeText(countText, countX, countY);
+
+// 填充
+ctxRef.fillStyle = color;
+ctxRef.fillText(countText, countX, countY);
 
 // ✅ 直接居中固定在棋盘上方 20px
 const countX = canvasRef.width / 2;
