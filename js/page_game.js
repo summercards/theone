@@ -18,6 +18,7 @@ import { renderBlockC } from './block_effects/block_C.js';
 import { renderBlockD } from './block_effects/block_D.js';
 import { renderBlockE } from './block_effects/block_E.js';
 import { renderBlockF } from './block_effects/block_F.js';
+import { applySkillEffect } from './logic/skill_logic.js';
 
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 
@@ -1099,50 +1100,31 @@ function destroyGamePage() {
     destroy: destroyGamePage
   };
 
-function releaseHeroSkill(slotIndex) {
-  const hero = getSelectedHeroes()[slotIndex];
-  if (!hero) return;
-
-  const eff = hero.skill?.effect;
-  if (!eff) return;
-
-  switch (eff.type) {
-    /* ----------------- ① 通用伤害 ----------------- */
-    case 'physicalDamage':
-      case 'magicalDamage':
-        dealDamage(eff.amount);
-        logBattle(`${hero.name} 释放技能：造成${eff.type === 'physicalDamage' ? '物理' : '法术'}伤害 ${eff.amount} 点`);
-        break;
-
-        /* ---------- 新增：翻倍伤害槽 ---------- */
-  case 'mulGauge':
-    attackGaugeDamage = Math.round(attackGaugeDamage * (eff.factor ?? 1));
-    damagePopTime     = Date.now();   // 触发数字弹跳
-    break;
-
-    /* --------------- ② 新增 addGauge -------------- */
-    case 'addGauge': {
-      let add = 0;
-      if ('value' in eff)          add = eff.value;                       // 固定值
-      else if (eff.source === 'physical')
-        add = hero.attributes.physical * (eff.scale ?? 1);
-      else if (eff.source === 'magical')
-        add = hero.attributes.magical * (eff.scale ?? 1);
-
-      attackGaugeDamage += Math.round(add);
-      damagePopTime      = Date.now();    // 让数字弹跳
-      break;
-    }
-
-    /* ---------------- ③ 预留其它 ------------------ */
-    default:
-      console.warn('未知技能类型', eff.type);
+  function releaseHeroSkill(slotIndex) {
+    const hero = getSelectedHeroes()[slotIndex];
+    if (!hero) return;
+  
+    const eff = hero.skill?.effect;
+    if (!eff) return;
+  
+    const context = {
+      dealDamage,
+      log: logBattle,
+      addGauge: (value) => {
+        attackGaugeDamage += Math.round(value);
+        damagePopTime = Date.now();
+      },
+      mulGauge: (factor) => {
+        attackGaugeDamage = Math.round(attackGaugeDamage * factor);
+        damagePopTime = Date.now();
+      }
+    };
+  
+    applySkillEffect(hero, eff, context);
+    setCharge(slotIndex, 0);
+    createExplosion(canvasRef.width / 2, canvasRef.height / 2);
   }
-
-  /* 收尾：清蓄力 & 特效 */
-  setCharge(slotIndex, 0);
-  createExplosion(canvasRef.width / 2, canvasRef.height / 2);
-}
+  
 
 
 function startAttackEffect(dmg) {

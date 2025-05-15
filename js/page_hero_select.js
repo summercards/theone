@@ -220,8 +220,8 @@ if (hit(x, y, globalThis.adBtnRect)) {
     success(res) {
       if (res.confirm) {
         const coins = getTotalCoins();
-        wx.setStorageSync('totalCoins', coins + 100);
-        wx.showToast({ title: '金币 +100', icon: 'success' });
+        wx.setStorageSync('totalCoins', coins + 5000);
+        wx.showToast({ title: '金币 +5000', icon: 'success' });
         render();
       } else {
         wx.showToast({ title: '观看未完成', icon: 'none' });
@@ -674,7 +674,7 @@ function drawIcon(ctx, hero, x, y, size = ICON) {
     // ==== 品质描边 ====
     const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
     ctx.strokeStyle = rarityColor;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 3;
     drawRoundedRect(ctx, x, y, size, size, 8, false, true);
   
     // ==== 名称 / 职业 ====
