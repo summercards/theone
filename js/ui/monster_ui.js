@@ -77,9 +77,19 @@ let y = Math.max(32, gridTop - 320);  // 让怪物始终在棋盘上方一定高
   const imgReady = img && img.width && img.complete;
   if (imgReady) {
     const flash = Date.now() - monsterHitFlashTime < 200;
+    const scale = globalThis.monsterScale || 1;
+  
+    const cx = x + SPR_W / 2;
+    const cy = y + SPR_H / 2;
+  
     ctx.save();
+    ctx.translate(cx, cy);         // 移动到怪物中心
+    ctx.scale(scale, scale);       // 弹性缩放
+    ctx.translate(-SPR_W / 2, -SPR_H / 2); // 再偏移回图像原点
+  
     if (flash) ctx.filter = 'brightness(2)';
-    ctx.drawImage(img, x, y, SPR_W, SPR_H);
+  
+    ctx.drawImage(img, 0, 0, SPR_W, SPR_H);
     ctx.restore();
   }
 

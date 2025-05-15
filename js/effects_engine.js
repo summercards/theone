@@ -17,6 +17,18 @@ export function drawAllEffects(ctx) {
   const remove = [];
 
   effects.forEach((e, i) => {
+    if (e.type === 'monster_bounce') {
+        const t = now - e.startTime;
+        if (t > e.duration) {
+          globalThis.monsterScale = 1; // 重置
+          remove.push(i);
+          return;
+        }
+      
+        const p = t / e.duration;
+        const scale = 1 + 0.2 * Math.sin(p * Math.PI); // 弹性放大缩小
+        globalThis.monsterScale = scale;
+      }
     /* === Projectile ===================================== */
     if (e.type === 'proj') {
       const p = Math.min(1, (now - e.startTime) / e.duration);
@@ -29,14 +41,14 @@ export function drawAllEffects(ctx) {
 
     /* === Floating text ================================== */
     else if (e.type === 'float') {
-      const t = now - e.startTime, life = 1800;
+      const t = now - e.startTime, life = 1200;
       if (t > life) { remove.push(i); return; }
       ctx.save();
       ctx.globalAlpha = 1 - t / life;
       ctx.fillStyle   = '#FF4444';
-      ctx.font        = 'bold 52px sans-serif';
+      ctx.font = 'bold 36px sans-serif';
       ctx.textAlign   = 'center';
-      ctx.fillText(e.text, e.x, e.y - t * 0.05);
+      ctx.fillText(e.text, e.x, e.y - t * 0.03);
       ctx.restore();
     } else if (e.type === 'pop') {
         const elapsed = now - e.startTime;
@@ -92,9 +104,9 @@ export function drawAllEffects(ctx) {
 export function createProjectile(x0, y0, x1, y1, duration, onArrive) {
   effects.push({ type:'proj', x0, y0, x1, y1, duration, startTime:Date.now(), onArrive });
 }
-export function createFloatingText(text, x, y) {
-  effects.push({ type:'float', text, x, y, startTime: Date.now() });
-}
+export function createFloatingText(text, x, y, color = '#FF4444', size = 36, duration = 1000) {
+    effects.push({ type: 'float', text, x, y, color, size, duration, startTime: Date.now() });
+  }
 
 export function createExplosion(x, y, color = '#FFD700') {
     for (let i = 0; i < 8; i++) {
@@ -128,4 +140,10 @@ export function createExplosion(x, y, color = '#FFD700') {
     });
   }
 
-  
+  export function createMonsterBounce(duration = 300) {
+    effects.push({
+      type: 'monster_bounce',
+      startTime: Date.now(),
+      duration
+    });
+  }
