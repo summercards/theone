@@ -19,6 +19,8 @@ import { renderBlockD } from './block_effects/block_D.js';
 import { renderBlockE } from './block_effects/block_E.js';
 import { renderBlockF } from './block_effects/block_F.js';
 
+import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
+
 globalThis.renderBlockA = renderBlockA;
 globalThis.renderBlockB = renderBlockB;
 globalThis.renderBlockC = renderBlockC;
@@ -1178,14 +1180,21 @@ function startAttackEffect(dmg) {
     
       rewardExpToHeroes(50); // 或其他默认经验值
     
+      // ✅ 记录通关数据和伤害数据
+  // ✅ 正确使用 dmg 而不是 attackGaugeDamage
+  updatePlayerStats({
+    stage: levelJustCompleted,
+    damage: dmg
+  });
+    
       return; // ❗很重要：停止继续 loadMonster
-    }else {
-      turnsLeft--; // 🟡 仅当怪物未死时扣回合
-
+    } else {
+      turnsLeft--;
+    
       if (turnsLeft <= 0) {
         showGameOver = true;
       } else {
-        monsterTurn(); // 回合怪物出手
+        monsterTurn();
       }
     }
 

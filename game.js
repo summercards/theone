@@ -3,15 +3,25 @@ import PageLoading    from './js/page_loading.js';
 import PageHome       from './js/page_home.js';
 import PageHeroSelect from './js/page_hero_select.js';
 import PageGame       from './js/page_game.js';
+import { initRankingPage } from './js/page_ranking'; // 新增
 
 const canvas = wx.createCanvas();
 const ctx     = canvas.getContext('2d');
 
+// 排行榜页面封装为模块形式，统一接口
+const PageRanking = {
+  init: initRankingPage,
+  update: () => {},
+  draw: () => {},
+  touchend: () => {}
+};
+
 const pages = {
-  loading:    PageLoading,      // 注册加载页面
+  loading:    PageLoading,
   home:       PageHome,
   heroSelect: PageHeroSelect,
-  game:       PageGame
+  game:       PageGame,
+  ranking:    PageRanking       // ✅ 注册排行榜页面
 };
 
 let currentPageName   = 'home';
@@ -23,14 +33,16 @@ function switchPage(name, onFinish) {
   currentPageModule = pages[name];
   currentPageModule.init?.(ctx, switchPage, canvas);
   if (typeof onFinish === 'function') {
-    setTimeout(onFinish, 0); // 👈 确保切换后再执行回调
+    setTimeout(onFinish, 0);
   }
 }
 
-
 // 初始页
-switchPage('loading'); // ⬅️ 启动先进入 loading 页面
+switchPage('loading');
 
+wx.showShareMenu({
+  withShareTicket: true
+});
 // 统一事件代理
 wx.onTouchStart(e => {
   if (typeof currentPageModule?.touchstart === 'function') {
@@ -54,7 +66,6 @@ wx.onTouchEnd(e => {
 function loop(timestamp) {
   requestAnimationFrame(loop);
 
-  // ✅ 判断是否存在当前页面并具备 update 和 draw 方法
   if (currentPageModule?.update && currentPageModule?.draw) {
     try {
       currentPageModule.update(timestamp);

@@ -1,8 +1,11 @@
 let ctxRef;
 let switchPageFn;
 let canvasRef;
+let rankingBtnArea = null;
+let shareBtnArea = null;
 
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
+const { shareMyStats } = require('./utils/share_utils.js');
 
 export function initHomePage(ctx, switchPage, canvas) {
   ctxRef = ctx;
@@ -13,12 +16,12 @@ export function initHomePage(ctx, switchPage, canvas) {
 }
 
 function drawHomeUI() {
-  const btnWidth = 180;  // ✅ 缩小为原来的 60%
+  const btnWidth = 180;
   const btnHeight = 60;
   const x = (canvasRef.width - btnWidth) / 2;
-  const y = canvasRef.height * 0.8;
+  const y = canvasRef.height * 0.75;
 
-  // ✅ 背景图（按比例缩放并居中，不拉伸）
+  // 背景图
   const bgImg = globalThis.imageCache['bg'];
   if (bgImg && bgImg.complete) {
     const imgRatio = bgImg.width / bgImg.height;
@@ -42,35 +45,86 @@ function drawHomeUI() {
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
   }
 
-
-  // ✅ 圆角按钮
+  // "进入酒吧"按钮
   ctxRef.fillStyle = '#f00';
-  drawRoundedRect(ctxRef, x, y, btnWidth, btnHeight, 20); // 圆角半径 20
+  drawRoundedRect(ctxRef, x, y, btnWidth, btnHeight, 20);
   ctxRef.fill();
 
-  // ✅ 按钮文字
   ctxRef.fillStyle = 'white';
   ctxRef.font = '28px sans-serif';
   ctxRef.textAlign = 'center';
   ctxRef.textBaseline = 'middle';
   ctxRef.fillText('进入酒吧', x + btnWidth / 2, y + btnHeight / 2);
+
+  // 横排按钮（排行榜 + 分享）
+  const smallBtnWidth = 140;
+  const smallBtnHeight = 50;
+  const spacing = 20;
+  const totalWidth = smallBtnWidth * 2 + spacing;
+  const baseX = (canvasRef.width - totalWidth) / 2;
+  const btnY = y + btnHeight + 20;
+
+  // 排行榜按钮（左）
+  ctxRef.fillStyle = '#333';
+  drawRoundedRect(ctxRef, baseX, btnY, smallBtnWidth, smallBtnHeight, 16);
+  ctxRef.fill();
+  ctxRef.fillStyle = 'white';
+  ctxRef.font = '22px sans-serif';
+  ctxRef.fillText('排行榜', baseX + smallBtnWidth / 2, btnY + smallBtnHeight / 2);
+  rankingBtnArea = {
+    x: baseX,
+    y: btnY,
+    width: smallBtnWidth,
+    height: smallBtnHeight
+  };
+
+  // 分享按钮（右）
+  const shareX = baseX + smallBtnWidth + spacing;
+  ctxRef.fillStyle = '#0066cc';
+  drawRoundedRect(ctxRef, shareX, btnY, smallBtnWidth, smallBtnHeight, 16);
+  ctxRef.fill();
+  ctxRef.fillStyle = 'white';
+  ctxRef.fillText('分享', shareX + smallBtnWidth / 2, btnY + smallBtnHeight / 2);
+  shareBtnArea = {
+    x: shareX,
+    y: btnY,
+    width: smallBtnWidth,
+    height: smallBtnHeight
+  };
 }
 
-// 点击事件判断是否点中按钮
 function onTouch(e) {
   const touch = e.changedTouches[0];
   const xTouch = touch.clientX;
   const yTouch = touch.clientY;
 
-  const btnWidth = 180;  // ✅ 同样修改点击区域匹配按钮大小
+  const btnWidth = 180;
   const btnHeight = 60;
   const x = (canvasRef.width - btnWidth) / 2;
-  const y = canvasRef.height * 0.8;
+  const y = canvasRef.height * 0.75;
 
   console.log('[DEBUG] 首页按钮点击检测中...');
 
+  // 点击“进入酒吧”
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= y && yTouch <= y + btnHeight) {
     switchPageFn('heroSelect');
+    return;
+  }
+
+  // 点击“排行榜”
+  if (rankingBtnArea &&
+      xTouch >= rankingBtnArea.x && xTouch <= rankingBtnArea.x + rankingBtnArea.width &&
+      yTouch >= rankingBtnArea.y && yTouch <= rankingBtnArea.y + rankingBtnArea.height) {
+    switchPageFn('ranking');
+    return;
+  }
+
+  // 点击“分享”
+  if (shareBtnArea &&
+      xTouch >= shareBtnArea.x && xTouch <= shareBtnArea.x + shareBtnArea.width &&
+      yTouch >= shareBtnArea.y && yTouch <= shareBtnArea.y + shareBtnArea.height) {
+    shareMyStats();
+    return;
   }
 }
 

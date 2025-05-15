@@ -4,7 +4,7 @@ const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
 let showUpgradeButtons = false;
 let showDialog = true;
 let dialogInterval = null; // ✅ 放到最顶层作用域
-
+import { updatePlayerStats } from './utils/player_stats.js';  // 顶部添加
 // 🗨️ 随机台词池（酒馆NPC）
 const barDialogLines = [
   "欢迎来到地狱酒馆，勇者…你可真香。",
@@ -104,6 +104,10 @@ let ctxRef, canvasRef, switchPageFn;
     ctxRef = ctx;
     canvasRef = canvas;
     switchPageFn = switchPage;
+
+      // ⬇️ 在初始化后立即记录当前金币
+  const currentGold = getTotalCoins();
+  updatePlayerStats({ gold: currentGold });
   
     dialogInterval = setInterval(() => {
       barDialogText = barDialogLines[Math.floor(Math.random() * barDialogLines.length)];
