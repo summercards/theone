@@ -35,7 +35,8 @@ import {
     createFloatingText,
     createPopEffect,
     createExplosion,
-    createMonsterBounce      // ✅ 加入这个
+    createMonsterBounce, 
+    createAvatarFlash      // ✅ 加入这个
 } from './effects_engine.js';
   
 import { getSelectedHeroes } from './data/hero_state.js';
@@ -566,7 +567,14 @@ for (let i = 0; i < 5; i++) {
     if (hero) {
       const cached = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
       if (cached) {
-        ctxRef.drawImage(cached, sx, sy, size, size);
+        const scale = (globalThis.avatarSlotScales?.[i]) || 1.0;
+        const cx = sx + size / 2;
+        const cy = sy + size / 2;
+        ctxRef.save();
+        ctxRef.translate(cx, cy);
+        ctxRef.scale(scale, scale);
+        ctxRef.drawImage(cached, -size / 2, -size / 2, size, size);
+        ctxRef.restore();
       }
   
       // 等级文本
@@ -627,7 +635,7 @@ if (showGameOver) {
 }
 
   globalThis.layoutRects = layoutRects;
-  drawAllEffects(ctxRef);
+  drawAllEffects(ctxRef, canvasRef);
 }
 
 function animateSwap(src, dst, callback, rollback = false) {
@@ -1159,6 +1167,19 @@ function destroyGamePage() {
     applySkillEffect(hero, eff, context);
     setCharge(slotIndex, 0);
     createExplosion(canvasRef.width / 2, canvasRef.height / 2);
+      // ✅ 技能表现：触发头像动画（默认样式）
+      createAvatarFlash(slotIndex, 1.3, 500); 
+
+  // ✅ 可扩展技能特效表现
+  if (hero.id === 'hero003') {
+    // 示例：法师英雄释放火球术
+    createFloatingText('火球术！', canvasRef.width / 2, 160, '#FF6600');
+    createExplosion(canvasRef.width / 2, 140, '#FF3300');
+  } else if (hero.id === 'hero006') {
+    // 示例：牧师英雄释放圣光祷言
+    createFloatingText('圣光祷言', canvasRef.width / 2, 160, '#66FFFF');
+  }
+
   }
   
 
