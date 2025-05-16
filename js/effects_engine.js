@@ -41,16 +41,36 @@ export function drawAllEffects(ctx) {
 
     /* === Floating text ================================== */
     else if (e.type === 'float') {
-      const t = now - e.startTime, life = 1200;
+      const t = now - e.startTime;
+      const life = e.duration || 1000;
       if (t > life) { remove.push(i); return; }
+    
       ctx.save();
       ctx.globalAlpha = 1 - t / life;
-      ctx.fillStyle   = '#FF4444';
-      ctx.font = 'bold 36px sans-serif';
-      ctx.textAlign   = 'center';
-      ctx.fillText(e.text, e.x, e.y - t * 0.03);
+    
+      // 样式设置
+      ctx.font = `bold ${e.size || 36}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'black';
+      ctx.shadowBlur = 6;
+    
+      // 动画 - 上升 & 缩放
+      const scale = 1 + 0.2 * Math.sin((1 - t / life) * Math.PI);
+      ctx.translate(e.x, e.y - t * 0.05);
+      ctx.scale(scale, scale);
+    
+      // 设置颜色和描边
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = e.color || '#FFD700';
+    
+      ctx.strokeText(e.text, 0, 0);
+      ctx.fillText(e.text, 0, 0);
+    
       ctx.restore();
-    } else if (e.type === 'pop') {
+    }
+    
+     else if (e.type === 'pop') {
         const elapsed = now - e.startTime;
         const p = Math.min(1, elapsed / e.duration); // 计算动画的进度
         

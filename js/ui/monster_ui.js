@@ -58,8 +58,8 @@ export function drawMonsterSprite(ctx, canvas) {
   }
 
   const img = monsterImageCache[monster.id];
-  const SPR_W = 120;
-  const SPR_H = 120;
+  const SPR_W = 360;
+  const SPR_H = 180;
   let x = (canvas.width - SPR_W) / 2;
   let gridTop = globalThis.__gridStartY || (canvas.height * 0.7);  // Fallback
 let y = Math.max(32, gridTop - 320);  // 让怪物始终在棋盘上方一定高度
