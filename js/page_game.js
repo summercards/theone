@@ -37,7 +37,8 @@ import {
     createPopEffect,
     createExplosion,
     createMonsterBounce, 
-    createAvatarFlash      // ✅ 加入这个
+    createAvatarFlash, 
+    createShake    
 } from './effects_engine.js';
   
 import { getSelectedHeroes } from './data/hero_state.js';
