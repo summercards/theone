@@ -368,60 +368,67 @@ if (attackDisplayDamage < attackGaugeDamage) {
   attackDisplayDamage = attackGaugeDamage;
 }
 
-// 2. 缩放动画
+// 🎯 动态缩放动画
 let fontScale = 1;
 const popDur = 400;
 if (Date.now() - damagePopTime < popDur) {
   const p = 1 - (Date.now() - damagePopTime) / popDur;
-  fontScale = 1 + 0.6 * p;
+  fontScale = 1 + 0.8 * Math.sin(p * Math.PI); // 更弹性
 }
 
-// 3. 样式设置（根据伤害值调整）
-const baseFont = attackDisplayDamage > 500 ? 28 : 20;
+// 🎯 多层级样式设定
+let baseFont = 20;
+let gradient, strokeWidth;
+
+if (attackDisplayDamage > 10000) {
+  baseFont = 60;
+  gradient = ctxRef.createLinearGradient(0, 0, 0, 60);
+  gradient.addColorStop(0, '#FFFF00');
+  gradient.addColorStop(1, '#FF0000');
+  strokeWidth = 5;
+  createShake?.(500, 6); // ✅ 触发震屏特效（从 effects_engine.js 来）
+} else if (attackDisplayDamage > 2000) {
+  baseFont = 40;
+  gradient = ctxRef.createLinearGradient(0, 0, 0, 40);
+  gradient.addColorStop(0, '#FF9900');
+  gradient.addColorStop(1, '#FF2200');
+  strokeWidth = 4;
+} else if (attackDisplayDamage > 500) {
+  baseFont = 28;
+  gradient = ctxRef.createLinearGradient(0, 0, 0, 28);
+  gradient.addColorStop(0, '#FFA500');
+  gradient.addColorStop(1, '#FF4500');
+  strokeWidth = 3.5;
+} else {
+  baseFont = 20;
+  gradient = ctxRef.createLinearGradient(0, 0, 0, 20);
+  gradient.addColorStop(0, '#FF4444');
+  gradient.addColorStop(1, '#CC0000');
+  strokeWidth = 3;
+}
+
 const fontSize = Math.floor(baseFont * fontScale);
 
-// === 攻击数值巢显示（固定相对位置 + 居中 + 动态样式） ===
+// 🎯 绘制位置设定
+const DAMAGE巢顶部 = __gridStartY - 170;
+const DAMAGE巢底部 = __gridStartY - 80;
+const centerY = (DAMAGE巢顶部 + DAMAGE巢底部) / 2;
 
-ctxRef.save();                         // 保存 canvas 当前状态
-ctxRef.setTransform(1, 0, 0, 1, 0, 0); // 重置任何缩放或位移
-
-ctxRef.font = `bold ${fontSize}px sans-serif`;
+// 🎯 绘制
+ctxRef.save();
+ctxRef.setTransform(1, 0, 0, 1, 0, 0);
+ctxRef.font = `bold ${fontSize}px Impact, sans-serif`;
 ctxRef.textAlign = 'center';
 ctxRef.textBaseline = 'middle';
 
-// 渐变色与发光（根据伤害等级调整）
-let gradient, shadowColor;
-if (attackDisplayDamage > 500) {
-  gradient = ctxRef.createLinearGradient(0, 0, 0, fontSize);
-  gradient.addColorStop(0, '#FFA500'); // 橙
-  gradient.addColorStop(1, '#FF4500'); // 深橙红
-  shadowColor = '#FF6600';
-} else {
-  gradient = ctxRef.createLinearGradient(0, 0, 0, fontSize);
-  gradient.addColorStop(0, '#FF4444');
-  gradient.addColorStop(1, '#CC0000');
-  shadowColor = '#FF3333';
-}
-
 ctxRef.fillStyle = gradient;
-ctxRef.shadowColor = shadowColor;
-ctxRef.shadowBlur = attackDisplayDamage > 500 ? 12 : 6;
-ctxRef.lineWidth = 4;
+ctxRef.lineWidth = strokeWidth;
 ctxRef.strokeStyle = '#000';
-
-// 可调节参数：决定攻击数字区域（相对棋盘位置）
-const DAMAGE巢顶部 = __gridStartY - 170;  // 距离棋盘顶部的像素（靠近血条）
-const DAMAGE巢底部 = __gridStartY - 80;   // 距离棋盘顶部的像素（靠近头像栏）
-const centerY = (DAMAGE巢顶部 + DAMAGE巢底部) / 2;  // 中间点
-
-// 渲染攻击数字（带描边 + 填充）
 ctxRef.strokeText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
 ctxRef.fillText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
-// 重置阴影效果，避免影响后续 UI 绘制
-ctxRef.shadowColor = 'transparent';
-ctxRef.shadowBlur = 0;
+ctxRef.restore();
 
-ctxRef.restore(); // 恢复 canvas 状态
+
 
 
 

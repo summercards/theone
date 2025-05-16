@@ -25,7 +25,6 @@ export function drawAllEffects(ctx, canvas) {
 
       const slotIndex = e.slotIndex;
       const scale = 1 + (e.scale - 1) * Math.sin(p * Math.PI);
-  
 
       // 计算头像位置
       const size = 48;
@@ -40,16 +39,25 @@ export function drawAllEffects(ctx, canvas) {
       ctx.translate(x, y);
       ctx.scale(scale, scale);
 
-
- // 记录放大状态
-globalThis.avatarSlotScales = globalThis.avatarSlotScales || {};
-globalThis.avatarSlotScales[slotIndex] = scale;
-
+      // 记录放大状态
+      globalThis.avatarSlotScales = globalThis.avatarSlotScales || {};
+      globalThis.avatarSlotScales[slotIndex] = scale;
 
       ctx.restore();
     }
 
-    if (e.type === 'monster_bounce') {
+    else if (e.type === 'shake') {
+      const t = now - e.startTime;
+      if (t > e.duration) return remove.push(i);
+
+      const p = t / e.duration;
+      const amp = e.intensity * (1 - p); // 衰减震动
+      const offsetX = (Math.random() - 0.5) * amp * 2;
+      const offsetY = (Math.random() - 0.5) * amp * 2;
+      globalThis.shakeOffset = { x: offsetX, y: offsetY };
+    }
+
+    else if (e.type === 'monster_bounce') {
       const t = now - e.startTime;
       if (t > e.duration) {
         globalThis.monsterScale = 1;
@@ -61,7 +69,7 @@ globalThis.avatarSlotScales[slotIndex] = scale;
       globalThis.monsterScale = scale;
     }
 
-    if (e.type === 'proj') {
+    else if (e.type === 'proj') {
       const p = Math.min(1, (now - e.startTime) / e.duration);
       const x = e.x0 + (e.x1 - e.x0) * p;
       const y = e.y0 + (e.y1 - e.y0) * p;
@@ -80,7 +88,6 @@ globalThis.avatarSlotScales[slotIndex] = scale;
 
       ctx.font = `bold ${e.size || 36}px sans-serif`;
       ctx.textAlign = 'center';
-   
 
       const scale = 1 + 0.2 * Math.sin((1 - t / life) * Math.PI);
       ctx.translate(e.x, e.y - t * 0.05);
@@ -195,5 +202,14 @@ export function createAvatarFlash(slotIndex, scale = 1.3, duration = 400) {
     startTime: Date.now(),
     duration,
     scale
+  });
+}
+
+export function createShake(duration = 500, intensity = 5) {
+  effects.push({
+    type: 'shake',
+    startTime: Date.now(),
+    duration,
+    intensity
   });
 }
