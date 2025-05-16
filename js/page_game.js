@@ -19,6 +19,7 @@ import { renderBlockD } from './block_effects/block_D.js';
 import { renderBlockE } from './block_effects/block_E.js';
 import { renderBlockF } from './block_effects/block_F.js';
 import { applySkillEffect } from './logic/skill_logic.js';
+import { showDamageText } from './effects_engine.js';
 
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 
@@ -1113,9 +1114,16 @@ function handleSwap(src, dst) {
       selected = null;
       gaugeCount++;
       if (gaugeCount >= 5) {
-        startAttackEffect(attackGaugeDamage);
-        gaugeCount = 0;
+        const dmgToDeal = attackGaugeDamage; // 保留当前数值
         gaugeFlashTime = Date.now();
+      
+        // ⏳ 延迟释放伤害，让动画跳完
+        setTimeout(() => {
+          startAttackEffect(dmgToDeal); // 会清空伤害值等
+          drawGame();                   // ✅ 刷新画面
+        }, 520); // 动画持续约 400ms，给出缓冲
+      
+        gaugeCount = 0;
       }
       processClearAndDrop();
     } else {
@@ -1215,7 +1223,16 @@ function startAttackEffect(dmg) {
     monsterHitFlashTime = Date.now();
 
     // 飘字
-    createFloatingText(`-${pendingDamage}`, endX, endY + 50);
+  // 🎯 根据伤害值动态设定颜色和大小
+const color = pendingDamage > 10000 ? '#FFFF00'
+: pendingDamage > 2000 ? '#FF6600'
+: '#FF4444';
+
+const size = pendingDamage > 10000 ? 64
+: pendingDamage > 2000 ? 48
+: 36;
+
+showDamageText(pendingDamage, endX, endY + 50);
 
     pendingDamage = 0;
 

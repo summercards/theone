@@ -82,24 +82,28 @@ export function drawAllEffects(ctx, canvas) {
       const t = now - e.startTime;
       const life = e.duration || 1000;
       if (t > life) { remove.push(i); return; }
-
+    
       ctx.save();
       ctx.globalAlpha = 1 - t / life;
-
-      ctx.font = `bold ${e.size || 36}px sans-serif`;
+    
+      // ✅ 使用 Impact 字体，大小动态
+      const baseSize = e.size || 36;
+      const fontSize = Math.floor(baseSize * (1 + 0.2 * Math.sin((1 - t / life) * Math.PI)));
+    
+      ctx.font = `bold ${fontSize}px Impact, sans-serif`;
       ctx.textAlign = 'center';
-
-      const scale = 1 + 0.2 * Math.sin((1 - t / life) * Math.PI);
+      ctx.textBaseline = 'middle';
+    
       ctx.translate(e.x, e.y - t * 0.05);
-      ctx.scale(scale, scale);
-
+    
+      // ✅ 黑色描边 + 彩色填充
       ctx.strokeStyle = 'black';
-      ctx.lineWidth = 3;
-      ctx.fillStyle = e.color || '#FFD700';
-
+      ctx.lineWidth = 4;
+      ctx.fillStyle = e.color || '#FF4444';
+    
       ctx.strokeText(e.text, 0, 0);
       ctx.fillText(e.text, 0, 0);
-
+    
       ctx.restore();
     }
 
@@ -212,4 +216,15 @@ export function createShake(duration = 500, intensity = 5) {
     duration,
     intensity
   });
+}
+export function showDamageText(damage, x, y) {
+  const color = damage > 10000 ? '#FFFF00'
+              : damage > 2000 ? '#FF6600'
+              : '#FF4444';
+
+  const size = damage > 10000 ? 64
+              : damage > 2000 ? 48
+              : 36;
+
+  createFloatingText(`-${damage}`, x, y, color, size);
 }
