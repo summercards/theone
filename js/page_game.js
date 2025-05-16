@@ -129,7 +129,7 @@ let ctxRef;
 let switchPageFn;
 let canvasRef;
 
-const gridSize = 6;
+globalThis.gridSize = 6;
 let gridData = [];
 let selected = null;
 
@@ -160,7 +160,7 @@ wx.onTouchEnd(onTouchend);
 
 function releaseAllReadySkills() {
   const charges = getCharges();
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < gridSize; i++) {
     if (charges[i] >= 100) {
       releaseHeroSkill(i);
     }
@@ -184,6 +184,9 @@ function initGrid() {
 }
 
 export function drawGame() {
+  if (!Array.isArray(gridData) || gridData.length < globalThis.gridSize) {
+    initGrid(); // ⛑ 兜底
+  }
   // ✅ 插入这行：每一帧初始化 layoutRects，避免旧数据干扰
   globalThis.layoutRects = [];
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
@@ -528,7 +531,7 @@ ctxRef.fillText(countText, countX, countY);
 
 
 
-for (let i = 0; i < 5; i++) {
+for (let i = 0; i < gridSize; i++) {
     const x = startXHero + i * (iconSize + spacing);
     const y = topMargin;
   
@@ -1263,10 +1266,24 @@ showDamageText(pendingDamage, endX, endY + 50);
         monsterTurn();
       }
     }
-
+    if ((globalThis.gridExpandTurns || 0) > 0) {
+      globalThis.gridExpandTurns--;
+      if (globalThis.gridExpandTurns === 0) {
+        globalThis.gridSize = 6;
+        initGrid();
+        drawGame();
+        logBattle("棋盘扩展效果结束，恢复为 6x6");
+      }
+    }
+    
   });
 }
-
+export function expandGridTo(size, turns = 3) {
+  globalThis.gridSize = size;
+  globalThis.gridExpandTurns = turns;
+  initGrid();
+  drawGame();
+}
 function rewardExpToHeroes(expAmount) {
   const heroes = getSelectedHeroes();
   heroes.forEach(hero => {
@@ -1277,5 +1294,7 @@ function rewardExpToHeroes(expAmount) {
   });
 }
 
+
+
 export { monsterHitFlashTime };
-export { gridData, gridSize };
+export { gridData };

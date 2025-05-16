@@ -380,7 +380,7 @@ const HeroData = {
     },
     {
       id: "hero017",
-      name: "鬼魅月痕",
+      name: "阿丝呆伦",
       icon: "assassin3.png",
       role: "刺客",
       rarity: "UR",
@@ -395,10 +395,11 @@ const HeroData = {
       },
       skill: {
         name: "鬼影穿心",
-        description: "爆发式单体伤害（模拟刺杀）",
-        effect: { type: "physicalDamage", amount: 200 },
+        description: "扩展棋盘为 7x7，持续 3 回合",
+        effect: { type: "expandGrid", duration: 3 },
         cooldown: 3
       }
+      
     },
     {
       id: "hero018",

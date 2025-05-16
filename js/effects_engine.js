@@ -1,3 +1,5 @@
+
+
 // effects_engine.js  ★★★ 完整可用基线 ★★★
 const effects = [];
 
@@ -82,28 +84,28 @@ export function drawAllEffects(ctx, canvas) {
       const t = now - e.startTime;
       const life = e.duration || 1000;
       if (t > life) { remove.push(i); return; }
-    
+
       ctx.save();
       ctx.globalAlpha = 1 - t / life;
-    
+
       // ✅ 使用 Impact 字体，大小动态
       const baseSize = e.size || 36;
       const fontSize = Math.floor(baseSize * (1 + 0.2 * Math.sin((1 - t / life) * Math.PI)));
-    
+
       ctx.font = `bold ${fontSize}px Impact, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-    
+
       ctx.translate(e.x, e.y - t * 0.05);
-    
+
       // ✅ 黑色描边 + 彩色填充
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 4;
       ctx.fillStyle = e.color || '#FF4444';
-    
+
       ctx.strokeText(e.text, 0, 0);
       ctx.fillText(e.text, 0, 0);
-    
+
       ctx.restore();
     }
 
@@ -217,6 +219,7 @@ export function createShake(duration = 500, intensity = 5) {
     intensity
   });
 }
+
 export function showDamageText(damage, x, y) {
   const color = damage > 10000 ? '#FFFF00'
               : damage > 2000 ? '#FF6600'

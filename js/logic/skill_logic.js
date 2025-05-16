@@ -1,5 +1,15 @@
+import { expandGridTo } from '../page_game.js';
+
+
+
 export function applySkillEffect(hero, effect, context) {
   switch (effect.type) {
+    case "expandGrid": {
+      expandGridTo(7, effect.duration || 3);
+      context.log(`${hero.name} 扩展棋盘为 7x7，持续 ${effect.duration || 3} 回合`);
+      break;
+    }
+
     case "addGauge": {
       let add = 0;
       if ('value' in effect) add = effect.value;
@@ -7,7 +17,7 @@ export function applySkillEffect(hero, effect, context) {
         add = hero.attributes.physical * (effect.scale ?? 1);
       else if (effect.source === "magical")
         add = hero.attributes.magical * (effect.scale ?? 1);
-      
+
       context.addGauge(add); // 用函数更新外部 gauge
       context.log(`${hero.name} 注入攻击槽：+${Math.round(add)}`);
       break;
