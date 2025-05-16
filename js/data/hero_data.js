@@ -396,7 +396,11 @@ const HeroData = {
       skill: {
         name: "鬼影穿心",
         description: "扩展棋盘为 7x7，持续 3 回合",
-        effect: { type: "expandGrid", duration: 3 },
+        effect: {
+          type: "expandGrid",
+          size: 7,
+          duration: 2
+        },
         cooldown: 3
       }
       

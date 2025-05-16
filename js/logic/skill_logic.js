@@ -5,8 +5,8 @@ import { expandGridTo } from '../page_game.js';
 export function applySkillEffect(hero, effect, context) {
   switch (effect.type) {
     case "expandGrid": {
-      expandGridTo(7, effect.duration || 3);
-      context.log(`${hero.name} 扩展棋盘为 7x7，持续 ${effect.duration || 3} 回合`);
+      expandGridTo({ ...effect, hero }); // ⬅️ 传入 effect 中的 size, duration, hero
+      context.log(`${hero.name} 扩展棋盘为 ${effect.size || 7}×${effect.size || 7}，持续 ${effect.duration || 2} 次操作`);
       break;
     }
 

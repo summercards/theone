@@ -140,6 +140,18 @@ export function initGamePage(ctx, switchPage, canvas) {
   switchPageFn = switchPage;
   canvasRef = canvas;
 
+  const heroes = getSelectedHeroes?.();
+if (heroes?.length) {
+  heroes.forEach(h => {
+    if (h?.tempEffects) {
+      delete h.tempEffects.gridExpandGaugeBase;
+      delete h.tempEffects.gridExpandSteps;
+    }
+  });
+}
+globalThis.gridSize = 6;  // ✅ 强制还原为 6×6
+
+
 // ✅ 使用小游戏的全局触摸事件监听
 wx.onTouchStart(onTouch);
 wx.onTouchEnd(onTouchend);
@@ -1116,6 +1128,34 @@ function handleSwap(src, dst) {
     if (checkAndClearMatches()) {
       selected = null;
       gaugeCount++;
+
+     // ✅ 每个英雄可能拥有自己的棋盘扩展技能，检查是否到期
+  const heroes = getSelectedHeroes();
+  for (const hero of heroes) {
+    const fx = hero?.tempEffects;
+    if (!fx?.gridExpandGaugeBase) continue;
+
+    const passed = gaugeCount - fx.gridExpandGaugeBase;
+    if (passed >= fx.gridExpandSteps) {
+      globalThis.gridSize = 6;
+      delete fx.gridExpandGaugeBase;
+      delete fx.gridExpandSteps;
+      initGrid();
+      drawGame();
+      logBattle(`${hero.name} 的棋盘扩展结束，恢复为 6x6`);
+    }
+  }
+
+      if (globalThis.gridExpandGaugeBase !== undefined) {
+        const stepsPassed = gaugeCount - globalThis.gridExpandGaugeBase;
+        if (stepsPassed >= 2) {
+          globalThis.gridSize = 6;
+          delete globalThis.gridExpandGaugeBase;
+          initGrid();
+          drawGame();
+          logBattle("棋盘扩展效果结束，恢复为 6x6");
+        }
+      }
       if (gaugeCount >= 5) {
         const dmgToDeal = attackGaugeDamage; // 保留当前数值
         gaugeFlashTime = Date.now();
@@ -1278,9 +1318,12 @@ showDamageText(pendingDamage, endX, endY + 50);
     
   });
 }
-export function expandGridTo(size, turns = 3) {
+export function expandGridTo({ size = 7, steps = 2, hero }) {
   globalThis.gridSize = size;
-  globalThis.gridExpandTurns = turns;
+  hero.tempEffects = hero.tempEffects || {};
+  hero.tempEffects.gridExpandGaugeBase = gaugeCount;
+  hero.tempEffects.gridExpandSteps = steps;
+
   initGrid();
   drawGame();
 }
