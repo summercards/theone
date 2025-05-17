@@ -202,14 +202,16 @@ export function drawAllEffects(ctx, canvas) {
         const x = e.x0 + (e.x1 - e.x0) * p;
         const y = e.y0 + (e.y1 - e.y0) * p;
       
-        // 粒子缩放（在最后 20% 缩小）
-        const shrinkThreshold = 0.8;
-        const baseRadius = e.radius;
-        const scale = (p < shrinkThreshold)
-          ? 1
-          : 1 - ((p - shrinkThreshold) / (1 - shrinkThreshold)); // 从 1 降到 0
-      
-        const radius = baseRadius * scale;
+// 粒子缩放（在最后 20% 缩小，但不小于 60%）
+const shrinkThreshold = 0.8;
+const baseRadius = e.radius;
+const minScale = 0.2;
+
+const scale = (p < shrinkThreshold)
+  ? 1
+  : 1 - (1 - minScale) * ((p - shrinkThreshold) / (1 - shrinkThreshold));
+
+const radius = baseRadius * scale;
       
         // 粒子颜色变化（末尾渐变为蓝色）
         let fillColor = e.color;
