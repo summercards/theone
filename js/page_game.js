@@ -6,6 +6,7 @@ let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
 let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
 let showGameOver = false;     // 是否触发失败弹窗
+let victoryHeroLoaded = false;
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
 const DEBUG = false; // 全局设置，生产时设为 false
 let showVictoryPopup = false;
@@ -133,6 +134,18 @@ const heroImageCache = {}; // 缓存图片
 let ctxRef;
 let switchPageFn;
 let canvasRef;
+
+// ✅ 预加载胜利图片
+const victoryHeroImage = wx.createImage();
+victoryHeroImage.src = 'assets/ui/victory_hero.png';
+
+victoryHeroImage.onload = () => {
+  globalThis.imageCache = globalThis.imageCache || {};
+  globalThis.imageCache.victoryHero = victoryHeroImage;
+
+  victoryHeroLoaded = true; // ✅ 图片加载完成
+};
+
 
 globalThis.gridSize = 6;
 let gridData = [];
@@ -301,42 +314,71 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
   drawUI();
     // 👇 胜利弹窗绘制逻辑
     if (showVictoryPopup) {
-      const boxW = 280, boxH = 200;
-      const boxX = (canvasRef.width - boxW) / 2;
-      const boxY = (canvasRef.height - boxH) / 2;
-    
-      // 半透明遮罩
+      const canvasW = canvasRef.width;
+      const canvasH = canvasRef.height;
+
+      // === 1. 黑色半透明背景遮罩（保留旧视觉）
       ctxRef.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+      ctxRef.fillRect(0, 0, canvasW, canvasH);
     
-      // 弹窗主背景（深紫色）
-      ctxRef.fillStyle = '#331144';
-      drawRoundedRect(ctxRef, boxX, boxY, boxW, boxH, 14, true, false);
+      // === 2. 主体区域背景（改为紫色，无透明度）
+      const bannerHeight = 260;
+      const bannerY = (canvasH - bannerHeight) / 2;
+      ctxRef.fillStyle = 'rgba(51, 17, 68, 0.85)';  // 半透明紫色
+      ctxRef.fillRect(0, bannerY, canvasW, bannerHeight);
     
-      // 标题文字（白色）
+      // === 3. 标题文字（白色）
+      const title = `第 ${levelJustCompleted} 关胜利！`;
       ctxRef.fillStyle = '#FFFFFF';
-      ctxRef.font = '22px sans-serif';
+      ctxRef.font = 'bold 24px sans-serif';
       ctxRef.textAlign = 'center';
-      ctxRef.fillText(`第 ${levelJustCompleted} 关胜利！`, boxX + boxW / 2, boxY + 50);
+      ctxRef.textBaseline = 'top';
+      ctxRef.fillText(title, canvasW / 2, bannerY + 16);
     
-      // 奖励金币文字（金黄）
+      // === 4. 中间插图（美术角色图）
+// === 4. 中间插图（美术角色图）
+const art = globalThis.imageCache?.['victory_hero'];
+if (victoryHeroLoaded && art) {
+  const imgW = 520;
+  const imgH = 520;
+  const imgX = (canvasW - imgW) / 2;
+  const imgY = bannerY + 52;
+  ctxRef.drawImage(art, imgX, imgY, imgW, imgH);
+} else {
+  // 👇 加载中提示
+  ctxRef.fillStyle = '#FFFFFF';
+  ctxRef.font = '20px sans-serif';
+  ctxRef.textAlign = 'center';
+  ctxRef.fillText('加载中...', canvasW / 2, bannerY + 100);
+}
+
+
+
+    
+      // === 5. 奖励金币文字
       ctxRef.fillStyle = '#FFD700';
       ctxRef.font = '20px sans-serif';
-      ctxRef.fillText(`获得金币：+${earnedGold}`, boxX + boxW / 2, boxY + 90);
+      ctxRef.fillText(`获得金币：+${earnedGold}`, canvasW / 2, bannerY + 180);
     
-      // “下一关”按钮样式（黄色背景 + 白字）
-      const btnX = boxX + 70;
-      const btnY = boxY + 130;
-      const btnW = 140;
-      const btnH = 40;
+      // === 6. “下一关”按钮
+      const btnW = 140, btnH = 42;
+      const btnX = (canvasW - btnW) / 2;
+      const btnY = bannerY + 210;
     
       ctxRef.fillStyle = '#FFD700';
       drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
     
       ctxRef.fillStyle = '#000';
       ctxRef.font = 'bold 18px sans-serif';
-      ctxRef.fillText('下一关', boxX + boxW / 2, btnY + 26);
+      ctxRef.fillText('下一关', canvasW / 2, btnY + btnH / 2);
+    
+      // === 7. 存按钮区域以供点击判断
+      globalThis.victoryBtnArea = {
+        x: btnX, y: btnY, width: btnW, height: btnH
+      };
     }
+    
+    
     
     
     
@@ -673,6 +715,7 @@ if (showGameOver) {
   const boxW = 260, boxH = 160;
   const boxX = (canvasRef.width - boxW) / 2;
   const boxY = (canvasRef.height - boxH) / 2;
+  
 
   // 背景
   ctxRef.fillStyle = 'rgba(0, 0, 0, 0.85)';
@@ -1064,29 +1107,18 @@ function onTouchend(e) {
 
   // ✅ 胜利弹窗点击“下一关”
   if (showVictoryPopup) {
-    const boxW = 280;
-    const boxH = 200;
-    const boxX = (canvasRef.width - boxW) / 2;
-    const boxY = (canvasRef.height - boxH) / 2;
-    const btnX = boxX + 70;
-    const btnY = boxY + 130;
-    const btnW = 140;
-    const btnH = 40;
-
-    const inVictoryBtn =
-      x >= btnX && x <= btnX + btnW &&
-      y >= btnY && y <= btnY + btnH;
-
-    if (inVictoryBtn) {
+    const btn = globalThis.victoryBtnArea;
+    if (btn && x >= btn.x && x <= btn.x + btn.width &&
+               y >= btn.y && y <= btn.y + btn.height) {
       showVictoryPopup = false;
-
+  
       const monster = loadMonster(getNextLevel());
       turnsLeft = monster.skill.cooldown;
-
+  
       initGrid();
-      drawGame(); // ✅ 立即刷新
+      drawGame(); // ✅ 刷新画面
     }
-
+  
     return; // ❗ 禁止继续滑动行为
   }
 

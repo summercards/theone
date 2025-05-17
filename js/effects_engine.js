@@ -195,7 +195,7 @@ export function drawAllEffects(ctx, canvas) {
         const totalWidth = 5 * iconSize + 4 * spacing;
         const startX = (canvas.width - totalWidth) / 2;
         const x = startX + e.slotIndex * (iconSize + spacing) + iconSize / 2;
-        const y = globalThis.__gridStartY - 90;
+        const y = globalThis.__gridStartY - 80;
       
         const text = e.text || '';
         const metrics = ctx.measureText(text);
