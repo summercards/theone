@@ -545,7 +545,7 @@ ctxRef.fillText(countText, countX, countY);
 
 
 
-for (let i = 0; i < gridSize; i++) {
+for (let i = 0; i < heroes.length; i++) {
     const x = startXHero + i * (iconSize + spacing);
     const y = topMargin;
   
