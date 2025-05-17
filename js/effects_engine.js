@@ -1,4 +1,4 @@
-
+import { drawRoundedRect } from './utils/canvas_utils.js'; // ✅ 添加这一行
 
 // effects_engine.js  ★★★ 完整可用基线 ★★★
 const effects = [];
@@ -148,6 +148,52 @@ export function drawAllEffects(ctx, canvas) {
       ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
     }
+    else if (e.type === 'charge_release') {
+        const t = now - e.startTime;
+        const p = Math.min(1, t / e.duration);
+      
+        const alpha = 1 - p;
+        const glowW = e.width * (1 + p); // 扩散效果
+        const glowH = e.height * (1 + p * 0.5);
+      
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        const grad = ctx.createRadialGradient(
+          e.x + e.width / 2, e.y + e.height / 2, 0,
+          e.x + e.width / 2, e.y + e.height / 2, glowW / 2
+        );
+        grad.addColorStop(0, 'rgba(200,255,255,0.6)');
+        grad.addColorStop(1, 'rgba(0,160,255,0)');
+      
+        ctx.fillStyle = grad;
+        ctx.fillRect(e.x - (glowW - e.width) / 2, e.y - (glowH - e.height) / 2, glowW, glowH);
+        ctx.restore();
+      
+        if (p >= 1) remove.push(i);
+      }
+
+      else if (e.type === 'charge_glow') {
+        const t = now - e.startTime;
+        const p = Math.min(1, t / e.duration);
+        const alpha = 1 - p;
+      
+        ctx.save();
+        ctx.globalAlpha = alpha;
+      
+        // 蓝色描边发光
+        ctx.strokeStyle = `rgba(0, 200, 255, ${0.8 * alpha})`;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = `rgba(0, 200, 255, ${0.6 * alpha})`;
+        ctx.shadowBlur = 10;
+      
+        drawRoundedRect(ctx, e.x - 1, e.y - 1, e.width + 2, e.height + 2, 4, false, true);
+        ctx.restore();
+      
+        if (p >= 1) remove.push(i);
+      }
+
+      
+
     else if (e.type === 'energy_particle') {
         const t = now - e.startTime;
         if (t < 0) return;
@@ -302,4 +348,19 @@ function blendColors(color1, color2, t) {
       b: parseInt(parsed.substring(4, 6), 16),
     };
   }
-  
+  export function createChargeReleaseEffect(x, y, width, height, duration = 400) {
+    effects.push({
+      type: 'charge_release',
+      x, y, width, height,
+      startTime: Date.now(),
+      duration
+    });
+  }
+  export function createChargeGlowEffect(x, y, width, height, duration = 400) {
+    effects.push({
+      type: 'charge_glow',
+      x, y, width, height,
+      startTime: Date.now(),
+      duration
+    });
+  }

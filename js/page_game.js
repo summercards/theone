@@ -39,7 +39,9 @@ import {
     createMonsterBounce, 
     createAvatarFlash, 
     createEnergyParticles,
-    createShake    
+    createShake, 
+    createChargeReleaseEffect , 
+    createChargeGlowEffect
 } from './effects_engine.js';
   
 import { getSelectedHeroes } from './data/hero_state.js';
@@ -586,6 +588,37 @@ for (let i = 0; i < heroes.length; i++) {
     ctxRef.strokeStyle = '#888';
     ctxRef.lineWidth = 1;
     drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, false, true);
+
+    // 🌟 追加视觉特效：渐变、光晕、能量脉冲
+if (percent > 0) {
+    const filledWidth = barW * (percent / 100);
+  
+    // 1. 渐变条替代蓝色
+    const grad = ctxRef.createLinearGradient(barX, 0, barX + filledWidth, 0);
+    grad.addColorStop(0, '#66DFFF');
+    grad.addColorStop(1, '#0077CC');
+  
+    ctxRef.fillStyle = grad;
+    ctxRef.fillRect(barX, barY, filledWidth, barH);
+  
+    // 2. 顶部发光高亮（模拟光带）
+    const glowGrad = ctxRef.createLinearGradient(barX, barY, barX, barY + barH);
+    glowGrad.addColorStop(0, 'rgba(255,255,255,0.3)');
+    glowGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
+    ctxRef.fillStyle = glowGrad;
+    ctxRef.fillRect(barX, barY, filledWidth, barH);
+  
+    // 3. 动态脉冲光线（横向能量波）
+    const pulseX = barX + (Date.now() % 1000) / 1000 * filledWidth;
+    const pulseWidth = 8;
+    const pulseGrad = ctxRef.createLinearGradient(pulseX, 0, pulseX + pulseWidth, 0);
+    pulseGrad.addColorStop(0, 'rgba(255,255,255,0)');
+    pulseGrad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
+    pulseGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctxRef.fillStyle = pulseGrad;
+    ctxRef.fillRect(barX, barY, filledWidth, barH);
+  }
+  
   
     // — 已选英雄头像 —
     const hero = heroes[i];
@@ -1245,6 +1278,20 @@ function destroyGamePage() {
     };
   
     applySkillEffect(hero, eff, context);
+    // 添加释放特效（在能量条清空前）
+const size = 48;
+const spacing = 12;
+const totalWidth = 5 * size + 4 * spacing;
+const startX = (canvasRef.width - totalWidth) / 2;
+const topMargin = __gridStartY - 80;
+const barW = size;
+const barH = 6;
+const barX = startX + slotIndex * (size + spacing);
+const barY = topMargin + size + 6;
+// 🌟 添加蓝色能量高亮边框
+createChargeGlowEffect(barX - 1, barY - 1, barW + 2, barH + 2);
+createChargeReleaseEffect(barX, barY, barW, barH);
+
     setCharge(slotIndex, 0);
     createExplosion(canvasRef.width / 2, canvasRef.height / 2);
       // ✅ 技能表现：触发头像动画（默认样式）
