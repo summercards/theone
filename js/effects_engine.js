@@ -150,21 +150,40 @@ export function drawAllEffects(ctx, canvas) {
     }
     else if (e.type === 'energy_particle') {
         const t = now - e.startTime;
-        if (t < 0) return; // 延迟未到
+        if (t < 0) return;
         const p = Math.min(1, t / e.duration);
+      
         const x = e.x0 + (e.x1 - e.x0) * p;
         const y = e.y0 + (e.y1 - e.y0) * p;
       
+        // 粒子缩放（在最后 20% 缩小）
+        const shrinkThreshold = 0.8;
+        const baseRadius = e.radius;
+        const scale = (p < shrinkThreshold)
+          ? 1
+          : 1 - ((p - shrinkThreshold) / (1 - shrinkThreshold)); // 从 1 降到 0
+      
+        const radius = baseRadius * scale;
+      
+        // 粒子颜色变化（末尾渐变为蓝色）
+        let fillColor = e.color;
+        if (p > shrinkThreshold) {
+          const blend = (p - shrinkThreshold) / (1 - shrinkThreshold); // 0 → 1
+          // 简单线性混合原始色与蓝色
+          fillColor = blendColors(e.color, '#00AAFF', blend);
+        }
+      
         ctx.save();
-        ctx.globalAlpha = 1 - p;
-        ctx.fillStyle = e.color;
+        ctx.globalAlpha = 1.0; // 始终不透明
+        ctx.fillStyle = fillColor;
         ctx.beginPath();
-        ctx.arc(x, y, e.radius, 0, Math.PI * 2);
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       
         if (p >= 1) remove.push(i);
       }
+      
   });
 
   for (let r = remove.length - 1; r >= 0; r--) effects.splice(remove[r], 1);
@@ -264,3 +283,23 @@ export function showDamageText(damage, x, y) {
 
   createFloatingText(`-${damage}`, x, y, color, size);
 }
+
+function blendColors(color1, color2, t) {
+    // 支持 '#RRGGBB' 格式
+    const c1 = hexToRgb(color1);
+    const c2 = hexToRgb(color2);
+    const r = Math.round(c1.r + (c2.r - c1.r) * t);
+    const g = Math.round(c1.g + (c2.g - c1.g) * t);
+    const b = Math.round(c1.b + (c2.b - c1.b) * t);
+    return `rgb(${r},${g},${b})`;
+  }
+  
+  function hexToRgb(hex) {
+    const parsed = hex.replace('#', '');
+    return {
+      r: parseInt(parsed.substring(0, 2), 16),
+      g: parseInt(parsed.substring(2, 4), 16),
+      b: parseInt(parsed.substring(4, 6), 16),
+    };
+  }
+  
