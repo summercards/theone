@@ -172,6 +172,78 @@ export function drawAllEffects(ctx, canvas) {
         if (p >= 1) remove.push(i);
       }
 
+      else if (e.type === 'skill_dialog') {
+        const now = Date.now();
+        const t = now - e.startTime;
+        const life = e.duration || 1200;
+      
+        if (t > life) return remove.push(i);
+      
+        ctx.save();
+      
+        // 🔸 动态缩放（前 200ms 放大入场，后续保持）
+        const appearDur = 200;
+        const scale = t < appearDur ? 0.6 + 0.4 * (t / appearDur) : 1;
+      
+        const fontSize = 14;
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+      
+        const iconSize = 48;
+        const spacing = 12;
+        const totalWidth = 5 * iconSize + 4 * spacing;
+        const startX = (canvas.width - totalWidth) / 2;
+        const x = startX + e.slotIndex * (iconSize + spacing) + iconSize / 2;
+        const y = globalThis.__gridStartY - 90;
+      
+        const text = e.text || '';
+        const padding = 8;
+        const metrics = ctx.measureText(text);
+        const boxWidth = metrics.width + padding * 2;
+        const boxHeight = fontSize + padding * 2;
+      
+        // 🔸 气泡主体坐标
+        const bubbleX = x;
+        const bubbleY = y;
+      
+        ctx.translate(bubbleX, bubbleY);
+        ctx.scale(scale, scale);
+      
+        // 🔹 绘制带尖头的对话框
+        const arrowH = 8;
+        const radius = 6;
+        const boxTop = -boxHeight;
+        const boxBottom = 0;
+      
+        ctx.beginPath();
+        ctx.moveTo(-boxWidth / 2 + radius, boxTop);
+        ctx.lineTo(boxWidth / 2 - radius, boxTop);
+        ctx.quadraticCurveTo(boxWidth / 2, boxTop, boxWidth / 2, boxTop + radius);
+        ctx.lineTo(boxWidth / 2, boxBottom - arrowH);
+        ctx.lineTo(6, boxBottom - arrowH);
+        ctx.lineTo(0, boxBottom);           // 🔽 尖头
+        ctx.lineTo(-6, boxBottom - arrowH);
+        ctx.lineTo(-boxWidth / 2, boxBottom - arrowH);
+        ctx.lineTo(-boxWidth / 2, boxTop + radius);
+        ctx.quadraticCurveTo(-boxWidth / 2, boxTop, -boxWidth / 2 + radius, boxTop);
+        ctx.closePath();
+      
+        ctx.fillStyle = '#FFF';
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+      
+        // 文字
+        ctx.fillStyle = '#000';
+        ctx.fillText(text, 0, boxTop + boxHeight / 2);
+      
+        ctx.restore();
+      }
+      
+
+      
       else if (e.type === 'charge_glow') {
         const t = now - e.startTime;
         const p = Math.min(1, t / e.duration);
@@ -364,5 +436,15 @@ function blendColors(color1, color2, t) {
       x, y, width, height,
       startTime: Date.now(),
       duration
+    });
+  }
+
+  export function createSkillDialog(slotIndex, text, duration = 1200) {
+    effects.push({
+      type: 'skill_dialog',
+      slotIndex,
+      text,
+      startTime: Date.now(),
+      duration,
     });
   }

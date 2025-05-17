@@ -372,7 +372,7 @@ const HeroData = {
         attributeGrowth: { physical: 4 }
       },
       skill: {
-        name: "咆哮打击",
+        name: "你干嘛！",
         description: "猛烈打击敌人造成物理伤害",
         effect: { type: "physicalDamage", amount: 130 },
         cooldown: 2

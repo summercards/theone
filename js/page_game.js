@@ -41,6 +41,7 @@ import {
     createEnergyParticles,
     createShake, 
     createChargeReleaseEffect , 
+    createSkillDialog  , 
     createChargeGlowEffect
 } from './effects_engine.js';
   
@@ -1260,6 +1261,10 @@ function destroyGamePage() {
   function releaseHeroSkill(slotIndex) {
     const hero = getSelectedHeroes()[slotIndex];
     if (!hero) return;
+
+      // ✅ 添加技能对话特效
+  const skillName = HeroData.heroes.find(h => h.id === hero.id)?.skill?.name || '技能';
+  createSkillDialog(slotIndex, skillName);
   
     const eff = hero.skill?.effect;
     if (!eff) return;
