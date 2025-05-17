@@ -38,6 +38,7 @@ import {
     createExplosion,
     createMonsterBounce, 
     createAvatarFlash, 
+    createEnergyParticles,
     createShake    
 } from './effects_engine.js';
   
@@ -811,7 +812,27 @@ function checkAndClearMatches () {
       const centerY = __gridStartY + r * __blockSize + __blockSize / 2;
   
       createPopEffect(centerX, centerY, __blockSize, letter); // ✅ 弹跳动画
-      createExplosion(centerX, centerY, BlockConfig[letter]?.color || '#FFD700'); // ✅ 彩色粒子效果
+      createExplosion(centerX, centerY, BlockConfig[letter]?.color || '#FFD700'); 
+      
+      // 创建能量粒子飞向对应英雄职业能量槽
+const blockRole = BlockConfig[letter]?.role;
+const blockColor = BlockConfig[letter]?.color || '#FFD700';
+
+const heroes = getSelectedHeroes();
+const heroIndex = heroes.findIndex(h => h?.role === blockRole);
+if (heroIndex >= 0) {
+  const size = 48, spacing = 12;
+  const totalWidth = 5 * size + 4 * spacing;
+  const canvas = canvasRef;
+  const startX = (canvas.width - totalWidth) / 2;
+  const topMargin = __gridStartY - 80;
+  const endX = startX + heroIndex * (size + spacing) + size / 2;
+  const endY = topMargin + size + 8;
+
+  createEnergyParticles(centerX, centerY, endX, endY, blockColor, 6);
+}
+
+      // ✅ 彩色粒子效果
   
       colorCounter[letter] = (colorCounter[letter] || 0) + 1;
       gridData[r][c] = null;

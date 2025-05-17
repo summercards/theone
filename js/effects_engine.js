@@ -148,9 +148,27 @@ export function drawAllEffects(ctx, canvas) {
       ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
     }
+    else if (e.type === 'energy_particle') {
+        const t = now - e.startTime;
+        if (t < 0) return; // 延迟未到
+        const p = Math.min(1, t / e.duration);
+        const x = e.x0 + (e.x1 - e.x0) * p;
+        const y = e.y0 + (e.y1 - e.y0) * p;
+      
+        ctx.save();
+        ctx.globalAlpha = 1 - p;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.arc(x, y, e.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      
+        if (p >= 1) remove.push(i);
+      }
   });
 
   for (let r = remove.length - 1; r >= 0; r--) effects.splice(remove[r], 1);
+  
 }
 
 /* ========= 工具函数 ===================================================== */
@@ -158,6 +176,21 @@ export function createProjectile(x0, y0, x1, y1, duration, onArrive) {
   effects.push({ type: 'proj', x0, y0, x1, y1, duration, startTime: Date.now(), onArrive });
 }
 
+export function createEnergyParticles(x0, y0, x1, y1, color = '#FFD700', count = 6) {
+    const now = Date.now();
+    for (let i = 0; i < count; i++) {
+      const offsetDelay = i * 50; // 每个粒子稍有延迟
+      effects.push({
+        type: 'energy_particle',
+        x0, y0, x1, y1,
+        startTime: now + offsetDelay,
+        color,
+        duration: 500 + Math.random() * 150,
+        radius: 4 + Math.random() * 2
+      });
+    }
+  }
+  
 export function createFloatingText(text, x, y, color = '#FF4444', size = 36, duration = 1000) {
   effects.push({ type: 'float', text, x, y, color, size, duration, startTime: Date.now() });
 }
