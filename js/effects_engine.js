@@ -38,7 +38,7 @@ export function drawAllEffects(ctx, canvas) {
       const y = topMargin + size / 2;
 
       ctx.save();
-      ctx.translate(x, y);
+      ctx.translate(x + (e.offsetX || 0), y + (e.offsetY || 0));
       ctx.scale(scale, scale);
 
       // 记录放大状态
@@ -176,17 +176,17 @@ export function drawAllEffects(ctx, canvas) {
         const now = Date.now();
         const t = now - e.startTime;
         const life = e.duration || 1200;
-      
         if (t > life) return remove.push(i);
       
         ctx.save();
       
-        // 🔸 动态缩放（前 200ms 放大入场，后续保持）
         const appearDur = 200;
         const scale = t < appearDur ? 0.6 + 0.4 * (t / appearDur) : 1;
       
-        const fontSize = 14;
-        ctx.font = `${fontSize}px sans-serif`;
+        const fontSize = 15;
+        const padding = 10;
+      
+        ctx.font = `bold ${fontSize}px IndieFlower, sans-serif`; // ✅ 更轻盈风格字体
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
       
@@ -198,45 +198,53 @@ export function drawAllEffects(ctx, canvas) {
         const y = globalThis.__gridStartY - 90;
       
         const text = e.text || '';
-        const padding = 8;
         const metrics = ctx.measureText(text);
         const boxWidth = metrics.width + padding * 2;
         const boxHeight = fontSize + padding * 2;
       
-        // 🔸 气泡主体坐标
-        const bubbleX = x;
-        const bubbleY = y;
-      
-        ctx.translate(bubbleX, bubbleY);
-        ctx.scale(scale, scale);
-      
-        // 🔹 绘制带尖头的对话框
+        const arrowW = 12;
         const arrowH = 8;
-        const radius = 6;
+        const radius = 8;
+      
         const boxTop = -boxHeight;
         const boxBottom = 0;
+      
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+      
+        // ✅ 渐变填充（白 → #fffbe8）
+        const grad = ctx.createLinearGradient(0, boxTop, 0, boxBottom);
+        grad.addColorStop(0, '#FFFFFF');
+        grad.addColorStop(1, '#FFFBE8');
       
         ctx.beginPath();
         ctx.moveTo(-boxWidth / 2 + radius, boxTop);
         ctx.lineTo(boxWidth / 2 - radius, boxTop);
         ctx.quadraticCurveTo(boxWidth / 2, boxTop, boxWidth / 2, boxTop + radius);
-        ctx.lineTo(boxWidth / 2, boxBottom - arrowH);
-        ctx.lineTo(6, boxBottom - arrowH);
-        ctx.lineTo(0, boxBottom);           // 🔽 尖头
-        ctx.lineTo(-6, boxBottom - arrowH);
-        ctx.lineTo(-boxWidth / 2, boxBottom - arrowH);
+        ctx.lineTo(boxWidth / 2, boxBottom - arrowH - radius);
+        ctx.quadraticCurveTo(boxWidth / 2, boxBottom - arrowH, boxWidth / 2 - radius, boxBottom - arrowH);
+        ctx.lineTo(arrowW / 2, boxBottom - arrowH);
+        ctx.lineTo(0, boxBottom);
+        ctx.lineTo(-arrowW / 2, boxBottom - arrowH);
+        ctx.lineTo(-boxWidth / 2 + radius, boxBottom - arrowH);
+        ctx.quadraticCurveTo(-boxWidth / 2, boxBottom - arrowH, -boxWidth / 2, boxBottom - arrowH - radius);
         ctx.lineTo(-boxWidth / 2, boxTop + radius);
         ctx.quadraticCurveTo(-boxWidth / 2, boxTop, -boxWidth / 2 + radius, boxTop);
         ctx.closePath();
       
-        ctx.fillStyle = '#FFF';
-        ctx.strokeStyle = '#999';
-        ctx.lineWidth = 2;
+        ctx.fillStyle = grad;
+        ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)'; // ✅ 柔和描边
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = 'rgba(0,0,0,0.1)';
+        ctx.shadowBlur = 4;
         ctx.fill();
         ctx.stroke();
       
-        // 文字
-        ctx.fillStyle = '#000';
+        // ✅ 文本样式美化
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = '#222';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 2;
         ctx.fillText(text, 0, boxTop + boxHeight / 2);
       
         ctx.restore();
