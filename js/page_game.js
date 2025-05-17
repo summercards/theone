@@ -11,6 +11,10 @@ const DEBUG = false; // 全局设置，生产时设为 false
 let showVictoryPopup = false;
 let earnedGold = 0;
 let levelJustCompleted = 0;
+let heroBarFlashTimers = [0, 0, 0, 0, 0]; // 每个职业能量条的亮度定时器
+let heroBarCurrentPercents = [0, 0, 0, 0, 0]; // 平滑过渡的当前进度值
+let heroBarTargetPercents = [0, 0, 0, 0, 0];     // 目标值（慢慢趋近）
+
 // === 变更：把另外两个特效工具也引进来
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
@@ -545,7 +549,7 @@ ctxRef.fillText(countText, countX, countY);
 
 
 
-for (let i = 0; i < gridSize; i++) {
+for (let i = 0; i < heroes.length; i++) {
     const x = startXHero + i * (iconSize + spacing);
     const y = topMargin;
   
@@ -566,7 +570,17 @@ for (let i = 0; i < gridSize; i++) {
   
     // — 蓄力条 —
     const charges = getCharges();
-    const percent = charges[i] || 0;
+
+    // ⏳ 平滑过渡：current → target
+    const current = heroBarCurrentPercents[i] || 0;
+    const target  = heroBarTargetPercents[i] || 0;
+    const delta   = target - current;
+    heroBarCurrentPercents[i] = current + delta * 0.2;
+    
+    const percent = heroBarCurrentPercents[i];
+
+
+/*  */
     const barW = size;
     const barH = 6;
     const barX = sx;
@@ -574,7 +588,17 @@ for (let i = 0; i < gridSize; i++) {
   
     ctxRef.fillStyle = '#333';
     drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, true, false);
-  
+  // 条形闪光叠加
+const flashAge = Date.now() - heroBarFlashTimers[i];
+if (flashAge < 400) {
+  const brightness = 1 - flashAge / 400;
+  ctxRef.fillStyle = `rgba(255, 255, 180, ${brightness})`;
+  drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, true, false);
+}
+
+// 前景填充条
+ctxRef.fillStyle = '#00BFFF';
+ctxRef.fillRect(barX, barY, barW * (percent / 100), barH);
     if (percent >= 100) {
       ctxRef.strokeStyle = (Date.now() % 500 < 250) ? '#FF0' : '#F00';
       ctxRef.lineWidth = 4;
@@ -830,6 +854,13 @@ if (heroIndex >= 0) {
   const endY = topMargin + size + 8;
 
   createEnergyParticles(centerX, centerY, endX, endY, blockColor, 6);
+
+  // 改成延迟触发
+  setTimeout(() => {
+    heroBarFlashTimers[heroIndex] = Date.now();
+    const charges = getCharges();
+    heroBarTargetPercents[heroIndex] = charges[heroIndex] || 0;
+  }, 400);
 }
 
       // ✅ 彩色粒子效果

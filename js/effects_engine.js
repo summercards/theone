@@ -156,11 +156,42 @@ export function drawAllEffects(ctx, canvas) {
         const y = e.y0 + (e.y1 - e.y0) * p;
       
         ctx.save();
-        ctx.globalAlpha = 1 - p;
-        ctx.fillStyle = e.color;
-        ctx.beginPath();
-        ctx.arc(x, y, e.radius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.translate(x, y);
+        ctx.rotate(e.rotation);
+        
+        // ✨ 控制渐变只在末尾 20% 进行
+        let finalColor;
+        if (p < 0.8) {
+          finalColor = e.color; // 前 80% 保持原色
+        } else {
+          // 末尾 20% 渐变为蓝色
+          const lerpT = (p - 0.8) / 0.2; // 映射到 [0, 1]
+          finalColor = lerpColor(e.color, '#00BFFF', lerpT);
+        }
+        
+        // 🎨 渐变函数（RGB 线性插值）
+        function lerpColor(startColor, endColor, t) {
+          const parse = (c) => c.length === 4
+            ? c.match(/[0-9a-f]/gi).map(ch => parseInt(ch + ch, 16))
+            : c.match(/[0-9a-f]{2}/gi).map(hex => parseInt(hex, 16));
+        
+          const [r1, g1, b1] = parse(startColor.replace('#', ''));
+          const [r2, g2, b2] = parse(endColor.replace('#', ''));
+        
+          const r = Math.round(r1 + (r2 - r1) * t);
+          const g = Math.round(g1 + (g2 - g1) * t);
+          const b = Math.round(b1 + (b2 - b1) * t);
+          return `rgb(${r},${g},${b})`;
+        }
+        
+        // 🔹 缩放：飞行过程中粒子逐渐变小
+        const scale = 1 - p * 0.4;
+        const size = e.radius * 2 * scale;
+        
+        ctx.fillStyle = finalColor;
+        ctx.globalAlpha = 1;
+        ctx.fillRect(-size / 2, -size / 2, size, size);
+        
         ctx.restore();
       
         if (p >= 1) remove.push(i);
@@ -181,12 +212,13 @@ export function createEnergyParticles(x0, y0, x1, y1, color = '#FFD700', count =
     for (let i = 0; i < count; i++) {
       const offsetDelay = i * 50; // 每个粒子稍有延迟
       effects.push({
+        rotation: Math.random() * Math.PI * 2,
         type: 'energy_particle',
         x0, y0, x1, y1,
         startTime: now + offsetDelay,
         color,
         duration: 500 + Math.random() * 150,
-        radius: 4 + Math.random() * 2
+        radius: (4 + Math.random() * 2) * 1
       });
     }
   }
