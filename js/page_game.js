@@ -1527,3 +1527,4 @@ function rewardExpToHeroes(expAmount) {
 
 export { monsterHitFlashTime };
 export { gridData };
+export { dropBlocks, fillNewBlocks, checkAndClearMatches };
