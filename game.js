@@ -19,15 +19,16 @@ const pages = {
 let currentPageName   = 'home';
 let currentPageModule = pages.home;
 
-function switchPage(name, onFinish) {
-  currentPageModule.destroy?.();
-  currentPageName   = name;
-  currentPageModule = pages[name];
-  currentPageModule.init?.(ctx, switchPage, canvas);
-  if (typeof onFinish === 'function') {
-    setTimeout(onFinish, 0);
+function switchPage(name, options, onFinish) {
+    currentPageModule.destroy?.();
+    currentPageName = name;
+    currentPageModule = pages[name];
+    currentPageModule.init?.(ctx, switchPage, canvas, options);
+    if (typeof onFinish === 'function') {
+      setTimeout(onFinish, 0);
+    }
   }
-}
+  
 
 switchPage('loading');
 

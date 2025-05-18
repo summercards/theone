@@ -48,6 +48,16 @@ let pageIndex   = 0;
 /* ---------- 弹窗状态 ---------- */
 let unlockDialog = { show: false, hero: null, okRect: null, cancelRect: null };
 
+function getLastLevel(callback) {
+    try {
+      const stored = wx.getStorageSync('lastLevel');
+      const level = parseInt(stored || '1');
+      callback(level > 0 ? level : 1);
+    } catch (e) {
+      callback(1);
+    }
+  }
+  
 function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
     let attempt = 0;
     while (attempt < maxTries) {
@@ -351,7 +361,9 @@ if (hero.locked) {
   };
   if (hit(x, y, confirmRect)) {
     wx.setStorageSync('selectedHeroes', selectedHeroes);
-    switchPageFn('game');
+    getLastLevel((level) => {
+        switchPageFn('game', { level });
+      });
   }
 }
 
@@ -557,7 +569,16 @@ layoutRects.push(confirmRect);
 const confirmX = confirmRect.x;
 ctx.fillStyle = '#912BB0';
 drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 0.8, 6, true, false);
-drawText(ctx, '确认出战',
+let level = 1;
+try {
+  const stored = wx.getStorageSync('lastLevel');
+  level = parseInt(stored || '1');
+  if (!level || level < 1) level = 1;
+} catch (e) {
+  level = 1;
+}
+
+drawText(ctx, `进入第${level}关`,
          confirmX + ICON * 1.5,
          confirmY + ICON * 0.4,
          '18px IndieFlower', '#FFF', 'center', 'middle');

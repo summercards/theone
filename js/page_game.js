@@ -14,6 +14,7 @@ const DEBUG = false; // 全局设置，生产时设为 false
 let showVictoryPopup = false;
 let earnedGold = 0;
 let levelJustCompleted = 0;
+let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
 // === 变更：把另外两个特效工具也引进来
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
@@ -154,8 +155,8 @@ let gridData = [];
 let selected = null;
 
 
-
-export function initGamePage(ctx, switchPage, canvas) {
+export function initGamePage(ctx, switchPage, canvas, options = {}) {
+    currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
   ctxRef = ctx;
   switchPageFn = switchPage;
   canvasRef = canvas;
@@ -183,7 +184,7 @@ wx.onTouchEnd(onTouchend);
   selected = null;
 
   initGrid();
-  const m = loadMonster(1);
+  const m = loadMonster(currentLevel);
   turnsLeft = m.skill.cooldown;
   drawGame();
 }
@@ -1409,20 +1410,26 @@ showDamageText(pendingDamage, endX, endY + 50);
 
     if (isMonsterDead()) {
         setTimeout(() => {
-          earnedGold = getMonsterGold();
-          addCoins(earnedGold);
-          levelJustCompleted = getNextLevel() - 1;
-          showVictoryPopup = true;
-      
-          rewardExpToHeroes(50);
-      
-          updatePlayerStats({
-            stage: levelJustCompleted,
-            damage: dmg
-          });
-      
-          drawGame(); // ✅ 立即刷新界面（否则可能不显示）
-        }, 600); // ✅ 延迟 600 毫秒后执行
+            earnedGold = getMonsterGold();
+            addCoins(earnedGold);
+            levelJustCompleted = currentLevel;  // ✅ 不再用 getNextLevel()
+            showVictoryPopup = true;
+          
+            rewardExpToHeroes(50);
+          
+            // ✅ 保存最高记录
+            updatePlayerStats({
+                stage: currentLevel,              // ✅ 用 currentLevel 作为最远关卡
+              damage: dmg,
+              gold: getSessionCoins()
+            });
+          
+            // ✅ 保存继续关卡
+            wx.setStorageSync('lastLevel', (currentLevel + 1).toString());
+          
+            drawGame();
+          }, 600);
+          
     
       return; // ❗很重要：停止继续 loadMonster
     } else {
