@@ -1162,15 +1162,18 @@ function onTouchend(e) {
                y >= btn.y && y <= btn.y + btn.height) {
       showVictoryPopup = false;
   
-      const monster = loadMonster(getNextLevel());
+      currentLevel = getNextLevel();      // ✅ 更新当前关卡编号
+      levelJustCompleted = currentLevel;  // ✅ 更新胜利用变量
+  
+      const monster = loadMonster(currentLevel); // ✅ 使用正确关卡加载怪物
       turnsLeft = monster.skill.cooldown;
   
       initGrid();
-      drawGame(); // ✅ 刷新画面
+      drawGame();
     }
-  
-    return; // ❗ 禁止继续滑动行为
+    return;
   }
+  
 
   // ✅ 失败弹窗点击“回到主页”
   if (showGameOver) {
@@ -1472,7 +1475,7 @@ showDamageText(pendingDamage, endX, endY + 50);
             });
           
             // ✅ 保存继续关卡
-            wx.setStorageSync('lastLevel', (currentLevel + 1).toString());
+            wx.setStorageSync('lastLevel', currentLevel.toString());
           
             drawGame();
           }, 600);
