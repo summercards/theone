@@ -3,16 +3,29 @@ let switchPageFn;
 let canvasRef;
 let rankingBtnArea = null;
 let shareBtnArea = null;
+let homeLoopId = null;
 
-const { drawRoundedRect } = require('./utils/canvas_utils.js');
+const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { shareMyStats } = require('./utils/share_utils.js');
+const { drawAllEffects } = require('./effects_engine.js');
+
+let buttonScales = {
+  enter: 1,
+  ranking: 1,
+  share: 1
+};
+
+let buttonScaleVels = {
+  enter: 0,
+  ranking: 0,
+  share: 0
+};
 
 export function initHomePage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   switchPageFn = switchPage;
   canvasRef = canvas;
-
-  drawHomeUI();
+  startHomeLoop();
 }
 
 function drawHomeUI() {
@@ -21,7 +34,14 @@ function drawHomeUI() {
   const x = (canvasRef.width - btnWidth) / 2;
   const y = canvasRef.height * 0.75;
 
-  // 背景图
+  updateScales();
+
+  const scaleEnter = buttonScales.enter;
+  const scaledEnterW = btnWidth * scaleEnter;
+  const scaledEnterH = btnHeight * scaleEnter;
+  const offsetX = x + (btnWidth - scaledEnterW) / 2;
+  const offsetY = y + (btnHeight - scaledEnterH) / 2;
+
   const bgImg = globalThis.imageCache['bg'];
   if (bgImg && bgImg.complete) {
     const imgRatio = bgImg.width / bgImg.height;
@@ -36,27 +56,24 @@ function drawHomeUI() {
       drawHeight = drawWidth / imgRatio;
     }
 
-    const offsetX = (canvasRef.width - drawWidth) / 2;
-    const offsetY = (canvasRef.height - drawHeight) / 2;
-
-    ctxRef.drawImage(bgImg, offsetX, offsetY, drawWidth, drawHeight);
+    const bgOffsetX = (canvasRef.width - drawWidth) / 2;
+    const bgOffsetY = (canvasRef.height - drawHeight) / 2;
+    ctxRef.drawImage(bgImg, bgOffsetX, bgOffsetY, drawWidth, drawHeight);
   } else {
     ctxRef.fillStyle = 'black';
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
   }
 
-  // "进入酒吧"按钮
   ctxRef.fillStyle = '#f00';
-  drawRoundedRect(ctxRef, x, y, btnWidth, btnHeight, 20);
+  drawRoundedRect(ctxRef, offsetX, offsetY, scaledEnterW, scaledEnterH, 20);
   ctxRef.fill();
 
-  ctxRef.fillStyle = 'white';
-  ctxRef.font = '28px sans-serif';
-  ctxRef.textAlign = 'center';
-  ctxRef.textBaseline = 'middle';
-  ctxRef.fillText('进入酒吧', x + btnWidth / 2, y + btnHeight / 2);
+  drawStyledText(ctxRef, '进入酒吧', x + btnWidth / 2, y + btnHeight / 2, {
+    font: 'bold 26px IndieFlower',
+    fill: '#FFF',
+    stroke: '#000',
+  });
 
-  // 横排按钮（排行榜 + 分享）
   const smallBtnWidth = 140;
   const smallBtnHeight = 50;
   const spacing = 20;
@@ -64,33 +81,58 @@ function drawHomeUI() {
   const baseX = (canvasRef.width - totalWidth) / 2;
   const btnY = y + btnHeight + 20;
 
-  // 排行榜按钮（左）
-  ctxRef.fillStyle = '#333';
-  drawRoundedRect(ctxRef, baseX, btnY, smallBtnWidth, smallBtnHeight, 16);
-  ctxRef.fill();
-  ctxRef.fillStyle = 'white';
-  ctxRef.font = '22px sans-serif';
-  ctxRef.fillText('排行榜', baseX + smallBtnWidth / 2, btnY + smallBtnHeight / 2);
-  rankingBtnArea = {
-    x: baseX,
-    y: btnY,
-    width: smallBtnWidth,
-    height: smallBtnHeight
-  };
+  const scaleRanking = buttonScales.ranking;
+  const wRank = smallBtnWidth * scaleRanking;
+  const hRank = smallBtnHeight * scaleRanking;
+  const xRank = baseX + (smallBtnWidth - wRank) / 2;
+  const yRank = btnY + (smallBtnHeight - hRank) / 2;
 
-  // 分享按钮（右）
-  const shareX = baseX + smallBtnWidth + spacing;
-  ctxRef.fillStyle = '#0066cc';
-  drawRoundedRect(ctxRef, shareX, btnY, smallBtnWidth, smallBtnHeight, 16);
+  ctxRef.fillStyle = '#333';
+  drawRoundedRect(ctxRef, xRank, yRank, wRank, hRank, 16);
   ctxRef.fill();
-  ctxRef.fillStyle = 'white';
-  ctxRef.fillText('分享', shareX + smallBtnWidth / 2, btnY + smallBtnHeight / 2);
-  shareBtnArea = {
-    x: shareX,
-    y: btnY,
-    width: smallBtnWidth,
-    height: smallBtnHeight
-  };
+  drawStyledText(ctxRef, '排行榜', baseX + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
+    font: 'bold 20px IndieFlower', fill: '#FFF', stroke: '#000'
+  });
+  rankingBtnArea = { x: baseX, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
+
+  const shareX = baseX + smallBtnWidth + spacing;
+  const scaleShare = buttonScales.share;
+  const wShare = smallBtnWidth * scaleShare;
+  const hShare = smallBtnHeight * scaleShare;
+  const xShare = shareX + (smallBtnWidth - wShare) / 2;
+  const yShare = btnY + (smallBtnHeight - hShare) / 2;
+
+  ctxRef.fillStyle = '#0066cc';
+  drawRoundedRect(ctxRef, xShare, yShare, wShare, hShare, 16);
+  ctxRef.fill();
+  drawStyledText(ctxRef, '分享', shareX + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
+    font: 'bold 20px IndieFlower', fill: '#FFF', stroke: '#000'
+  });
+  shareBtnArea = { x: shareX, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
+
+  drawAllEffects(ctxRef, canvasRef);
+}
+
+function updateScales() {
+  for (let key in buttonScales) {
+    const target = 1;
+    const scale = buttonScales[key];
+    const vel = buttonScaleVels[key] || 0;
+
+    const spring = 0.15;
+    const damping = 0.8;
+
+    const force = (target - scale) * spring;
+    const newVel = (vel + force) * damping;
+
+    buttonScaleVels[key] = newVel;
+    buttonScales[key] += newVel;
+  }
+}
+
+function animateScale(key) {
+  buttonScales[key] = 0.85;
+  buttonScaleVels[key] = 0.15;
 }
 
 function onTouch(e) {
@@ -103,41 +145,52 @@ function onTouch(e) {
   const x = (canvasRef.width - btnWidth) / 2;
   const y = canvasRef.height * 0.75;
 
-  console.log('[DEBUG] 首页按钮点击检测中...');
-
-  // 点击“进入酒吧”
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= y && yTouch <= y + btnHeight) {
-    switchPageFn('heroSelect');
+    animateScale('enter');
+    setTimeout(() => switchPageFn('heroSelect'), 150);
     return;
   }
 
-  // 点击“排行榜”
   if (rankingBtnArea &&
       xTouch >= rankingBtnArea.x && xTouch <= rankingBtnArea.x + rankingBtnArea.width &&
       yTouch >= rankingBtnArea.y && yTouch <= rankingBtnArea.y + rankingBtnArea.height) {
-    switchPageFn('ranking');
+    animateScale('ranking');
+    setTimeout(() => switchPageFn('ranking'), 150);
     return;
   }
 
-  // 点击“分享”
   if (shareBtnArea &&
       xTouch >= shareBtnArea.x && xTouch <= shareBtnArea.x + shareBtnArea.width &&
       yTouch >= shareBtnArea.y && yTouch <= shareBtnArea.y + shareBtnArea.height) {
-    shareMyStats();
+    animateScale('share');
+    setTimeout(() => shareMyStats(), 150);
     return;
+  }
+}
+
+function startHomeLoop() {
+  function loop() {
+    drawHomeUI();
+    homeLoopId = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+function destroyHomePage() {
+  if (homeLoopId) {
+    cancelAnimationFrame(homeLoopId);
+    homeLoopId = null;
   }
 }
 
 export function updateHomePage() {}
-
-export function onTouchend(e) {
-  onTouch(e);
-}
+export function onTouchend(e) { onTouch(e); }
 
 export default {
   init: initHomePage,
   update: updateHomePage,
   draw: drawHomeUI,
+  destroy: destroyHomePage,
   onTouchend,
   touchend: onTouchend
 };

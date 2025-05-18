@@ -23,7 +23,7 @@ const barDialogLines = [
 let barDialogText = barDialogLines[Math.floor(Math.random() * barDialogLines.length)];
 
 // ======================= 资源与常量 =======================
-const { drawRoundedRect } = require('./utils/canvas_utils.js');
+const {  drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { getTotalCoins }   = require('./data/coin_state.js');
 const {
   HeroState,            // 类
@@ -442,9 +442,15 @@ if (showDialog) {
 
 
   // 顶部金币
-  drawText(ctx, `金币: ${getTotalCoins()}`,
-           canvas.width - PAD_X, topOffset,
-           '18px IndieFlower', '#FFD700', 'right', 'top');
+  drawStyledText(ctx, `金币: ${getTotalCoins()}`,
+  canvas.width - PAD_X, topOffset, {
+    font: 'bold 18px IndieFlower',
+    fill: '#FFD700',
+    stroke: '#000',
+    align: 'right',
+    baseline: 'top'
+});
+
 
   // 出战槽标题
   drawText(ctx, '出战英雄（点击移除）', PAD_X, selectedY - 20,
@@ -547,10 +553,16 @@ globalThis.layoutRects = layoutRects;
   ctx.fillStyle = '#FFD700';
   drawRoundedRect(ctx, upgradeToggleRect.x, upgradeToggleRect.y,
                   upgradeToggleRect.width, upgradeToggleRect.height, 8, true, false);
-  drawText(ctx, showUpgradeButtons ? '隐藏' : '升级',
-    upgradeToggleRect.x + upgradeToggleRect.width / 2,
-    upgradeToggleRect.y + upgradeToggleRect.height / 2,
-    '18px IndieFlower', '#000', 'center', 'middle');
+                  drawStyledText(ctx, showUpgradeButtons ? '隐藏' : '升级',
+                  upgradeToggleRect.x + upgradeToggleRect.width / 2,
+                  upgradeToggleRect.y + upgradeToggleRect.height / 2, {
+                    font: 'bold 18px IndieFlower',
+                    fill: '#000',
+                    stroke: '#FFF',
+                    align: 'center',
+                    baseline: 'middle'
+                });
+                
 
   // 确认按钮
 // ✅ 将确认按钮 Y 坐标与左侧“升级按钮”对齐
@@ -578,10 +590,16 @@ try {
   level = 1;
 }
 
-drawText(ctx, `进入第${level}关`,
-         confirmX + ICON * 1.5,
-         confirmY + ICON * 0.4,
-         '18px IndieFlower', '#FFF', 'center', 'middle');
+drawStyledText(ctx, `进入第${level}关`,
+  confirmX + ICON * 1.5,
+  confirmY + ICON * 0.4, {
+    font: 'bold 18px IndieFlower',
+    fill: '#FFF',
+    stroke: '#000',
+    align: 'center',
+    baseline: 'middle'
+});
+
 
 
   // 广告按钮
@@ -596,10 +614,16 @@ drawText(ctx, `进入第${level}关`,
 
   ctx.fillStyle = '#FFD700';
   drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
-  drawText(ctx, '看广告得金币',
-    adBtnRect.x + adBtnRect.width / 2,
-    adBtnRect.y + adBtnRect.height / 2,
-    '18px IndieFlower', '#000', 'center', 'middle');
+  drawStyledText(ctx, '看广告得金币',
+  adBtnRect.x + adBtnRect.width / 2,
+  adBtnRect.y + adBtnRect.height / 2, {
+    font: 'bold 18px IndieFlower',
+    fill: '#000',
+    stroke: '#FFF',
+    align: 'center',
+    baseline: 'middle'
+});
+
 
   globalThis.adBtnRect = adBtnRect;
 
@@ -726,7 +750,7 @@ function drawIcon(ctx, hero, x, y, size = ICON) {
         ctx.fillStyle = '#222';     // 深灰底
         ctx.strokeStyle = '#000';   // ✅ 黑色描边
         ctx.lineWidth = 2;
-        drawRoundedRect(ctx, iconX, iconY, iconSize, iconSize, 4, true, true);
+        drawRoundedRect(ctx, iconX, iconY, iconSize, iconSize, iconSize / 2, true, true);
         ctx.restore();
       
         ctx.drawImage(icon, iconX, iconY, iconSize, iconSize);
