@@ -665,55 +665,87 @@ function drawUnlockDialog(ctx, canvas) {
 
 
 function drawIcon(ctx, hero, x, y, size = ICON) {
-    const r = 8;
-    const img = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
-  
-    // ==== 圆角裁剪区域 ====
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + size - r, y);
-    ctx.quadraticCurveTo(x + size, y, x + size, y + r);
-    ctx.lineTo(x + size, y + size - r);
-    ctx.quadraticCurveTo(x + size, y + size, x + size - r, y + size);
-    ctx.lineTo(x + r, y + size);
-    ctx.quadraticCurveTo(x, y + size, x, y + size - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-    ctx.clip();
-  
-    // ==== 头像图像 ====
-    if (img) {
-      ctx.drawImage(img, x, y, size, size);
-    } else {
-      ctx.fillStyle = '#444';
-      ctx.fillRect(x, y, size, size);
-    }
-    ctx.restore();
-  
-    // ==== 品质描边 ====
-    const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
-    ctx.strokeStyle = rarityColor;
-    ctx.lineWidth = 3;
-    drawRoundedRect(ctx, x, y, size, size, 8, false, true);
-  
-    // ==== 名称 / 职业 ====
-    ctx.font = 'bold 10px IndieFlower';
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#000';
-    ctx.fillStyle = '#FFF';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.strokeText(hero.role, x + 4, y + size - 14);
-    ctx.fillText(hero.role,   x + 4, y + size - 14);
-    ctx.strokeText(hero.name, x + 4, y + size - 3);
-    ctx.fillText(hero.name,   x + 4, y + size - 3);
-  
+    const roleToBlockLetter = {
+        '战士': 'A',
+        '游侠': 'B',
+        '法师': 'C',
+        '坦克': 'D',
+        '刺客': 'E',
+        '辅助': 'F'
+      };
+      const r = 8;
+      const img = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
+      
+      // ==== 圆角裁剪区域 ====
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + size - r, y);
+      ctx.quadraticCurveTo(x + size, y, x + size, y + r);
+      ctx.lineTo(x + size, y + size - r);
+      ctx.quadraticCurveTo(x + size, y + size, x + size - r, y + size);
+      ctx.lineTo(x + r, y + size);
+      ctx.quadraticCurveTo(x, y + size, x, y + size - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      ctx.clip();
+      
+      // ==== 头像图像 ====
+      if (img) {
+        ctx.drawImage(img, x, y, size, size);
+      } else {
+        ctx.fillStyle = '#444';
+        ctx.fillRect(x, y, size, size);
+      }
+      ctx.restore();
+      
+      // ==== 品质描边 ====
+      const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
+      ctx.strokeStyle = rarityColor;
+      ctx.lineWidth = 3;
+      drawRoundedRect(ctx, x, y, size, size, 8, false, true);
+      
+      // ==== 名称 / 职业图标 ====
+      ctx.font = 'bold 10px IndieFlower';
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#000';
+      ctx.fillStyle = '#FFF';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      
+      const letter = roleToBlockLetter[hero.role];
+      const icon = globalThis.imageCache?.[`block_${letter}`];
+      const iconSize = size * 0.26;
+      const iconX = x + 4;
+      const iconY = y + size - iconSize - 4;
+      
+      // ✅ 职业图标 + 背框
+      if (icon && icon.complete && icon.width > 0) {
+        ctx.save();
+        ctx.fillStyle = '#222';     // 深灰底
+        ctx.strokeStyle = '#000';   // ✅ 黑色描边
+        ctx.lineWidth = 2;
+        drawRoundedRect(ctx, iconX, iconY, iconSize, iconSize, 4, true, true);
+        ctx.restore();
+      
+        ctx.drawImage(icon, iconX, iconY, iconSize, iconSize);
+      
+        // ✅ 名字右移
+        const nameOffsetX = iconX + iconSize + 6;
+        ctx.strokeText(hero.name, nameOffsetX, y + size - 3);
+        ctx.fillText(hero.name,   nameOffsetX, y + size - 3);
+      } else {
+        // 没图标时默认名字位置
+        ctx.strokeText(hero.name, x + 4, y + size - 3);
+        ctx.fillText(hero.name,   x + 4, y + size - 3);
+      }
+      
+
     // ==== 锁定遮罩 ====
     if (hero.locked) {
       ctx.save();
-      ctx.globalAlpha = 0.95;
+      ctx.globalAlpha = 0.55;
       ctx.fillStyle = '#000';
       drawRoundedRect(ctx, x, y, size, size, 8, true, false);
       ctx.globalAlpha = 1;
