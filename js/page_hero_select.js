@@ -725,7 +725,7 @@ function drawIcon(ctx, hero, x, y, size = ICON) {
       ctx.restore();
       
       // ==== 品质描边 ====
-      const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#8B4513' }[hero.rarity] || '#FFFFFF';
+      const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' }[hero.rarity] || '#FFFFFF';
       ctx.strokeStyle = rarityColor;
       ctx.lineWidth = 3;
       drawRoundedRect(ctx, x, y, size, size, 8, false, true);

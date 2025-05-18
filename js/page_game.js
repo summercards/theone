@@ -380,14 +380,68 @@ if (victoryHeroLoaded && art) {
         x: btnX, y: btnY, width: btnW, height: btnH
       };
     }
-    
-    
-    
-    
-    
-
 }
 
+function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
+    const roleToBlockLetter = {
+      '战士': 'A', '游侠': 'B', '法师': 'C', '坦克': 'D', '刺客': 'E', '辅助': 'F'
+    };
+  
+    const icon = globalThis.imageCache[hero.icon];
+    const r = 6;
+  
+    const scaledSize = size * scale;
+    const offsetX = x + (size - scaledSize) / 2;
+    const offsetY = y + (size - scaledSize) / 2;
+  
+    // === 圆角头像区域 ===
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(offsetX + r, offsetY);
+    ctx.lineTo(offsetX + scaledSize - r, offsetY);
+    ctx.quadraticCurveTo(offsetX + scaledSize, offsetY, offsetX + scaledSize, offsetY + r);
+    ctx.lineTo(offsetX + scaledSize, offsetY + scaledSize - r);
+    ctx.quadraticCurveTo(offsetX + scaledSize, offsetY + scaledSize, offsetX + scaledSize - r, offsetY + scaledSize);
+    ctx.lineTo(offsetX + r, offsetY + scaledSize);
+    ctx.quadraticCurveTo(offsetX, offsetY + scaledSize, offsetX, offsetY + scaledSize - r);
+    ctx.lineTo(offsetX, offsetY + r);
+    ctx.quadraticCurveTo(offsetX, offsetY, offsetX + r, offsetY);
+    ctx.closePath();
+    ctx.clip();
+  
+    if (icon) {
+      ctx.drawImage(icon, offsetX, offsetY, scaledSize, scaledSize);
+    } else {
+      ctx.fillStyle = '#555';
+      ctx.fillRect(offsetX, offsetY, scaledSize, scaledSize);
+    }
+    ctx.restore();
+  
+    // === 品质边框 ===
+    const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' }[hero.rarity] || '#FFF';
+    ctx.strokeStyle = rarityColor;
+    ctx.lineWidth = 2;
+    drawRoundedRect(ctx, offsetX, offsetY, scaledSize, scaledSize, r, false, true);
+  
+    // === 职业图标 ===
+    const letter = roleToBlockLetter[hero.role];
+    const roleIcon = globalThis.imageCache?.[`block_${letter}`];
+    const iconSize = scaledSize * 0.26;
+    const iconX = offsetX + 4;
+    const iconY = offsetY + scaledSize - iconSize - 4;
+  
+    if (roleIcon && roleIcon.complete && roleIcon.width > 0) {
+      ctx.save();
+      ctx.fillStyle = '#222';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      drawRoundedRect(ctx, iconX, iconY, iconSize, iconSize, iconSize / 2, true, true);
+      ctx.restore();
+      ctx.drawImage(roleIcon, iconX, iconY, iconSize, iconSize);
+    }
+  }
+  
+  
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
     
@@ -669,19 +723,11 @@ if (percent > 0) {
     // — 已选英雄头像 —
     const hero = heroes[i];
     if (hero) {
-      const cached = heroImageCache[hero.id] || globalThis.imageCache[hero.icon];
-      if (cached) {
-        const scale = (globalThis.avatarSlotScales?.[i]) || 1.0;
-        const cx = sx + size / 2;
-        const cy = sy + size / 2;
-        ctxRef.save();
-        ctxRef.translate(cx, cy);
-        ctxRef.scale(scale, scale);
-        ctxRef.drawImage(cached, -size / 2, -size / 2, size, size);
-        ctxRef.restore();
-      }
-  
-      // 等级文本
+      const scaleBase = globalThis.avatarSlotScales?.[i] || 1;  // ← 保留技能动画放大值
+      const finalScale = scaleBase * 1.05;                         // ← 添加基础视觉放大
+      drawHeroIconFull(ctxRef, hero, sx, sy, size, finalScale);   // ✅ 替换原调用
+    
+      // 等级文本保持不变
       const lvText = `Lv.${hero.level}`;
       ctxRef.font = 'bold 11px IndieFlower, sans-serif';
       ctxRef.textAlign = 'right';
@@ -696,6 +742,7 @@ if (percent > 0) {
       ctxRef.shadowColor = 'transparent';
       ctxRef.shadowBlur = 0;
     }
+    
   }
   
 /* =============================================================== */
