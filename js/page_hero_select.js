@@ -478,7 +478,8 @@ for (let i = 0; i < 5; i++) {
   const heroId = selectedHeroes[i];
   if (heroId) {
     const heroObj = new HeroState(heroId);
-    drawIcon(ctx, heroObj, sx, sy);
+    drawIcon(ctx, heroObj, sx, sy, ICON);  // ✅ 新写法
+
   }
 }
 
@@ -557,8 +558,8 @@ globalThis.layoutRects = layoutRects;
                   upgradeToggleRect.x + upgradeToggleRect.width / 2,
                   upgradeToggleRect.y + upgradeToggleRect.height / 2, {
                     font: 'bold 18px IndieFlower',
-                    fill: '#000',
-                    stroke: '#FFF',
+                    fill: '#FFFFFF',
+                    //stroke: '#FFF',
                     align: 'center',
                     baseline: 'middle'
                 });
@@ -594,8 +595,8 @@ drawStyledText(ctx, `进入第${level}关`,
   confirmX + ICON * 1.5,
   confirmY + ICON * 0.4, {
     font: 'bold 18px IndieFlower',
-    fill: '#FFF',
-    stroke: '#000',
+    fill: '#FFFFFF',
+    //stroke: '#000',
     align: 'center',
     baseline: 'middle'
 });
@@ -618,8 +619,8 @@ drawStyledText(ctx, `进入第${level}关`,
   adBtnRect.x + adBtnRect.width / 2,
   adBtnRect.y + adBtnRect.height / 2, {
     font: 'bold 18px IndieFlower',
-    fill: '#000',
-    stroke: '#FFF',
+    fill: '#FFFFFF',
+    //stroke: '#FFF',
     align: 'center',
     baseline: 'middle'
 });
@@ -782,12 +783,12 @@ function drawIcon(ctx, hero, x, y, size = ICON) {
       ctx.restore();
     }
   
-    // ==== 属性文本 ====
-    const saved = wx.getStorageSync('heroProgress')?.[hero.id];
-    const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
-    const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
-    const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
-    drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
+// // ==== 属性文本 ====
+const saved = wx.getStorageSync('heroProgress')?.[hero.id];
+// const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
+// const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
+// const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
+// drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
   
     // ==== 升级按钮 ====
     if (showUpgradeButtons && !hero.locked) {
