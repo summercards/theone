@@ -1,6 +1,8 @@
 let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
+let playerActionCounter = 0;
+
 let touchStart = null;     // 记录起始格子位置
 let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
@@ -1217,22 +1219,41 @@ function handleSwap(src, dst) {
       selected = null;
       gaugeCount++;
 
-     // ✅ 每个英雄可能拥有自己的棋盘扩展技能，检查是否到期
-  const heroes = getSelectedHeroes();
-  for (const hero of heroes) {
-    const fx = hero?.tempEffects;
-    if (!fx?.gridExpandGaugeBase) continue;
+      playerActionCounter++;
 
-    const passed = gaugeCount - fx.gridExpandGaugeBase;
-    if (passed >= fx.gridExpandSteps) {
-      globalThis.gridSize = 6;
-      delete fx.gridExpandGaugeBase;
-      delete fx.gridExpandSteps;
-      initGrid();
-      drawGame();
-      logBattle(`${hero.name} 的棋盘扩展结束，恢复为 6x6`);
+      const heroes = getSelectedHeroes?.() || [];
+      for (const hero of heroes) {
+        const fx = hero?.tempEffects;
+        if (fx?.gridExpandTurnsLeft !== undefined) {
+          fx.gridExpandTurnsLeft--;
+    
+          if (fx.gridExpandTurnsLeft <= 0) {
+            globalThis.gridSize = 6;
+            initGrid();
+            drawGame();
+            delete fx.gridExpandTurnsLeft;
+            logBattle(`${hero.name} 的棋盘扩展结束，恢复为 6x6`);
+          }
+        }
+      }
+
+      
+     // ✅ 每个英雄可能拥有自己的棋盘扩展技能，检查是否到期
+     for (const hero of heroes) {
+      const fx = hero?.tempEffects;
+      if (!fx?.gridExpandGaugeBase) continue;
+    
+      const passed = gaugeCount - fx.gridExpandGaugeBase;
+      if (passed >= fx.gridExpandSteps) {
+        globalThis.gridSize = 6;
+        delete fx.gridExpandGaugeBase;
+        delete fx.gridExpandSteps;
+        initGrid();
+        drawGame();
+        logBattle(`${hero.name} 的棋盘扩展结束，恢复为 6x6`);
+      }
     }
-  }
+
 
       if (globalThis.gridExpandGaugeBase !== undefined) {
         const stepsPassed = gaugeCount - globalThis.gridExpandGaugeBase;
@@ -1280,7 +1301,8 @@ function destroyGamePage() {
   // ✅ 结算金币
   commitSessionCoins();
 }
-  
+export { expandGridTo };  // ✅ 添加这行
+
   export default {
     init: initGamePage,
     update: updateGamePage,
@@ -1424,15 +1446,16 @@ showDamageText(pendingDamage, endX, endY + 50);
     
   });
 }
-export function expandGridTo({ size = 7, steps = 2, hero }) {
+function expandGridTo({ size = 7, steps = 3, hero }) {
   globalThis.gridSize = size;
+
   hero.tempEffects = hero.tempEffects || {};
-  hero.tempEffects.gridExpandGaugeBase = gaugeCount;
-  hero.tempEffects.gridExpandSteps = steps;
+  hero.tempEffects.gridExpandTurnsLeft = steps;  // ✅ 设置倒计时次数为3
 
   initGrid();
   drawGame();
 }
+
 function rewardExpToHeroes(expAmount) {
   const heroes = getSelectedHeroes();
   heroes.forEach(hero => {
