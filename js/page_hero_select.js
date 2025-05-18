@@ -727,7 +727,7 @@ function drawIcon(ctx, hero, x, y, size = ICON) {
       // ==== 品质描边 ====
       const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' }[hero.rarity] || '#FFFFFF';
       ctx.strokeStyle = rarityColor;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       drawRoundedRect(ctx, x, y, size, size, 8, false, true);
       
       // ==== 名称 / 职业图标 ====
