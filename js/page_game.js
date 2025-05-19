@@ -1373,10 +1373,10 @@ export { expandGridTo };  // ✅ 添加这行
   
     const eff = hero.skill?.effect;
     if (!eff) return;
-  
     const context = {
       dealDamage,
       log: logBattle,
+      canvas: canvasRef,   // ✅ 加上这行！
       addGauge: (value) => {
         attackGaugeDamage += Math.round(value);
         damagePopTime = Date.now();
@@ -1386,6 +1386,7 @@ export { expandGridTo };  // ✅ 添加这行
         damagePopTime = Date.now();
       }
     };
+    
   
     applySkillEffect(hero, eff, context);
     // 添加释放特效（在能量条清空前）

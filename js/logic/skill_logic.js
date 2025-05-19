@@ -1,5 +1,5 @@
 import { expandGridTo } from '../page_game.js';
-
+import { playBasketballEffect } from "../effects_engine.js";
 
 
 export function applySkillEffect(hero, effect, context) {
@@ -36,6 +36,36 @@ export function applySkillEffect(hero, effect, context) {
       break;
     }
 
+    case "delayedDamage": {
+      const base =
+        effect.source === "physical" ? hero.attributes.physical :
+        effect.source === "magical" ? hero.attributes.magical :
+        0;
+    
+      const damage = effect.amount ?? Math.round(base * (effect.scale ?? 1));
+    
+      globalThis.__delayedSkillDamage = damage; // 给动画使用（可选）
+    
+      // ✅ 播放动画（可选）
+      if (effect.animation === "basketball") {
+        playBasketballEffect(context.canvas);
+      }
+    
+      // ✅ 延迟触发伤害（如有）
+      if (effect.delay && typeof globalThis.startAttackEffect === "function") {
+        setTimeout(() => {
+          globalThis.startAttackEffect(damage);
+        }, effect.delay);
+      } else {
+        context.dealDamage(damage);
+      }
+    
+      context.log(`${hero.name} 技能造成 ${damage} 点${effect.source === "magical" ? "法术" : "物理"}伤害`);
+      break;
+    }
+
+
+    
     case "teamHealAndBuff": {
       context.allies?.forEach(ally => {
         ally.hp += hero.attributes.healing * effect.healScale;

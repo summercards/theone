@@ -58,7 +58,66 @@ export function drawAllEffects(ctx, canvas) {
       const offsetY = (Math.random() - 0.5) * amp * 2;
       globalThis.shakeOffset = { x: offsetX, y: offsetY };
     }
-
+    else if (e.type === "basketball") {
+      const t = now - e.startTime;
+      const p = Math.min(t / e.duration, 1);
+    
+      const cx = e.canvasWidth / 2;
+      const cy = e.canvasHeight / 2;
+    
+      const travelX = 160;
+      const peakY = 80;
+    
+      // 轨迹计算
+      let x, y;
+      if (p < 0.5) {
+        const t1 = p * 2;
+        x = cx + travelX * t1;
+        y = cy - Math.sin(t1 * Math.PI) * peakY;
+      } else {
+        const t2 = (p - 0.5) * 2;
+        const targetX = cx;
+        const targetY = 200;
+        x = cx + travelX * (1 - t2);
+        y = cy + (targetY - cy) * t2 - Math.sin(t2 * Math.PI) * 20;
+      }
+    
+      // 🔁 动态放大半径
+      const baseRadius = 22;
+      const radius = baseRadius + 10 * Math.sin(p * Math.PI); // 最大变大到 32
+    
+      // 🔁 旋转角度
+      const angle = p * Math.PI * 4;
+    
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+    
+      const basketballImg = globalThis.imageCache?.['basketball'];
+      if (basketballImg && basketballImg.complete && basketballImg.width > 0) {
+        ctx.drawImage(basketballImg, -radius, -radius, radius * 2, radius * 2);
+      } else {
+        // 备选纯色球
+        ctx.fillStyle = "#FFA500";
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    
+      ctx.restore();
+    
+      // 命中判定：播放爆炸 & 闪白 & 弹跳
+      if (p >= 1) {
+        // ✅ 只保留视觉反馈，不处理伤害
+        createExplosion(x, y); // 动画爆点
+        createMonsterBounce(); // 怪物弹跳
+        globalThis.monsterHitFlashTime = Date.now(); // 闪白反馈
+      
+        remove.push(i); // 移除动画
+      }
+    }
+    
+    
     else if (e.type === 'monster_bounce') {
       const t = now - e.startTime;
       if (t > e.duration) {
@@ -454,5 +513,16 @@ function blendColors(color1, color2, t) {
       text,
       startTime: Date.now(),
       duration,
+    });
+  }
+
+  export function playBasketballEffect(canvas) {
+    const startTime = Date.now();
+    effects.push({
+      type: "basketball",
+      startTime,
+      duration: 800, // 动画总时长
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
     });
   }

@@ -358,7 +358,7 @@ const HeroData = {
     },
     {
       id: "hero016",
-      name: "地狱咆哮",
+      name: "坤坤",
       icon: "tank3.png",
       role: "坦克",
       rarity: "SSR",
@@ -372,11 +372,18 @@ const HeroData = {
         attributeGrowth: { physical: 4 }
       },
       skill: {
-        name: "你干嘛！",
-        description: "猛烈打击敌人造成物理伤害",
-        effect: { type: "physicalDamage", amount: 130 },
-        cooldown: 2
+        name: "你干嘛～",
+        description: "投出篮球击中怪物，造成2.5倍物理伤害",
+        effect: {
+          type: "delayedDamage",
+          source: "physical",
+          scale: 2.5,
+          animation: "basketball",
+          delay: 600
+        },
+        cooldown: 4
       }
+      
     },
     {
       id: "hero017",
