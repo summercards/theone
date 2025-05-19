@@ -94,10 +94,16 @@ export function drawAllEffects(ctx, canvas) {
       ctx.rotate(angle);
     
       const basketballImg = globalThis.imageCache?.['basketball'];
-      if (basketballImg && basketballImg.complete && basketballImg.width > 0) {
+
+      if (
+        basketballImg &&
+        typeof basketballImg.width === 'number' &&
+        basketballImg.complete &&
+        basketballImg.width > 0
+      ) {
         ctx.drawImage(basketballImg, -radius, -radius, radius * 2, radius * 2);
       } else {
-        // 备选纯色球
+        // 图像未加载成功，回退为橙色圆球
         ctx.fillStyle = "#FFA500";
         ctx.beginPath();
         ctx.arc(0, 0, radius, 0, Math.PI * 2);
