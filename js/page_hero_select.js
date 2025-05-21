@@ -785,10 +785,10 @@ function drawIcon(ctx, hero, x, y, size = ICON) {
   
 // // ==== 属性文本 ====
 const saved = wx.getStorageSync('heroProgress')?.[hero.id];
-// const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
-// const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
-// const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
-// drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
+const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
+const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
+const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
+drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
   
     // ==== 升级按钮 ====
     if (showUpgradeButtons && !hero.locked) {
