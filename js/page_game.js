@@ -327,33 +327,42 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
       // === 2. 主体区域背景（改为紫色，无透明度）
       const bannerHeight = 260;
       const bannerY = (canvasH - bannerHeight) / 2;
-      ctxRef.fillStyle = 'rgba(51, 17, 68, 0.85)';  // 半透明紫色
+      ctxRef.fillStyle = 'rgba(51, 17, 68, 1.0)';  // 半透明紫色
       ctxRef.fillRect(0, bannerY, canvasW, bannerHeight);
     
       // === 3. 标题文字（白色）
       const title = `第 ${levelJustCompleted} 关胜利！`;
       ctxRef.fillStyle = '#FFFFFF';
-      ctxRef.font = 'bold 24px sans-serif';
+      ctxRef.font = 'bold 36px sans-serif';
       ctxRef.textAlign = 'center';
       ctxRef.textBaseline = 'top';
-      ctxRef.fillText(title, canvasW / 2, bannerY + 16);
+      ctxRef.fillText(title, canvasW / 2, bannerY - 60);
     
       // === 4. 中间插图（美术角色图）
 // === 4. 中间插图（美术角色图）
-const art = globalThis.imageCache?.['victory_hero'];
-if (victoryHeroLoaded && art) {
-  const imgW = 520;
-  const imgH = 520;
-  const imgX = (canvasW - imgW) / 2;
-  const imgY = bannerY + 52;
-  ctxRef.drawImage(art, imgX, imgY, imgW, imgH);
-} else {
-  // 👇 加载中提示
+// === 4. 中间插图（美术角色图）
+if (!globalThis.victoryHeroImage) {
+  const img = wx.createImage();
+  img.src = 'assets/ui/victory_hero.png';
+  img.onload = () => {
+    globalThis.victoryHeroImage = img;
+    drawGame(); // 加载成功后强制刷新
+  };
+
+  // 加载中提示
   ctxRef.fillStyle = '#FFFFFF';
   ctxRef.font = '20px sans-serif';
   ctxRef.textAlign = 'center';
   ctxRef.fillText('加载中...', canvasW / 2, bannerY + 100);
+} else {
+  const img = globalThis.victoryHeroImage;
+  const imgW = 120;
+  const imgH = 120;
+  const imgX = (canvasW - imgW) / 2;
+  const imgY = bannerY + 52;
+  ctxRef.drawImage(img, imgX, imgY, imgW, imgH);
 }
+
 
 
 
@@ -366,7 +375,7 @@ if (victoryHeroLoaded && art) {
       // === 6. “下一关”按钮
       const btnW = 140, btnH = 42;
       const btnX = (canvasW - btnW) / 2;
-      const btnY = bannerY + 210;
+      const btnY = bannerY + 320;
     
       ctxRef.fillStyle = '#FFD700';
       drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
