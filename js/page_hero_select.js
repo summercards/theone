@@ -336,22 +336,38 @@ if (hero.locked) {
   }
 
   /* ---------- 头像下方“升级”按钮 ---------- */
-  for (const { hero } of iconRects) {
-    const btn = hero?.upgradeButtonRect;
-    if (btn && hit(x, y, btn)) {
-      const progress = wx.getStorageSync('heroProgress')?.[hero.id];
-      const cost     = (progress?.level ?? 1) * 100;
-      const coins    = getTotalCoins();
-      if (coins >= cost) {
-        const hs = new HeroState(hero.id);
-        hs.gainExp(hs.expToNextLevel);                  // 升一次级
-        wx.setStorageSync('totalCoins', coins - cost);  // 扣金币
-        return render();
-      } else {
-        wx.showToast({ title: '金币不足', icon: 'none' });
+/* ---------- 头像下方“升级”按钮 ---------- */
+for (const { hero } of iconRects) {
+  const btn = hero?.upgradeButtonRect;
+  if (btn && hit(x, y, btn)) {
+    const progress = wx.getStorageSync('heroProgress')?.[hero.id];
+    const cost     = (progress?.level ?? 1) * 100;
+    const coins    = getTotalCoins();
+
+    if (coins >= cost) {
+      // ✅ 升级英雄（保存到 heroProgress）
+      const hs = new HeroState(hero.id);
+      hs.gainExp(hs.expToNextLevel);                  // 自动保存
+
+      wx.setStorageSync('totalCoins', coins - cost);  // 扣金币
+
+      // ✅ 更新当前 UI 中的 hero 显示
+      Object.assign(hero, hs);
+
+      // ✅ 检查是否在出战栏中，如是则刷新出战栏缓存
+      const indexInTeam = selectedHeroes.findIndex(id => id === hero.id);
+      if (indexInTeam !== -1) {
+        selectedHeroes[indexInTeam] = hero.id;          // 用 ID 重新覆盖
+        setSelectedHeroes(selectedHeroes);              // 重建 HeroState 实例，读取最新状态
       }
+
+      return render();
+    } else {
+      wx.showToast({ title: '金币不足', icon: 'none' });
     }
   }
+}
+
 
   /* ---------- 确认按钮 ---------- */
   const confirmRect = {
