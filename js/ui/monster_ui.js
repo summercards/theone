@@ -37,20 +37,19 @@ export function drawMonsterSprite(ctx, canvas) {
   if (!monster || !canvas) return;
 
   const layoutRects = globalThis.layoutRects || [];
-  const bgImage = globalThis.imageCache['scene_bg01']; // 对应 key
+  const bgImage = globalThis.imageCache['scene_bg01'];
 
-  const BG_W = 360; // 背景图宽度（可调整）
-  const BG_H = 160; // 背景图高度（可调整）
-  
+  const BG_W = 360;
+  const BG_H = 160;
+
   if (bgImage && bgImage.complete && bgImage.width) {
     let gridTop = globalThis.__gridStartY || (canvas.height * 0.8);
     let bgX = (canvas.width - BG_W) / 2;
-    let bgY = Math.max(32, gridTop - 340);  // 保持与怪物一致的垂直逻辑
-  
+    let bgY = Math.max(32, gridTop - 340);
+
     ctx.drawImage(bgImage, bgX, bgY, BG_W, BG_H);
   }
 
-  // 加载图片（如未缓存）
   if (!monsterImageCache[monster.id]) {
     const img = wx.createImage();
     img.src = `assets/monsters/${monster.sprite}`;
@@ -61,10 +60,9 @@ export function drawMonsterSprite(ctx, canvas) {
   const SPR_W = monster.spriteSize || (monster.isBoss ? 300 : 120);
   const SPR_H = monster.spriteSize || (monster.isBoss ? 120 : 120);
   let x = (canvas.width - SPR_W) / 2;
-  let gridTop = globalThis.__gridStartY || (canvas.height * 0.7);  // Fallback
-let y = Math.max(32, gridTop - 320);  // 让怪物始终在棋盘上方一定高度
+  let gridTop = globalThis.__gridStartY || (canvas.height * 0.7);
+  let y = Math.max(32, gridTop - 320);
 
-  // 自动避让：优先占位
   const monsterRect = avoidOverlap(
     { x, y, width: SPR_W, height: SPR_H + 50 },
     layoutRects
@@ -73,63 +71,96 @@ let y = Math.max(32, gridTop - 320);  // 让怪物始终在棋盘上方一定高
   y = monsterRect.y;
   layoutRects.push(monsterRect);
 
-  // ✅ 即使图未加载完成也占位；只有加载成功才绘制
   const imgReady = img && img.width && img.complete;
   if (imgReady) {
     const flash = Date.now() - monsterHitFlashTime < 200;
     const scale = globalThis.monsterScale || 1;
-  
+
     const cx = x + SPR_W / 2;
     const cy = y + SPR_H / 2;
-  
+
     ctx.save();
-    ctx.translate(cx, cy);         // 移动到怪物中心
-    ctx.scale(scale, scale);       // 弹性缩放
-    ctx.translate(-SPR_W / 2, -SPR_H / 2); // 再偏移回图像原点
-  
-    if (flash) {
-      ctx.filter = 'brightness(2)';
-    } else {
-      ctx.filter = 'none';
-    }
-  
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.translate(-SPR_W / 2, -SPR_H / 2);
+    ctx.filter = flash ? 'brightness(2)' : 'none';
     ctx.drawImage(img, 0, 0, SPR_W, SPR_H);
     ctx.restore();
   }
 
-  // 绘制血条
+  // 🌟 血条绘制优化
   const BAR_W = 280;
   const BAR_H = 12;
   const BAR_OFFSET_Y = 18;
   const barX = (canvas.width - BAR_W) / 2;
   const barY = y + SPR_H + BAR_OFFSET_Y;
 
-  const hpRatio = monster.hp / monster.maxHp;
+  // 插值血量（平滑过渡）
+  globalThis.monsterHpDraw = globalThis.monsterHpDraw ?? monster.hp;
+  const speed = 0.2;
+  globalThis.monsterHpDraw += (monster.hp - globalThis.monsterHpDraw) * speed;
+  const hpDraw = Math.round(globalThis.monsterHpDraw);
+  const hpRatio = Math.max(0, Math.min(1, hpDraw / monster.maxHp));
+
+  // 血条背景
   ctx.fillStyle = '#000';
   drawRoundedRect(ctx, barX, barY, BAR_W, BAR_H, 10, true, false);
-  ctx.fillStyle = '#ff4444';
+
+  // 血条渐变
+  const grad = ctx.createLinearGradient(barX, barY, barX + BAR_W * hpRatio, barY);
+  grad.addColorStop(0, '#FF6666');
+  grad.addColorStop(0.5, '#FF2222');
+  grad.addColorStop(1, '#CC0000');
+  ctx.fillStyle = grad;
   drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
 
-// 文字信息
-ctx.fillStyle = '#fff';
-ctx.font = 'bold 14px sans-serif';
-ctx.textAlign = 'center';
+  // 高光
+  const highlightGrad = ctx.createLinearGradient(barX, barY, barX, barY + BAR_H);
+  highlightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+  highlightGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = highlightGrad;
+  ctx.fillRect(barX, barY, BAR_W * hpRatio, BAR_H / 2);
 
-// 血量显示（仍在血条中心）
-ctx.lineWidth = 2;
-ctx.strokeStyle = '#000';
-ctx.strokeText(`${monster.hp} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
-ctx.fillStyle = '#fff';
-ctx.fillText(`${monster.hp} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
+  // 受击闪光描边
+  const flash = Date.now() - monsterHitFlashTime < 200;
+  if (flash) {
+    ctx.strokeStyle = '#FFF';
+    ctx.lineWidth = 2;
+    drawRoundedRect(ctx, barX - 1, barY - 1, BAR_W + 2, BAR_H + 2, 10, false, true);
+  }
 
-// 名称 + 等级（移到怪物上方）
-const nameY = y - 16; // 位置：怪物图像正上方（可调）
-ctx.font = 'bold 18px sans-serif';
-ctx.lineWidth = 3;
-ctx.strokeStyle = '#000';
-ctx.strokeText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
-ctx.fillStyle = '#fff';
-ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
+  // Boss 边框
+  if (monster.isBoss) {
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 3;
+    drawRoundedRect(ctx, barX - 2, barY - 2, BAR_W + 4, BAR_H + 4, 8, false, true);
+  }
 
-  
+  // 临界闪烁
+  const isCritical = hpRatio < 0.25;
+  const shouldFlash = isCritical && (Date.now() % 400 < 200);
+  if (shouldFlash) {
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(barX - 3, barY - 3, BAR_W + 6, BAR_H + 6);
+  }
+
+  // 数值文字
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 7);
+
+  // 名称
+  const nameY = y - 16;
+  ctx.font = 'bold 18px sans-serif';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
 }
