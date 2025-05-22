@@ -845,9 +845,8 @@ function animateSwap(src, dst, callback, rollback = false) {
           F: globalThis.renderBlockF,
         };
         
-        if (block === 'S') {
-          // ✅ 单独渲染超级方块，避免误入 fallback
-          SuperBlockSystem.render(ctxRef, x, y, blockSize, blockSize);
+        if (SuperBlockSystem.isSuper?.(block)) {
+          SuperBlockSystem.render(ctxRef, x, y, blockSize, blockSize, block);
         } else {
           const renderer = renderMap[block];
           if (renderer) {
@@ -862,6 +861,7 @@ function animateSwap(src, dst, callback, rollback = false) {
             }
           }
         }
+        
         
         
       }
