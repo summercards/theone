@@ -51,6 +51,6 @@ export function onEliminatePinkBlock(count) {
     fillNewBlocks();
     setTimeout(() => {
       checkAndClearMatches();
-    }, 180);
-  }, 180);
+    }, 500);
+  }, 500);
 }
