@@ -287,11 +287,13 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
         D: globalThis.renderBlockD,
         E: globalThis.renderBlockE,
         F: globalThis.renderBlockF,
-        S: SuperBlockSystem.render,  // 超级方块渲染方法
+        S1: SuperBlockSystem.render,
+        S2: SuperBlockSystem.render,
+        S3: SuperBlockSystem.render,
       };
       const renderer = renderMap[block];
       if (renderer) {
-        renderer(ctxRef, x, y, actualBlockSize, actualBlockSize);
+        renderer(ctxRef, x, y, actualBlockSize, actualBlockSize, block);
       } else {
         // ✅ 无论 block 是否存在，都画一个灰底圆角方块
         ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
@@ -990,10 +992,11 @@ function checkAndClearMatches () {
 
   /* === ② 清除并统计 === */
   // 先排除将要变成超级块的位置（不要清除）
-superBlockSpots.forEach(({ row, col }) => {
-  toClear[row][col] = false;
-  gridData[row][col] = 'S'; // 超级方块，用 'S' 标记
-});
+
+  superBlockSpots.forEach(({ row, col }) => {
+    toClear[row][col] = false;
+    gridData[row][col] = SuperBlockSystem.randomType(); // 随机 S1/S2/S3
+  });
 
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
