@@ -13,10 +13,24 @@ const SuperBlockSystem = {
   },
 
   /**
-   * 渲染不同超级方块
+   * 渲染不同超级方块（带缩放和光影动画）
    */
   render(ctx, x, y, width, height, type = 'S1') {
+    const now = Date.now();
+    const pulse = 0.05 * Math.sin(now / 300); // 缩放幅度 ±5%
+    const scale = 1 + pulse;
+    const flicker = 0.85 + 0.15 * Math.sin(now / 180); // 透明度闪烁
+
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+
     ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.scale(scale, scale);
+    ctx.translate(-centerX, -centerY);
+
+    ctx.globalAlpha = flicker;
+
     ctx.strokeStyle = '#FFD700';
     ctx.lineWidth = 4;
     ctx.fillStyle = '#FFF';
@@ -28,9 +42,9 @@ const SuperBlockSystem = {
 
     ctx.fillStyle = '#222';
     const displayMap = {
-      S1: '★', // 星星
-      S2: '⚡', // 闪电
-      S3: '☢', // 辐射
+      S1: '★',
+      S2: '⚡',
+      S3: '☢',
     };
     ctx.fillText(displayMap[type] || 'S', x + width / 2, y + height / 2);
 
