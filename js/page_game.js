@@ -843,16 +843,24 @@ function animateSwap(src, dst, callback, rollback = false) {
           F: globalThis.renderBlockF,
         };
         
-        const renderer = renderMap[block];
-        if (renderer) {
-          renderer(ctxRef, x, y, blockSize, blockSize);
+        if (block === 'S') {
+          // ✅ 单独渲染超级方块，避免误入 fallback
+          SuperBlockSystem.render(ctxRef, x, y, blockSize, blockSize);
         } else {
-          ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
-          drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, true, false);
-          ctxRef.fillStyle = 'white';
-          ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
-          ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
+          const renderer = renderMap[block];
+          if (renderer) {
+            renderer(ctxRef, x, y, blockSize, blockSize);
+          } else {
+            ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
+            drawRoundedRect(ctxRef, x, y, blockSize - 4, blockSize - 4, 6, true, false);
+            if (block) {
+              ctxRef.fillStyle = 'white';
+              ctxRef.font = `${Math.floor(blockSize / 2.5)}px sans-serif`;
+              ctxRef.fillText(block, x + blockSize / 2.5, y + blockSize / 1.5);
+            }
+          }
         }
+        
         
       }
     }
