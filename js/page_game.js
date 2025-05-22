@@ -270,6 +270,10 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
   __gridStartX  = boardX;
   __gridStartY  = boardY;
 
+  globalThis.__blockSize = actualBlockSize;
+globalThis.__gridStartX = boardX;
+globalThis.__gridStartY = boardY;
+
   // 绘制方块
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {

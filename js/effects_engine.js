@@ -173,7 +173,24 @@ export function drawAllEffects(ctx, canvas) {
 
       ctx.restore();
     }
-
+    else if (e.type === 'block_pulse') {
+      const t = now - e.startTime;
+      const p = t / e.duration;
+      if (p >= 1) return remove.push(i);
+    
+      const scale = 1 + 0.2 * Math.sin(p * Math.PI);
+    
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.scale(scale, scale);
+      ctx.translate(-e.size / 2, -e.size / 2);
+    
+      ctx.fillStyle = '#FFD700';
+      drawRoundedRect(ctx, 0, 0, e.size, e.size, 6, true, false);
+    
+      ctx.restore();
+    }
+    
     else if (e.type === 'pop') {
       const elapsed = now - e.startTime;
       const p = Math.min(1, elapsed / e.duration);
@@ -532,3 +549,15 @@ function blendColors(color1, color2, t) {
       canvasHeight: canvas.height,
     });
   }
+
+  export function createBlockPulseEffect(x, y, size = 48, duration = 400) {
+    effects.push({
+      type: 'block_pulse',
+      x,
+      y,
+      size,
+      startTime: Date.now(),
+      duration,
+    });
+  }
+  

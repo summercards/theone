@@ -1,5 +1,5 @@
 const { drawRoundedRect } = require('../utils/canvas_utils.js');
-const { createExplosion } = require('../effects_engine.js');
+const { createExplosion, createBlockPulseEffect } = require('../effects_engine.js');
 
 const SUPER_TYPES = ['S1', 'S2', 'S3'];
 
@@ -58,11 +58,15 @@ const SuperBlockSystem = {
     const type = gridData[row][col];
     console.log(`⚡ 触发超级方块 ${type} at (${row}, ${col})`);
 
-    const centerX = globalThis.__gridStartX + col * globalThis.__blockSize + globalThis.__blockSize / 2;
-    const centerY = globalThis.__gridStartY + row * globalThis.__blockSize + globalThis.__blockSize / 2;
+    const blockSize = globalThis.__blockSize || 48;
+    const centerX = globalThis.__gridStartX + col * blockSize + blockSize / 2;
+    const centerY = globalThis.__gridStartY + row * blockSize + blockSize / 2;
 
-    // 特效：中心爆炸
+    // 中心爆炸 + 主 pulse 动画
     createExplosion(centerX, centerY, '#FFD700');
+    createExplosion(centerX, centerY, '#FFD700');
+    createBlockPulseEffect(centerX, centerY, blockSize);
+    console.log('[特效] 播放 block_pulse at:', centerX, centerY, blockSize);
 
     switch (type) {
       case 'S1': // 清除整行
@@ -71,21 +75,29 @@ const SuperBlockSystem = {
         }
         break;
 
-      case 'S2': // 清除九宫格
+      case 'S2': // 清除九宫格 + 每个格子播放 pulse
         for (let dr = -1; dr <= 1; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
             const r = row + dr, c = col + dc;
             if (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
+              const x = globalThis.__gridStartX + c * blockSize + blockSize / 2;
+              const y = globalThis.__gridStartY + r * blockSize + blockSize / 2;
+              createBlockPulseEffect(x, y, blockSize);
               gridData[r][c] = null;
             }
           }
         }
         break;
 
-      case 'S3': // 概率性全场清除
+      case 'S3': // 概率性全场清除 + 有概率播放 pulse
         for (let r = 0; r < gridSize; r++) {
           for (let c = 0; c < gridSize; c++) {
-            if (Math.random() < 0.1) gridData[r][c] = null;
+            if (Math.random() < 0.1) {
+              const x = globalThis.__gridStartX + c * blockSize + blockSize / 2;
+              const y = globalThis.__gridStartY + r * blockSize + blockSize / 2;
+              createBlockPulseEffect(x, y, blockSize);
+              gridData[r][c] = null;
+            }
           }
         }
         break;
