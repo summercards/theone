@@ -1219,7 +1219,25 @@ function onTouchend(e) {
 
   const x = touch.clientX;
   const y = touch.clientY;
+  // ✅ 点击超级方块立即触发技能（提早处理）
+  const col = Math.floor((x - __gridStartX) / __blockSize);
+  const row = Math.floor((y - __gridStartY) / __blockSize);
 
+    // ✅ 点击超级方块触发技能
+    if (
+      row >= 0 && row < gridSize &&
+      col >= 0 && col < gridSize
+    ) {
+      const block = gridData[row][col];
+      if (SuperBlockSystem.isSuper?.(block)) {
+        SuperBlockSystem.trigger(row, col, ctxRef, gridData, gridSize);
+
+        gridData[row][col] = null;
+        drawGame();
+        setTimeout(() => processClearAndDrop(), 300);
+        return;
+      }
+    }
   // ✅ 胜利弹窗点击“下一关”
   if (showVictoryPopup) {
     const btn = globalThis.victoryBtnArea;
@@ -1275,6 +1293,9 @@ if (btn &&
   });
   return; // ✅ 不再继续处理滑动
 }
+
+
+
 
   if (!touchStart) return;
 

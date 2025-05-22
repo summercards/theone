@@ -1,6 +1,6 @@
 const { drawRoundedRect } = require('../utils/canvas_utils.js');
+const { createExplosion } = require('../effects_engine.js');
 
-// 支持的超级方块类型
 const SUPER_TYPES = ['S1', 'S2', 'S3'];
 
 const SuperBlockSystem = {
@@ -44,13 +44,20 @@ const SuperBlockSystem = {
     const type = gridData[row][col];
     console.log(`⚡ 触发超级方块 ${type} at (${row}, ${col})`);
 
+    const centerX = globalThis.__gridStartX + col * globalThis.__blockSize + globalThis.__blockSize / 2;
+    const centerY = globalThis.__gridStartY + row * globalThis.__blockSize + globalThis.__blockSize / 2;
+
+    // 特效：中心爆炸
+    createExplosion(centerX, centerY, '#FFD700');
+
     switch (type) {
-      case 'S1':
+      case 'S1': // 清除整行
         for (let c = 0; c < gridSize; c++) {
           gridData[row][c] = null;
         }
         break;
-      case 'S2':
+
+      case 'S2': // 清除九宫格
         for (let dr = -1; dr <= 1; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
             const r = row + dr, c = col + dc;
@@ -60,7 +67,8 @@ const SuperBlockSystem = {
           }
         }
         break;
-      case 'S3':
+
+      case 'S3': // 概率性全场清除
         for (let r = 0; r < gridSize; r++) {
           for (let c = 0; c < gridSize; c++) {
             if (Math.random() < 0.1) gridData[r][c] = null;
@@ -68,8 +76,6 @@ const SuperBlockSystem = {
         }
         break;
     }
-
-    // 可以加动画或粒子
   }
 };
 
