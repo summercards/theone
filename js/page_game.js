@@ -24,7 +24,7 @@ import { renderBlockE } from './block_effects/block_E.js';
 import { renderBlockF } from './block_effects/block_F.js';
 import { applySkillEffect } from './logic/skill_logic.js';
 import { showDamageText } from './effects_engine.js';
-
+import SuperBlockSystem from './data/super_block_system.js';
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 
 globalThis.renderBlockA = renderBlockA;
@@ -278,6 +278,8 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
       const x = boardX + col * actualBlockSize;
       const y = boardY + row * actualBlockSize;
       
+   
+
       const renderMap = {
         A: globalThis.renderBlockA,
         B: globalThis.renderBlockB,
@@ -285,6 +287,7 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
         D: globalThis.renderBlockD,
         E: globalThis.renderBlockE,
         F: globalThis.renderBlockF,
+        S: SuperBlockSystem.render,  // 超级方块渲染方法
       };
       const renderer = renderMap[block];
       if (renderer) {
@@ -915,29 +918,75 @@ function onTouch(e) {
 
 
 function checkAndClearMatches () {
+  
+  const superBlockSpots = [];
   let clearedCount   = 0;
   const colorCounter = {};                      // {A:3, B:1 …}
   const toClear      = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
 
   /* === ① 找 3 连 === */
+
+  // 横向匹配
   for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize - 2; col++) {
-      const v = gridData[row][col];
-      if (v && v === gridData[row][col + 1] && v === gridData[row][col + 2]) {
-        toClear[row][col] = toClear[row][col + 1] = toClear[row][col + 2] = true;
+    let count = 1;
+    for (let col = 1; col <= gridSize; col++) {
+      if (col < gridSize && gridData[row][col] === gridData[row][col - 1]) {
+        count++;
+      } else {
+        if (count >= 3) {
+          const start = col - count;
+          const matches = [];
+          for (let k = 0; k < count; k++) {
+            matches.push({ row, col: start + k });
+            toClear[row][start + k] = true;
+          }
+  
+          if (count >= 4) {
+            const choice = matches[Math.floor(Math.random() * matches.length)];
+            superBlockSpots.push({ ...choice, type: gridData[choice.row][choice.col] });
+          }
+        }
+        count = 1;
       }
     }
   }
+  
+  // 纵向匹配
   for (let col = 0; col < gridSize; col++) {
-    for (let row = 0; row < gridSize - 2; row++) {
-      const v = gridData[row][col];
-      if (v && v === gridData[row + 1][col] && v === gridData[row + 2][col]) {
-        toClear[row][col] = toClear[row + 1][col] = toClear[row + 2][col] = true;
+    let count = 1;
+    for (let row = 1; row <= gridSize; row++) {
+      if (row < gridSize && gridData[row][col] === gridData[row - 1][col]) {
+        count++;
+      } else {
+        if (count >= 3) {
+          const start = row - count;
+          const matches = [];
+          for (let k = 0; k < count; k++) {
+            matches.push({ row: start + k, col });
+            toClear[start + k][col] = true;
+          }
+  
+          if (count >= 4) {
+            const choice = matches[Math.floor(Math.random() * matches.length)];
+            superBlockSpots.push({ ...choice, type: gridData[choice.row][choice.col] });
+          }
+        }
+        count = 1;
+        if (superBlockSpots.length > 0) {
+          console.log('生成超级块:', superBlockSpots);
+        }
       }
     }
   }
+  
 
   /* === ② 清除并统计 === */
+  // 先排除将要变成超级块的位置（不要清除）
+superBlockSpots.forEach(({ row, col }) => {
+  toClear[row][col] = false;
+  gridData[row][col] = 'S'; // 超级方块，用 'S' 标记
+});
+
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       if (!toClear[r][c]) continue;
@@ -1046,13 +1095,8 @@ function dropBlocks() {
     for (let row = gridSize - 1; row >= 0; row--) {
       if (gridData[row][col] === null) {
         for (let k = row - 1; k >= 0; k--) {
-          if (gridData[k][col] !== null) {
+          if (gridData[k][col] !== null && gridData[k][col] !== 'S') {
             gridData[row][col] = gridData[k][col];
-            const blockSize = __blockSize;
-            const startX = __gridStartX;
-            const startY = __gridStartY;
-
-
             gridData[k][col] = null;
             break;
           }
@@ -1066,7 +1110,7 @@ function fillNewBlocks() {
   const blocks = ['A', 'B', 'C', 'D', 'E', 'F'];
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
-      if (gridData[row][col] === null) {
+      if (gridData[row][col] === null || gridData[row][col] === undefined) {
         const rand = Math.floor(Math.random() * blocks.length);
         gridData[row][col] = blocks[rand];
       }
@@ -1138,6 +1182,7 @@ function processClearAndDrop() {
 
         setTimeout(() => {
           if (checkAndClearMatches()) {
+
             loop();
           } else if (!hasPossibleMatches()) {
             setTimeout(() => {
