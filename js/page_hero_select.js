@@ -539,20 +539,19 @@ for (let i = 0; i < 5; i++) {
 // 🟡 插入在这里，确保 drawIcon 后才能访问
 globalThis.layoutRects = layoutRects;
   // 翻页按钮
-  const btnY = poolStartY + ICON * 2.5 + 10;
+  const btnY = poolStartY + ICON * 2.5 + 30;
   btnPrevRect = { x: PAD_X, y: btnY, width: ICON * 0.8, height: ICON * 0.8 };
   btnNextRect = { x: canvas.width - PAD_X - ICON * 0.8, y: btnY, width: ICON * 0.8, height: ICON * 0.8 };
 
-  ctx.fillStyle = pageIndex > 0 ? '#7E30B3' : '#300';
+  ctx.fillStyle = pageIndex > 0 ? '#9c275d' : '#300';
   drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 8, true, false);
   drawText(ctx, '<', btnPrevRect.x + btnPrevRect.width / 2, btnPrevRect.y + btnPrevRect.height / 2,
-    '24px IndieFlower', '#FFF', 'center', 'middle');
+  'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
 
-  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#7E30B3' : '#300';
+  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#9c275d' : '#300';
   drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 8, true, false);
   drawText(ctx, '>', btnNextRect.x + btnNextRect.width / 2, btnNextRect.y + btnNextRect.height / 2,
-    '24px IndieFlower', '#FFF', 'center', 'middle');
-
+  'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
   drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
     canvas.width / 2, btnY + btnPrevRect.height / 2,
     '14px IndieFlower', '#DCC6F0', 'center', 'middle');
@@ -567,14 +566,14 @@ globalThis.layoutRects = layoutRects;
   };
   upgradeToggleRect = avoidOverlap(upgradeToggleRect, layoutRects);
   layoutRects.push(upgradeToggleRect);
-  ctx.fillStyle = '#FFD700';
+  ctx.fillStyle = '#9c275d';
   drawRoundedRect(ctx, upgradeToggleRect.x, upgradeToggleRect.y,
                   upgradeToggleRect.width, upgradeToggleRect.height, 8, true, false);
                   drawStyledText(ctx, showUpgradeButtons ? '隐藏' : '升级',
                   upgradeToggleRect.x + upgradeToggleRect.width / 2,
                   upgradeToggleRect.y + upgradeToggleRect.height / 2, {
                     font: 'bold 18px IndieFlower',
-                    fill: '#FFFFFF',
+                    fill: '#ffe3e3',
                     //stroke: '#FFF',
                     align: 'center',
                     baseline: 'middle'
@@ -596,7 +595,7 @@ confirmRect = avoidOverlap(confirmRect, layoutRects);
 layoutRects.push(confirmRect);
 
 const confirmX = confirmRect.x;
-ctx.fillStyle = '#912BB0';
+ctx.fillStyle = '#6d2c91';
 drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 0.8, 6, true, false);
 let level = 1;
 try {
@@ -611,7 +610,7 @@ drawStyledText(ctx, `进入第${level}关`,
   confirmX + ICON * 1.5,
   confirmY + ICON * 0.4, {
     font: 'bold 18px IndieFlower',
-    fill: '#FFFFFF',
+    fill: '#f8d6ff',
     //stroke: '#000',
     align: 'center',
     baseline: 'middle'
@@ -629,13 +628,13 @@ drawStyledText(ctx, `进入第${level}关`,
   adBtnRect = avoidOverlap(adBtnRect, layoutRects);
   layoutRects.push(adBtnRect);
 
-  ctx.fillStyle = '#FFD700';
+  ctx.fillStyle = '#9c275d';
   drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
   drawStyledText(ctx, '看广告得金币',
   adBtnRect.x + adBtnRect.width / 2,
   adBtnRect.y + adBtnRect.height / 2, {
     font: 'bold 18px IndieFlower',
-    fill: '#FFFFFF',
+    fill: '#ffe3e3',
     //stroke: '#FFF',
     align: 'center',
     baseline: 'middle'
