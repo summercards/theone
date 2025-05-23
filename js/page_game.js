@@ -1413,6 +1413,7 @@ function handleSwap(src, dst) {
       
         const heroes = getSelectedHeroes(); // ✅ 所有出战英雄
         let currentIndex = 0;
+        const startDelay = 600; // ✅ 新增：释放前预留时间
       
         function releaseNextHero() {
           if (currentIndex >= heroes.length) {
@@ -1420,7 +1421,7 @@ function handleSwap(src, dst) {
             setTimeout(() => {
               startAttackEffect(dmgToDeal);
               drawGame();
-            }, 600);
+            }, 600); // 给最后一个技能留表现时间
             return;
           }
       
@@ -1428,10 +1429,13 @@ function handleSwap(src, dst) {
           releaseHeroSkill(currentIndex);
           currentIndex++;
       
-          setTimeout(releaseNextHero, 800); // 保证技能表现留时间
+          setTimeout(releaseNextHero, 600); // 保证技能表现留时间
         }
       
-        releaseNextHero();
+        // ✅ 延迟触发首次释放
+        setTimeout(() => {
+          releaseNextHero();
+        }, startDelay);
       }
       
       
