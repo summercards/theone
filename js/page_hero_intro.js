@@ -56,12 +56,15 @@ function render() {
   const ctx = ctxRef, canvas = canvasRef;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  ctx.fillStyle = '#2a003f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   const margin = 16;
   const cardW = canvas.width - margin * 2;
-  const cardH = 70;
-  const gap = 12;
+  const cardH = 90;
+  const gap = 14;
   const startX = margin;
-  const startY = 20;
+  const startY = 60;
 
   const startIdx = pageIndex * HEROES_PER_PAGE;
   const endIdx = startIdx + HEROES_PER_PAGE;
@@ -73,39 +76,57 @@ function render() {
     const y = startY + i * (cardH + gap);
 
     const rect = { x, y, width: cardW, height: cardH };
-    drawRoundedRect(ctx, x, y, cardW, cardH, 6, true, false);
+    ctx.fillStyle = '#3e205c';
+    drawRoundedRect(ctx, x, y, cardW, cardH, 8, true, false);
 
+    const imgX = x + 12;
+    const imgY = y + 18;
     const img = globalThis.imageCache[hero.icon];
-    if (img) ctx.drawImage(img, x + 8, y + 8, 54, 54);
+    if (img) ctx.drawImage(img, imgX, imgY, 54, 54);
 
-    drawStyledText(ctx, hero.name, x + 70, y + 18, { font: 'bold 15px Arial', fill: '#FFF' });
-    drawStyledText(ctx, hero.role, x + 70, y + 36, { font: '12px Arial', fill: '#AAA' });
+    const textX = imgX + 54 + 10;
+    let textY = imgY;
+
+    drawStyledText(ctx, hero.name, textX, textY, {
+      font: 'bold 16px IndieFlower', fill: '#f9c74f', align: 'left', baseline: 'top'
+    });
+    textY += 20;
+
+    drawStyledText(ctx, `职业：${hero.role}`, textX, textY, {
+      font: '13px IndieFlower', fill: '#fefae0', align: 'left', baseline: 'top'
+    });
+    textY += 20;
 
     const attrs = hero.attributes;
-    const attrText = Object.entries(attrs).map(([k, v]) => `${k}: ${v}`).join('  ');
-    drawStyledText(ctx, attrText, x + 70, y + 52, { font: '11px Arial', fill: '#FFD700' });
+    const attrText = Object.entries(attrs)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join('  ');
 
-    drawStyledText(ctx, `Lv.${hero.level}`, x + cardW - 10, y + 10, {
-      font: 'bold 11px Arial', fill: '#00FFFF', align: 'right'
+    drawStyledText(ctx, attrText, textX, textY, {
+      font: '12px IndieFlower', fill: '#90e0ef', align: 'left', baseline: 'top'
+    });
+
+    drawStyledText(ctx, `Lv.${hero.level}`, x + cardW - 12, y + 16, {
+      font: 'bold 12px IndieFlower', fill: '#00FFFF', align: 'right', baseline: 'top'
     });
 
     heroRects.push({ rect, hero });
   });
 
-  const btnW = 70, btnH = 26;
-  const centerY = canvas.height - btnH - 10;
+  const btnW = 90, btnH = 32;
+  const centerY = canvas.height - btnH - 50;
   btnPrevRect = { x: canvas.width / 2 - btnW - 10, y: centerY, width: btnW, height: btnH };
   btnNextRect = { x: canvas.width / 2 + 10, y: centerY, width: btnW, height: btnH };
-  btnBackRect = { x: 16, y: 16, width: 60, height: 26 };
+  btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
 
-  ctx.fillStyle = '#444';
-  drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 5, true, false);
-  drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 5, true, false);
-  drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRect.height, 5, true, false);
+  ctx.fillStyle = '#5e3a7d';
+  drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 6, true, false);
+  drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 6, true, false);
+  drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRect.height, 6, true, false);
 
-  drawStyledText(ctx, '< 上一页', btnPrevRect.x + btnW / 2, btnPrevRect.y + btnH / 2, { font: '13px Arial', fill: '#FFF', align: 'center', baseline: 'middle' });
-  drawStyledText(ctx, '下一页 >', btnNextRect.x + btnW / 2, btnNextRect.y + btnH / 2, { font: '13px Arial', fill: '#FFF', align: 'center', baseline: 'middle' });
-  drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, { font: '13px Arial', fill: '#FFF', align: 'center', baseline: 'middle' });
+  drawStyledText(ctx, '< 上一页', btnPrevRect.x + btnW / 2, btnPrevRect.y + btnH / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
+  drawStyledText(ctx, '下一页 >', btnNextRect.x + btnW / 2, btnNextRect.y + btnH / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
+  drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
 
   if (popupHero) drawPopup(ctx, canvas, popupHero);
 }
@@ -118,11 +139,20 @@ function drawPopup(ctx, canvas, hero) {
 
   ctx.fillStyle = '#222';
   drawRoundedRect(ctx, x, y, W, H, 10, true, false);
-  drawStyledText(ctx, hero.name, x + 16, y + 20, { font: 'bold 18px Arial', fill: '#FFD700' });
-  drawStyledText(ctx, `职业：${hero.role}    等级：${hero.level}`, x + 16, y + 50, { font: '14px Arial', fill: '#FFF' });
-  drawStyledText(ctx, `技能：${hero.skill.name}`, x + 16, y + 80, { font: 'bold 14px Arial', fill: '#66CCFF' });
-  drawStyledText(ctx, hero.skill.description, x + 16, y + 105, { font: '13px Arial', fill: '#EEE' });
-  drawStyledText(ctx, '点击任意处关闭', x + W / 2, y + H - 24, { font: '12px Arial', fill: '#AAA', align: 'center' });
+
+  const lineHeight = 24;
+  let cy = y + 24;
+  drawStyledText(ctx, hero.name, x + 20, cy, { font: 'bold 18px IndieFlower', fill: '#FFD700', align: 'left', baseline: 'top' });
+  cy += lineHeight;
+  drawStyledText(ctx, `职业：${hero.role}  等级：${hero.level}`, x + 20, cy, { font: '14px IndieFlower', fill: '#FFF', align: 'left', baseline: 'top' });
+  cy += lineHeight;
+  drawStyledText(ctx, `技能：${hero.skill.name}`, x + 20, cy, { font: 'bold 14px IndieFlower', fill: '#66CCFF', align: 'left', baseline: 'top' });
+  cy += lineHeight;
+  drawStyledText(ctx, hero.skill.description, x + 20, cy, { font: '13px IndieFlower', fill: '#EEE', align: 'left', baseline: 'top' });
+
+  drawStyledText(ctx, '点击任意处关闭', x + W / 2, y + H - 24, {
+    font: '12px IndieFlower', fill: '#AAA', align: 'center', baseline: 'top'
+  });
 }
 
 export default {
