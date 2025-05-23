@@ -1411,31 +1411,32 @@ function handleSwap(src, dst) {
         gaugeFlashTime = Date.now();
         gaugeCount = 0;
       
-        const heroes = getSelectedHeroes(); // ✅ 所有出战英雄
+        const heroes = getSelectedHeroes(); // 获取出战英雄（长度始终是 5）
+        const interval = 650;
+        const startDelay = 650;
+      
         let currentIndex = 0;
-        const startDelay = 600; // ✅ 新增：释放前预留时间
+        const totalHeroes = heroes.filter(h => h).length; // 只统计有效英雄
+        const totalDuration = startDelay + totalHeroes * interval + interval;
       
         function releaseNextHero() {
-          if (currentIndex >= heroes.length) {
-            // ✅ 所有英雄释放完毕 → 结算伤害
-            setTimeout(() => {
-              startAttackEffect(dmgToDeal);
-              drawGame();
-            }, 600); // 给最后一个技能留表现时间
-            return;
+          if (currentIndex >= heroes.length) return;
+          if (heroes[currentIndex]) {
+            releaseHeroSkill(currentIndex);
           }
-      
-          // 强制释放每个英雄的技能，无需判断是否充满
-          releaseHeroSkill(currentIndex);
           currentIndex++;
-      
-          setTimeout(releaseNextHero, 600); // 保证技能表现留时间
+          if (currentIndex < heroes.length) {
+            setTimeout(releaseNextHero, interval);
+          }
         }
       
-        // ✅ 延迟触发首次释放
+        setTimeout(releaseNextHero, startDelay);
+      
+        // 粗暴写死整段释放 + 缓冲后再结算伤害
         setTimeout(() => {
-          releaseNextHero();
-        }, startDelay);
+          startAttackEffect(dmgToDeal);
+          drawGame();
+        }, totalDuration);
       }
       
       
