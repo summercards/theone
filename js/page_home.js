@@ -32,10 +32,10 @@ export function initHomePage(ctx, switchPage, canvas) {
 }
 
 function drawHomeUI() {
-  const btnWidth = 180;
-  const btnHeight = 60;
+  const btnWidth = 160;
+  const btnHeight = 50;
   const x = (canvasRef.width - btnWidth) / 2;
-  const y = canvasRef.height * 0.75;
+  const y = canvasRef.height - 160;
 
   updateScales();
 
@@ -67,65 +67,51 @@ function drawHomeUI() {
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
   }
 
-  ctxRef.fillStyle = '#f00';
+  ctxRef.fillStyle = '#b3134a';
   drawRoundedRect(ctxRef, offsetX, offsetY, scaledEnterW, scaledEnterH, 20);
   ctxRef.fill();
   drawStyledText(ctxRef, '进入酒吧', x + btnWidth / 2, y + btnHeight / 2, {
     font: 'bold 26px IndieFlower',
-    fill: '#FFF',
+    fill: '#ffd3df',
     stroke: '#000',
   });
 
-  const smallBtnWidth = 140;
-  const smallBtnHeight = 50;
-  const spacing = 20;
+  const smallBtnWidth = 100;
+  const smallBtnHeight = 40;
+  const spacing = 16;
   const totalWidth = smallBtnWidth * 3 + spacing * 2;
   const baseX = (canvasRef.width - totalWidth) / 2;
-  const btnY = y + btnHeight + 20;
+  const btnY = canvasRef.height - 80;
 
   // 排行榜按钮
-  const scaleRanking = buttonScales.ranking;
-  const wRank = smallBtnWidth * scaleRanking;
-  const hRank = smallBtnHeight * scaleRanking;
-  const xRank = baseX + (smallBtnWidth - wRank) / 2;
-  const yRank = btnY + (smallBtnHeight - hRank) / 2;
-  ctxRef.fillStyle = '#333';
-  drawRoundedRect(ctxRef, xRank, yRank, wRank, hRank, 16);
+  const xRank = baseX;
+  ctxRef.fillStyle = '#6d2c91';
+  drawRoundedRect(ctxRef, xRank, btnY, smallBtnWidth, smallBtnHeight, 12);
   ctxRef.fill();
-  drawStyledText(ctxRef, '排行榜', baseX + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
-    font: 'bold 20px IndieFlower', fill: '#FFF', stroke: '#000'
+  drawStyledText(ctxRef, '排行榜', xRank + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
+    font: 'bold 16px IndieFlower', fill: '#f8d6ff', stroke: '#000'
   });
-  rankingBtnArea = { x: baseX, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
+  rankingBtnArea = { x: xRank, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 
   // 分享按钮
-  const shareX = baseX + smallBtnWidth + spacing;
-  const scaleShare = buttonScales.share;
-  const wShare = smallBtnWidth * scaleShare;
-  const hShare = smallBtnHeight * scaleShare;
-  const xShare = shareX + (smallBtnWidth - wShare) / 2;
-  const yShare = btnY + (smallBtnHeight - hShare) / 2;
-  ctxRef.fillStyle = '#0066cc';
-  drawRoundedRect(ctxRef, xShare, yShare, wShare, hShare, 16);
+  const xShare = baseX + smallBtnWidth + spacing;
+  ctxRef.fillStyle = '#7d3f98';
+  drawRoundedRect(ctxRef, xShare, btnY, smallBtnWidth, smallBtnHeight, 12);
   ctxRef.fill();
-  drawStyledText(ctxRef, '分享', shareX + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
-    font: 'bold 20px IndieFlower', fill: '#FFF', stroke: '#000'
+  drawStyledText(ctxRef, '分享', xShare + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
+    font: 'bold 16px IndieFlower', fill: '#fcd5d5', stroke: '#000'
   });
-  shareBtnArea = { x: shareX, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
+  shareBtnArea = { x: xShare, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 
   // 英雄介绍按钮
-  const heroIntroX = shareX + smallBtnWidth + spacing;
-  const scaleHeroIntro = buttonScales.heroIntro;
-  const wIntro = smallBtnWidth * scaleHeroIntro;
-  const hIntro = smallBtnHeight * scaleHeroIntro;
-  const xIntro = heroIntroX + (smallBtnWidth - wIntro) / 2;
-  const yIntro = btnY + (smallBtnHeight - hIntro) / 2;
-  ctxRef.fillStyle = '#FF9900';
-  drawRoundedRect(ctxRef, xIntro, yIntro, wIntro, hIntro, 16);
+  const xIntro = baseX + (smallBtnWidth + spacing) * 2;
+  ctxRef.fillStyle = '#9c275d';
+  drawRoundedRect(ctxRef, xIntro, btnY, smallBtnWidth, smallBtnHeight, 12);
   ctxRef.fill();
-  drawStyledText(ctxRef, '英雄介绍', heroIntroX + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
-    font: 'bold 20px IndieFlower', fill: '#FFF', stroke: '#000'
+  drawStyledText(ctxRef, '英雄介绍', xIntro + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
+    font: 'bold 16px IndieFlower', fill: '#ffe3e3', stroke: '#000'
   });
-  heroIntroBtnArea = { x: heroIntroX, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
+  heroIntroBtnArea = { x: xIntro, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 
   drawAllEffects(ctxRef, canvasRef);
 }
@@ -154,10 +140,10 @@ function onTouch(e) {
   const xTouch = touch.clientX;
   const yTouch = touch.clientY;
 
-  const btnWidth = 180;
-  const btnHeight = 60;
+  const btnWidth = 160;
+  const btnHeight = 50;
   const x = (canvasRef.width - btnWidth) / 2;
-  const y = canvasRef.height * 0.75;
+  const y = canvasRef.height - 160;
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= y && yTouch <= y + btnHeight) {
     animateScale('enter');
