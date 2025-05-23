@@ -1417,7 +1417,7 @@ function handleSwap(src, dst) {
       
         let currentIndex = 0;
         const totalHeroes = heroes.filter(h => h).length; // 只统计有效英雄
-        const totalDuration = startDelay + totalHeroes * interval + interval;
+        const totalDuration = startDelay + totalHeroes * interval + 350;
       
         function releaseNextHero() {
           if (currentIndex >= heroes.length) return;
