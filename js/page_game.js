@@ -1407,17 +1407,35 @@ function handleSwap(src, dst) {
         }
       }
       if (gaugeCount >= 5) {
-        const dmgToDeal = attackGaugeDamage; // 保留当前数值
+        const dmgToDeal = attackGaugeDamage;
         gaugeFlashTime = Date.now();
-      
-        // ⏳ 延迟释放伤害，让动画跳完
-        setTimeout(() => {
-          startAttackEffect(dmgToDeal); // 会清空伤害值等
-          drawGame();                   // ✅ 刷新画面
-        }, 520); // 动画持续约 400ms，给出缓冲
-      
         gaugeCount = 0;
+      
+        const heroes = getSelectedHeroes(); // ✅ 所有出战英雄
+        let currentIndex = 0;
+      
+        function releaseNextHero() {
+          if (currentIndex >= heroes.length) {
+            // ✅ 所有英雄释放完毕 → 结算伤害
+            setTimeout(() => {
+              startAttackEffect(dmgToDeal);
+              drawGame();
+            }, 600);
+            return;
+          }
+      
+          // 强制释放每个英雄的技能，无需判断是否充满
+          releaseHeroSkill(currentIndex);
+          currentIndex++;
+      
+          setTimeout(releaseNextHero, 800); // 保证技能表现留时间
+        }
+      
+        releaseNextHero();
       }
+      
+      
+      
       processClearAndDrop();
     } else {
       // 撤销交换
