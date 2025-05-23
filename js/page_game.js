@@ -680,7 +680,7 @@ for (let i = 0; i < heroes.length; i++) {
     // — 背板框（空位也画） —
     ctxRef.fillStyle = '#111';
     drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, true, false);
-    ctxRef.strokeStyle = '#888';
+    ctxRef.strokeStyle = '#a99bb7';
     ctxRef.lineWidth = 2;
     drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, false, true);
   
