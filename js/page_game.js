@@ -1434,7 +1434,8 @@ function handleSwap(src, dst) {
       
         // 粗暴写死整段释放 + 缓冲后再结算伤害
         setTimeout(() => {
-          startAttackEffect(dmgToDeal);
+            const finalDamage = attackGaugeDamage; // 释放完技能后才读取
+            startAttackEffect(finalDamage);     
           drawGame();
         }, totalDuration);
       }
