@@ -2,7 +2,12 @@
 const HeroData = require('./data/hero_data.js');
 const { HeroState } = require('./data/hero_state.js');
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
-
+const lockIconImg = wx.createImage();
+lockIconImg.src = 'assets/ui/lock.png';
+globalThis.imageCache = globalThis.imageCache || {};
+lockIconImg.onload = () => {
+  globalThis.imageCache['lock'] = lockIconImg;
+};
 let ctxRef, canvasRef, switchPageFn;
 let pageIndex = 0;
 let btnPrevRect = null, btnNextRect = null, btnBackRect = null;
@@ -42,6 +47,10 @@ function touchend(e) {
   }
   for (const { rect, hero } of heroRects) {
     if (hit(x, y, rect)) {
+      if (hero.locked) {
+        wx.showToast({ title: '英雄未解锁', icon: 'none' });
+        return;
+      }
       popupHero = hero;
       return render();
     }
@@ -82,7 +91,31 @@ function render() {
     const imgX = x + 12;
     const imgY = y + 18;
     const img = globalThis.imageCache[hero.icon];
-    if (img) ctx.drawImage(img, imgX, imgY, 54, 54);
+    if (img) {
+      ctx.drawImage(img, imgX, imgY, 54, 54);
+    
+      if (hero.locked) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#000';
+        drawRoundedRect(ctx, imgX, imgY, 54, 54, 6, true, false);
+        ctx.globalAlpha = 1;
+    
+        const lockImg = globalThis.imageCache?.['lock'];
+        if (lockImg && lockImg.complete) {
+          ctx.drawImage(lockImg, imgX + 10, imgY + 10, 32, 32);
+        } else {
+          drawStyledText(ctx, '🔒', imgX + 27, imgY + 27, {
+            font: '16px sans-serif',
+            fill: '#FFF',
+            align: 'center',
+            baseline: 'middle'
+          });
+        }
+        ctx.restore();
+      }
+    }
+    
 
     const textX = imgX + 54 + 10;
     let textY = imgY;
