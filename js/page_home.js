@@ -4,6 +4,7 @@ let canvasRef;
 let rankingBtnArea = null;
 let shareBtnArea = null;
 let heroIntroBtnArea = null;
+let roguelikeBtnArea = null;
 let homeLoopId = null;
 
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
@@ -12,6 +13,7 @@ const { drawAllEffects } = require('./effects_engine.js');
 
 let buttonScales = {
   enter: 1,
+  roguelike: 1,
   ranking: 1,
   share: 1,
   heroIntro: 1
@@ -19,6 +21,7 @@ let buttonScales = {
 
 let buttonScaleVels = {
   enter: 0,
+  roguelike: 0,
   ranking: 0,
   share: 0,
   heroIntro: 0
@@ -35,7 +38,8 @@ function drawHomeUI() {
   const btnWidth = 160;
   const btnHeight = 50;
   const x = (canvasRef.width - btnWidth) / 2;
-  const y = canvasRef.height - 160;
+  const yEnter = canvasRef.height - 240;
+  const yRoguelike = yEnter + 80;
 
   updateScales();
 
@@ -43,13 +47,16 @@ function drawHomeUI() {
   const scaledEnterW = btnWidth * scaleEnter;
   const scaledEnterH = btnHeight * scaleEnter;
   const offsetX = x + (btnWidth - scaledEnterW) / 2;
-  const offsetY = y + (btnHeight - scaledEnterH) / 2;
+  const offsetYEnter = yEnter + (btnHeight - scaledEnterH) / 2;
+
+  const scaleRoguelike = buttonScales.roguelike;
+  const scaledRogueW = btnWidth * scaleRoguelike;
+  const scaledRogueH = btnHeight * scaleRoguelike;
 
   const bgImg = globalThis.imageCache['bg'];
   if (bgImg && bgImg.complete) {
     const imgRatio = bgImg.width / bgImg.height;
     const canvasRatio = canvasRef.width / canvasRef.height;
-
     let drawWidth, drawHeight;
     if (imgRatio > canvasRatio) {
       drawHeight = canvasRef.height;
@@ -58,7 +65,6 @@ function drawHomeUI() {
       drawWidth = canvasRef.width;
       drawHeight = drawWidth / imgRatio;
     }
-
     const bgOffsetX = (canvasRef.width - drawWidth) / 2;
     const bgOffsetY = (canvasRef.height - drawHeight) / 2;
     ctxRef.drawImage(bgImg, bgOffsetX, bgOffsetY, drawWidth, drawHeight);
@@ -68,13 +74,19 @@ function drawHomeUI() {
   }
 
   ctxRef.fillStyle = '#b3134a';
-  drawRoundedRect(ctxRef, offsetX, offsetY, scaledEnterW, scaledEnterH, 20);
+  drawRoundedRect(ctxRef, offsetX, offsetYEnter, scaledEnterW, scaledEnterH, 20);
   ctxRef.fill();
-  drawStyledText(ctxRef, '进入酒吧', x + btnWidth / 2, y + btnHeight / 2, {
-    font: 'bold 26px IndieFlower',
-    fill: '#ffd3df',
-    stroke: '#000',
+  drawStyledText(ctxRef, '进入酒吧', x + btnWidth / 2, yEnter + btnHeight / 2, {
+    font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
   });
+
+  ctxRef.fillStyle = '#3344AA';
+  drawRoundedRect(ctxRef, offsetX, yRoguelike, scaledRogueW, scaledRogueH, 20);
+  ctxRef.fill();
+  drawStyledText(ctxRef, 'Roguelike 模式', x + btnWidth / 2, yRoguelike + btnHeight / 2, {
+    font: 'bold 22px IndieFlower', fill: '#CCEEFF', stroke: '#000'
+  });
+  roguelikeBtnArea = { x: offsetX, y: yRoguelike, width: scaledRogueW, height: scaledRogueH };
 
   const smallBtnWidth = 100;
   const smallBtnHeight = 40;
@@ -83,7 +95,6 @@ function drawHomeUI() {
   const baseX = (canvasRef.width - totalWidth) / 2;
   const btnY = canvasRef.height - 80;
 
-  // 排行榜按钮
   const xRank = baseX;
   ctxRef.fillStyle = '#6d2c91';
   drawRoundedRect(ctxRef, xRank, btnY, smallBtnWidth, smallBtnHeight, 12);
@@ -93,7 +104,6 @@ function drawHomeUI() {
   });
   rankingBtnArea = { x: xRank, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 
-  // 分享按钮
   const xShare = baseX + smallBtnWidth + spacing;
   ctxRef.fillStyle = '#7d3f98';
   drawRoundedRect(ctxRef, xShare, btnY, smallBtnWidth, smallBtnHeight, 12);
@@ -103,7 +113,6 @@ function drawHomeUI() {
   });
   shareBtnArea = { x: xShare, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 
-  // 英雄介绍按钮
   const xIntro = baseX + (smallBtnWidth + spacing) * 2;
   ctxRef.fillStyle = '#9c275d';
   drawRoundedRect(ctxRef, xIntro, btnY, smallBtnWidth, smallBtnHeight, 12);
@@ -143,11 +152,20 @@ function onTouch(e) {
   const btnWidth = 160;
   const btnHeight = 50;
   const x = (canvasRef.width - btnWidth) / 2;
-  const y = canvasRef.height - 160;
+  const yEnter = canvasRef.height - 240;
+  const yRoguelike = yEnter + 80;
 
-  if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= y && yTouch <= y + btnHeight) {
+  if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= yEnter && yTouch <= yEnter + btnHeight) {
     animateScale('enter');
-    setTimeout(() => switchPageFn('game'), 150);
+    setTimeout(() => switchPageFn('heroSelect'), 150);
+    return;
+  }
+
+  if (roguelikeBtnArea &&
+      xTouch >= roguelikeBtnArea.x && xTouch <= roguelikeBtnArea.x + roguelikeBtnArea.width &&
+      yTouch >= roguelikeBtnArea.y && yTouch <= roguelikeBtnArea.y + roguelikeBtnArea.height) {
+    animateScale('roguelike');
+    setTimeout(() => switchPageFn('roguelike'), 150);
     return;
   }
 

@@ -5,7 +5,7 @@ import PageHeroSelect from './js/page_hero_select.js';
 import PageGame       from './js/page_game.js';
 import PageRanking    from './js/page_ranking.js';  // ✅ 正确导入模块，保持不动！
 import PageHeroIntro from './js/page_hero_intro.js';
-
+import RoguelikeGame from './js/roguelike_game.js';
 
 const canvas = wx.createCanvas();
 const ctx    = canvas.getContext('2d');
@@ -14,6 +14,7 @@ const pages = {
   loading:    PageLoading,
   home:       PageHome,
   heroSelect: PageHeroSelect,
+  roguelike: RoguelikeGame, // ✅ 新加一项
   game:       PageGame,
   heroIntro: PageHeroIntro,
   ranking:    PageRanking   // ✅ 这里用的就是正确的模块对象
