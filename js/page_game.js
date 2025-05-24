@@ -2,7 +2,11 @@ let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
 let playerActionCounter = 0;
-
+let cachedPopupHeroes = []; // 胜利弹窗英雄池缓存
+let heroPageIndex = 0;          // 英雄池当前页码
+let heroSlotRects = [];         // 出战英雄热区
+let heroIconRects = [];         // 英雄池头像热区
+let hiredHeroIds = new Set(); // 存储本局已雇佣的英雄ID
 let touchStart = null;     // 记录起始格子位置
 let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
@@ -49,7 +53,7 @@ import {
     createChargeGlowEffect
 } from './effects_engine.js';
   
-import { getSelectedHeroes } from './data/hero_state.js';
+import { HeroState, getSelectedHeroes, setSelectedHeroes } from './data/hero_state.js';
 import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
 import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel, getMonsterGold } from './data/monster_state.js';
@@ -384,7 +388,7 @@ if (!globalThis.victoryHeroImage) {
       // === 6. “下一关”按钮
       const btnW = 140, btnH = 42;
       const btnX = (canvasW - btnW) / 2;
-      const btnY = bannerY + 320;
+      const btnY = bannerY + 520;
     
       ctxRef.fillStyle = '#FFD700';
       drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
@@ -397,9 +401,76 @@ if (!globalThis.victoryHeroImage) {
       globalThis.victoryBtnArea = {
         x: btnX, y: btnY, width: btnW, height: btnH
       };
+      drawHeroSelectionUIInPopup(ctxRef, canvasRef); // 加在最后
     }
 }
-
+function drawHeroSelectionUIInPopup(ctx, canvas) {
+    const ICON = 64;
+    const GAP = 12;
+    const PAD_X = (canvas.width - (ICON * 5 + GAP * 4)) / 2;
+    const layoutY = canvas.height * 0.58;
+  
+    const selectedHeroes = getSelectedHeroes();
+    heroSlotRects = [];
+  
+    // === 出战英雄栏 ===
+    for (let i = 0; i < 5; i++) {
+      const x = PAD_X + i * (ICON + GAP);
+      const y = layoutY;
+  
+      ctx.fillStyle = '#444';
+      drawRoundedRect(ctx, x, y, ICON, ICON, 8, true, false);
+      ctx.strokeStyle = '#A64AC9';
+      ctx.lineWidth = 3;
+      drawRoundedRect(ctx, x, y, ICON, ICON, 8, false, true);
+  
+      heroSlotRects.push({ x, y, width: ICON, height: ICON });
+  
+      const hero = selectedHeroes[i];
+      if (hero) drawHeroIconFull(ctx, hero, x, y, ICON, 1);
+    }
+  
+    // === 英雄池逻辑 ===
+    const allHeroes = HeroData.heroes;
+    const shuffled = allHeroes.sort(() => Math.random() - 0.5);
+    const pageHeroes = cachedPopupHeroes;
+    heroIconRects = [];
+  
+    const poolY = layoutY + ICON + 40;
+    const totalIcons = 3;
+    const totalWidth = totalIcons * ICON + (totalIcons - 1) * GAP;
+    const startX = (canvas.width - totalWidth) / 2;
+  
+    for (let i = 0; i < 3; i++) {
+      const x = startX + i * (ICON + GAP);
+      const y = poolY;
+  
+      ctx.strokeStyle = '#C084FC';
+      ctx.lineWidth = 2;
+      drawRoundedRect(ctx, x, y, ICON, ICON, 8, false, true);
+  
+      const hero = pageHeroes[i];
+      if (hero) {
+        // 💡 强制去掉锁定标志位
+        hero.locked = false;
+        drawHeroIconFull(ctx, hero, x, y, ICON, 1);
+        heroIconRects.push({ rect: { x, y, width: ICON, height: ICON }, hero });
+      } else {
+        // 空位
+        ctx.fillStyle = '#4B0073';
+        drawRoundedRect(ctx, x + 4, y + 4, ICON - 8, ICON - 8, 8, true, false);
+        ctx.fillStyle = '#FFF';
+        ctx.font = '20px IndieFlower';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('?', x + ICON / 2, y + ICON / 2);
+      }
+    }
+  }
+  
+  
+  
+  
 function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
     const roleToBlockLetter = {
       '战士': 'A', '游侠': 'B', '法师': 'C', '坦克': 'D', '刺客': 'E', '辅助': 'F'
@@ -457,6 +528,20 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
       ctx.restore();
       ctx.drawImage(roleIcon, iconX, iconY, iconSize, iconSize);
     }
+    // === 💰 未雇佣时绘制金币锁 ===
+if (typeof hiredHeroIds !== 'undefined' && !hiredHeroIds.has(hero.id)) {
+    // 黑色半透明遮罩
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(x, y, size, size);
+  
+    // 金币图标提示
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💰', x + size / 2, y + size / 2);
+  }
+  
   }
   
   
@@ -1092,6 +1177,12 @@ if (heroIndex >= 0) {
     addCoins(earnedGold);                  // 加入金币池
     levelJustCompleted = getNextLevel() - 1; // 显示当前完成的是哪一关
     showVictoryPopup = true;               // 显示胜利弹窗
+    const allUnlocked = HeroData.heroes.filter(h => !h.locked);
+    cachedPopupHeroes = allUnlocked
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .filter(h => h && h.id)
+      .map(h => new HeroState(h.id));
     return;                                // 暂停，等待点击继续
   }
    else {
@@ -1244,22 +1335,93 @@ function onTouchend(e) {
     }
   // ✅ 胜利弹窗点击“下一关”
   if (showVictoryPopup) {
+    const px = x, py = y;
+  
+    // === 检查是否点击出战英雄栏
+    for (let i = 0; i < heroSlotRects.length; i++) {
+      const r = heroSlotRects[i];
+      if (hit(px, py, r)) {
+        const heroes = getSelectedHeroes();
+        heroes[i] = null;
+        setSelectedHeroes(heroes);
+        drawGame();
+        return;
+      }
+    }
+  
+    // === 检查是否点击英雄池头像
+    for (const { rect, hero } of heroIconRects) {
+        if (hit(px, py, rect)) {
+          if (!hero?.id) return;
+      
+          // ✅ 若尚未雇佣，检查金币
+          if (!hiredHeroIds.has(hero.id)) {
+            const cost = hero.hireCost || 200;
+            if (getSessionCoins() < cost) {
+              createFloatingText(`金币不足（${cost}）`, px, py, '#FF4444');
+              return;
+            }
+      
+            addCoins(-cost);
+            hiredHeroIds.add(hero.id);
+            createFloatingText(`雇佣成功 -${cost}`, px, py, '#00FF00');
+          }
+      
+          const heroes = getSelectedHeroes();
+          if (heroes.some(h => h?.id === hero.id)) return;
+      
+          const empty = heroes.findIndex(h => !h);
+          if (empty !== -1) {
+            const updated = Array(5).fill(null);
+            for (let i = 0; i < 5; i++) {
+              if (i === empty) {
+                updated[i] = hero.id;
+              } else {
+                const old = heroes[i];
+                updated[i] = old?.id || null;
+              }
+            }
+            setSelectedHeroes(updated);
+            drawGame();
+          }
+          return;
+        }
+      }
+      
+  
+    // === 翻页按钮点击
+    if (hit(px, py, globalThis.heroPageLeftRect)) {
+      if (heroPageIndex > 0) {
+        heroPageIndex--;
+        drawGame();
+      }
+      return;
+    }
+  
+    if (hit(px, py, globalThis.heroPageRightRect)) {
+      const maxPage = Math.floor(HeroData.heroes.length / 10);
+      if (heroPageIndex < maxPage) {
+        heroPageIndex++;
+        drawGame();
+      }
+      return;
+    }
+  
+    // === 点击“下一关”
     const btn = globalThis.victoryBtnArea;
-    if (btn && x >= btn.x && x <= btn.x + btn.width &&
-               y >= btn.y && y <= btn.y + btn.height) {
+    if (btn && px >= btn.x && px <= btn.x + btn.width &&
+               py >= btn.y && py <= btn.y + btn.height) {
       showVictoryPopup = false;
-  
-      currentLevel = getNextLevel();      // ✅ 更新当前关卡编号
-      levelJustCompleted = currentLevel;  // ✅ 更新胜利用变量
-  
-      const monster = loadMonster(currentLevel); // ✅ 使用正确关卡加载怪物
+      currentLevel = getNextLevel();
+      levelJustCompleted = currentLevel;
+      const monster = loadMonster(currentLevel);
       turnsLeft = monster.skill.cooldown;
-  
       initGrid();
       drawGame();
+      return;
     }
-    return;
   }
+  
   
 
   // ✅ 失败弹窗点击“回到主页”
@@ -1578,6 +1740,9 @@ showDamageText(pendingDamage, endX, endY + 50);
             earnedGold = getMonsterGold();
             addCoins(earnedGold);
             levelJustCompleted = currentLevel;  // ✅ 不再用 getNextLevel()
+            const all = HeroData.heroes;
+const shuffled = all.sort(() => Math.random() - 0.5);
+cachedPopupHeroes = shuffled.slice(0, 3).map(h => new HeroState(h.id));
             showVictoryPopup = true;
           
             rewardExpToHeroes(50);
@@ -1643,3 +1808,8 @@ function rewardExpToHeroes(expAmount) {
 export { monsterHitFlashTime };
 export { gridData };
 export { dropBlocks, fillNewBlocks, checkAndClearMatches };
+function hit(px, py, r) {
+    return r &&
+           px >= r.x && px <= r.x + r.width &&
+           py >= r.y && py <= r.y + r.height;
+  }

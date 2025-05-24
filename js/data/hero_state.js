@@ -18,6 +18,7 @@ class HeroState {
     this.levelUpConfig   = base.levelUpConfig || {};
     this.expToNextLevel  = base.expToNextLevel || 100;
     this.unlockCost      = base.unlockCost     || 0;
+    this.hireCost        = base.hireCost || 200;  // ✅ 加上这一行
 
     // --- 进度（本地覆盖） ---
     const saved = wx.getStorageSync('heroProgress')?.[id];

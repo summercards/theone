@@ -7,6 +7,7 @@ const HeroData = {
       icon: "swordsman.png",
       role: "战士",
       rarity: "R",
+      hireCost: 20,         // ✅ 新增字段
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
       attributes: { physical: 8 },
@@ -31,6 +32,7 @@ const HeroData = {
       icon: "archer.png",
       role: "游侠",
       rarity: "R",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,           // ← 现在锁定
       unlockCost: 3,        // ← 解锁需要 200 金币
       attributes: { physical: 8, magical: 5 },
@@ -54,6 +56,7 @@ const HeroData = {
       icon: "mage.png",
       role: "法师",
       rarity: "R",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockBy: "ad",
       attributes: { physical: 2, magical: 10 },
@@ -77,6 +80,7 @@ const HeroData = {
       icon: "knight.png",
       role: "坦克",
       rarity: "R",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 300,
       attributes: { physical: 7, magical: 3 },
@@ -100,6 +104,7 @@ const HeroData = {
       icon: "assassin.png",
       role: "刺客",
       rarity: "R",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 600,
       attributes: { physical: 10, magical: 2 },
@@ -124,6 +129,7 @@ const HeroData = {
       icon: "priest.png",
       role: "辅助",
       rarity: "R",
+      hireCost: 20,         // ✅ 新增字段
       locked: false,
       unlockCost: 0,
       attributes: { magical: 7, healing: 10 },
@@ -153,6 +159,7 @@ const HeroData = {
       icon: "swordsman2.png",
       role: "战士",
       rarity: "SR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 400,
       attributes: { physical: 12 },
@@ -176,6 +183,7 @@ const HeroData = {
       icon: "archer2.png",
       role: "游侠",
       rarity: "SR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 300,
       attributes: { physical: 9, magical: 6 },
@@ -199,6 +207,8 @@ const HeroData = {
       icon: "mage2.png",
       role: "法师",
       rarity: "SR",
+      hireCost: 20,         // ✅ 新增字段
+
       locked: true,
       unlockCost: 600,
       attributes: { magical: 12 },
@@ -222,6 +232,8 @@ const HeroData = {
       icon: "tank2.png",
       role: "坦克",
       rarity: "SR",
+      hireCost: 20,         // ✅ 新增字段
+
       locked: true,
       unlockCost: 350,
       attributes: { physical: 10 },
@@ -245,6 +257,8 @@ const HeroData = {
       icon: "assassin2.png",
       role: "刺客",
       rarity: "SR",
+      hireCost: 20,         // ✅ 新增字段
+
       locked: true,
       unlockCost: 600,
       attributes: { physical: 12 },
@@ -268,6 +282,7 @@ const HeroData = {
       icon: "priest2.png",
       role: "牧师",
       rarity: "SR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 200,
       attributes: { magical: 8, healing: 12 },
@@ -296,6 +311,7 @@ const HeroData = {
       icon: "swordsman3.png",
       role: "战士",
       rarity: "SR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 800,
       attributes: { physical: 15 },
@@ -318,6 +334,7 @@ const HeroData = {
       icon: "archer3.png",
       role: "游侠",
       rarity: "SSR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 700,
       attributes: { physical: 11, magical: 7 },
@@ -340,6 +357,7 @@ const HeroData = {
       icon: "mage3.png",
       role: "法师",
       rarity: "UR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 900,
       attributes: { magical: 15 },
@@ -362,6 +380,7 @@ const HeroData = {
       icon: "tank3.png",
       role: "坦克",
       rarity: "SSR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 700,
       attributes: { physical: 12 },
@@ -391,6 +410,7 @@ const HeroData = {
       icon: "assassin3.png",
       role: "刺客",
       rarity: "UR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 1000,
       attributes: { physical: 14 },
@@ -418,6 +438,7 @@ const HeroData = {
       icon: "priest3.png",
       role: "辅助",
       rarity: "SSR",
+      hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 600,
       attributes: { magical: 10, healing: 14 },

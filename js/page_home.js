@@ -147,7 +147,7 @@ function onTouch(e) {
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= y && yTouch <= y + btnHeight) {
     animateScale('enter');
-    setTimeout(() => switchPageFn('heroSelect'), 150);
+    setTimeout(() => switchPageFn('game'), 150);
     return;
   }
 
