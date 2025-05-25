@@ -368,7 +368,7 @@ globalThis.__gridStartY = boardY;
         const canvasH = canvasRef.height;
       
         // 1. 遮罩背景
-        ctxRef.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctxRef.fillStyle = 'rgba(0, 0, 0, 0.75)';
         ctxRef.fillRect(0, 0, canvasW, canvasH);
       
         // 2. 插图锚点位置（稍微上移）
@@ -419,7 +419,7 @@ globalThis.__gridStartY = boardY;
         const btnX = (canvasW - btnW) / 2;
         const btnY = canvasH - btnH - 50; // ✅ 原来是 -30
       
-        ctxRef.fillStyle = '#FFD700';
+        ctxRef.fillStyle = '#C32C54';
         drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
       
         ctxRef.fillStyle = '#000';

@@ -2,7 +2,7 @@ import { drawRoundedRect } from './utils/canvas_utils.js'; // ✅ 添加这一�
 
 // effects_engine.js  ★★★ 完整可用基线 ★★★
 const effects = [];
-
+let frameCount = 0;
 /* ========= 基础更新渲染 ================================================= */
 export function updateAllEffects() {
   // 粒子简单老化
@@ -190,7 +190,26 @@ export function drawAllEffects(ctx, canvas) {
     
       ctx.restore();
     }
-    
+    else if (e.type === 'fire_glow') {
+        const centerX = canvas.width / 2;
+        const glowY = canvas.height - 50;
+        const maxRadius = canvas.width * 0.4;
+      
+        // 呼吸透明度：慢慢地明暗变化
+        const time = (Date.now() - e.startTime) / 1000; // 秒
+        const alpha = 0.2 + 0.1 * Math.sin(time * 2 * Math.PI / 4); // 周期约4秒
+      
+        const gradient = ctx.createRadialGradient(centerX, glowY, 0, centerX, glowY, maxRadius);
+        gradient.addColorStop(0, `rgba(255, 140, 0, ${alpha})`);
+        gradient.addColorStop(1, `rgba(255, 140, 0, 0)`);
+      
+        ctx.save();
+        ctx.fillStyle = gradient;
+        ctx.fillRect(centerX - maxRadius, glowY - maxRadius, maxRadius * 2, maxRadius * 2);
+        ctx.restore();
+      }
+      
+      
     else if (e.type === 'pop') {
       const elapsed = now - e.startTime;
       const p = Math.min(1, elapsed / e.duration);
@@ -397,7 +416,7 @@ const radius = baseRadius * scale;
   });
 
   for (let r = remove.length - 1; r >= 0; r--) effects.splice(remove[r], 1);
-  
+  drawFireGlow(ctx, canvas, frameCount);
 }
 
 /* ========= 工具函数 ===================================================== */
@@ -560,4 +579,76 @@ function blendColors(color1, color2, t) {
       duration,
     });
   }
+  export function createFireParticles(canvas, count = 1) {
+    for (let i = 0; i < count; i++) {
+      const startX = Math.random() * canvas.width;
+      const startY = canvas.height - Math.random() * 40;
   
+      // 判断是否为“大粒子”
+      const isBig = Math.random() < 0.15;
+  
+      effects.push({
+        type: 'particle',
+        x: startX,
+        y: startY,
+        vx: (Math.random() - 0.5) * 0.15, // 水平轻微抖动
+  
+        vy: Math.random() < 0.3
+          ? -0.1 - Math.random() * 0.1    // 30% 慢速：-0.1 ~ -0.2
+          : -0.3 - Math.random() * 0.3,   // 70% 快速：-0.3 ~ -0.6
+  
+        radius: isBig
+          ? 2.0 + Math.random() * 1.0     // 15% 大粒子：2.0 ~ 3.0
+          : 1.0 + Math.random() * 0.5,    // 85% 普通粒子：1.0 ~ 1.5
+  
+        color: '#FF9933',
+        alpha: 1,
+  
+        life: Math.random() < 0.3
+          ? 220 + Math.floor(Math.random() * 10)   // 30% 短命：20-29
+          : 260 + Math.floor(Math.random() * 30)   // 70% 长命：60-89
+      });
+    }
+  }
+  export function drawFireGlow(ctx, canvas, frame) {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height - 40;
+    const radius = canvas.width * 0.4;
+  
+    // 使用低频率的 sin 波生成 alpha，制造“呼吸”感
+    const glowAlpha = 0.25 + 0.1 * Math.sin(frame * 0.02); // 平滑变化在 0.15 ~ 0.35 之间
+  
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+    gradient.addColorStop(0, `rgba(255, 140, 0, ${glowAlpha.toFixed(3)})`);
+    gradient.addColorStop(1, `rgba(255, 140, 0, 0)`);
+  
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  export function createPersistentFireGlow(canvas) {
+    // 只添加一次
+    const exists = effects.some(e => e.type === 'fire_glow');
+    if (!exists) {
+      effects.push({
+        type: 'fire_glow',
+        canvas,
+        startTime: Date.now()
+      });
+    }
+  }
+  
+
+  export function createFireGlow(canvas, count = 1) {
+    // 可以加参数控制频率或强度，但这里只调用一次即可
+    drawFireGlow(globalThis.ctxRef || canvas.getContext('2d'), canvas, ++frameCount);
+  }
+  export function removeFireGlowEffect() {
+    for (let i = effects.length - 1; i >= 0; i--) {
+      if (effects[i].type === 'fire_glow') {
+        effects.splice(i, 1);
+      }
+    }
+  }
