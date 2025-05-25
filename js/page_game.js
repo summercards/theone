@@ -60,7 +60,7 @@ import BlockConfig from './data/block_config.js';   // ← 已有就保留
 import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导入
 import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
-
+import { resetCharges } from './data/hero_charge_state.js';
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
 let damagePopTime       = 0;    // 最近一次数值变化时刻（ms）
@@ -156,6 +156,7 @@ let selected = null;
 
 
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
+    resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -1651,7 +1652,14 @@ function rewardExpToHeroes(expAmount) {
     }
   });
 }
-
+function resetSessionState () {
+    gaugeCount = 0;
+    attackGaugeDamage = 0;
+    pendingDamage = 0;
+    playerActionCounter = 0;
+    resetCharges();        // ★ 普通关只需要清蓄力，不清英雄
+  }
+  
 
 
 export { monsterHitFlashTime };

@@ -94,7 +94,11 @@ function saveHeroProgress(hero) {
   };
   wx.setStorageSync('heroProgress', data);
 }
-
+/** 仅肉鸽模式会用到：把 5 个英雄位全部置空 */
+export function clearSelectedHeroes () {
+    setSelectedHeroes(Array(5).fill(null));
+  }
+  
 // ========================================================
 // 导出
 // ========================================================

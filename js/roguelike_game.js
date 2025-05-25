@@ -2,14 +2,19 @@
 let heroPoolList = [];        // 本次胜利弹窗完整随机英雄列表
 
 function resetSessionState () {
-  playerActionCounter = 0;
-  cachedPopupHeroes   = [];
-  heroPageIndex       = 0;
-  heroPoolList        = [];
-  hiredHeroIds.clear();
-  showVictoryPopup    = false;
-  showGameOver        = false;
-}
+    /* —— 本局 UI / 弹窗相关 —— */
+    playerActionCounter = 0;
+    cachedPopupHeroes   = [];
+    heroPageIndex       = 0;
+    heroPoolList        = [];
+    hiredHeroIds.clear();
+    showVictoryPopup    = false;
+    showGameOver        = false;
+  
+    /* —— 真正把“上一模式的数据”清掉 —— */
+    resetCharges();          // ① 五条蓄力槽清零
+    setSelectedHeroes(Array(5).fill(null));
+  }
 /* ----------  新增 END ------------ */
 
 
@@ -79,6 +84,8 @@ import BlockConfig from './data/block_config.js';   // ← 已有就保留
 import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导入
 import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
+import { resetCharges } from './data/hero_charge_state.js';
+import { clearSelectedHeroes } from './data/hero_state.js';
 
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
@@ -175,9 +182,9 @@ let selected = null;
 
 
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
-  resetSessionState();               // ← 新增
-    currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
-  ctxRef = ctx;
+       ctxRef = ctx;              // ① 把真实 2D 上下文保存
+       resetSessionState();       // ② 清局面
+        currentLevel = options?.level || 1;
   switchPageFn = switchPage;
   canvasRef = canvas;
 
@@ -242,6 +249,12 @@ function initGrid() {
 }
 
 export function drawGame() {
+    if (!ctxRef || !canvasRef) return;
+
+  if (!Array.isArray(gridData) || gridData.length < globalThis.gridSize) {
+    initGrid();
+  }
+  ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   if (!Array.isArray(gridData) || gridData.length < globalThis.gridSize) {
     initGrid(); // ⛑ 兜底
   }
@@ -1676,7 +1689,8 @@ function destroyGamePage() {
   // ✅ 解绑触摸事件，避免重复绑定或内存泄漏
   wx.offTouchStart(onTouch);
   wx.offTouchEnd(onTouchend);
-
+    ctxRef    = null;   // 让 drawGame() 早退
+    canvasRef = null;   // 同上
   // ✅ 结算金币
   commitSessionCoins();
 }
