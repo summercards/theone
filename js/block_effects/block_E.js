@@ -13,26 +13,40 @@ export function renderBlockE(ctx, x, y, width, height) {
   }
 }
 
-import {
-  gridData, __gridStartX, __gridStartY, __blockSize,
-  dropBlocks, fillNewBlocks, checkAndClearMatches
-} from '../page_game.js';
-
 import { createExplosion } from '../effects_engine.js';
 import { logBattle } from '../utils/battle_log.js';
 
-export function onEliminatePinkBlock(count) {
+/**
+ * E方块被消除时的爆炸特效处理
+ * @param {number} count - 连消个数
+ * @param {object} context - 注入运行时依赖，如 gridData 等
+ */
+export function onEliminatePinkBlock(count, context = {}) {
+  const {
+    gridData,
+    __gridStartX,
+    __gridStartY,
+    __blockSize,
+    dropBlocks,
+    fillNewBlocks,
+    checkAndClearMatches,
+    gridSize = globalThis.gridSize
+  } = context;
+
   const blasts = Math.min(count, 2);
-  const size = globalThis.gridSize; // ✅ 动态读取当前棋盘大小
 
   for (let i = 0; i < blasts; i++) {
-    const centerRow = Math.floor(Math.random() * size);
-    const centerCol = Math.floor(Math.random() * size);
+    const centerRow = Math.floor(Math.random() * gridSize);
+    const centerCol = Math.floor(Math.random() * gridSize);
     let cleared = 0;
 
     for (let r = centerRow - 1; r <= centerRow + 1; r++) {
       for (let c = centerCol - 1; c <= centerCol + 1; c++) {
-        if (r >= 0 && r < size && c >= 0 && c < size && gridData[r][c]) {
+        if (
+          r >= 0 && r < gridSize &&
+          c >= 0 && c < gridSize &&
+          gridData?.[r]?.[c]
+        ) {
           createExplosion(
             __gridStartX + c * __blockSize + __blockSize / 2,
             __gridStartY + r * __blockSize + __blockSize / 2
@@ -47,10 +61,10 @@ export function onEliminatePinkBlock(count) {
   }
 
   setTimeout(() => {
-    dropBlocks();
-    fillNewBlocks();
+    dropBlocks?.();
+    fillNewBlocks?.();
     setTimeout(() => {
-      checkAndClearMatches();
+      checkAndClearMatches?.();
     }, 500);
   }, 500);
 }

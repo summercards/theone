@@ -1054,9 +1054,18 @@ if (heroIndex >= 0) {
       // ✅ 触发额外方块特效
       const config = BlockConfig[letter];
       if (config?.onEliminate) {
-        config.onEliminate(count);
-      }
-    });
+        config.onEliminate(count, {
+            gridData,
+            __gridStartX,
+            __gridStartY,
+            __blockSize,
+            dropBlocks,
+            fillNewBlocks,
+            checkAndClearMatches,
+            gridSize: globalThis.gridSize
+        });
+    }
+  }); // ✅ ← 这个是 .forEach 的闭合括号
 
     damagePopTime = Date.now();
 
