@@ -375,7 +375,7 @@ globalThis.__gridStartY = boardY;
         ctxRef.font = '20px sans-serif';
         ctxRef.textAlign = 'center';
         ctxRef.textBaseline = 'top';
-        ctxRef.fillText(`获得金币：+${earnedGold}`, canvasW / 2, imgY + imgH + 16);
+        ctxRef.fillText(`当前金币：${getSessionCoins()}`, canvasW / 2, imgY + imgH + 16);
       
         // 5. 英雄栏 + 随机池（图标已放大，请在函数中设置 ICON = 84）
         drawHeroSelectionUIInPopup(ctxRef, canvasRef);
@@ -383,7 +383,7 @@ globalThis.__gridStartY = boardY;
         // 6. “下一关”按钮（上移一点）
         const btnW = 140, btnH = 42;
         const btnX = (canvasW - btnW) / 2;
-        const btnY = canvasH - btnH - 60; // ✅ 原来是 -30
+        const btnY = canvasH - btnH - 40; // ✅ 原来是 -30
       
         ctxRef.fillStyle = '#FFD700';
         drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
@@ -436,11 +436,11 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
   
     const CARD_W = canvas.width * 0.88;
     const CARD_H = 64;
-    const CARD_GAP = 16;
+    const CARD_GAP = 8;
     const AVATAR = 52;
   
     const startX = (canvas.width - CARD_W) / 2;
-    let currentY = layoutY + ICON + 40;
+    let currentY = layoutY + ICON + 20;  // 原来是 40，往上移整体位置
   
     for (let i = 0; i < pageHeroes.length; i++) {
       const x = startX;
