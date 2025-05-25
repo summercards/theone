@@ -44,6 +44,7 @@ let slotRects  = [];
 let iconRects  = [];
 let btnPrevRect = null;
 let btnNextRect = null;
+let btnBackRect = null; // 返回按钮区域
 let pageIndex   = 0;
 /* ---------- 弹窗状态 ---------- */
 let unlockDialog = { show: false, hero: null, okRect: null, cancelRect: null };
@@ -147,6 +148,9 @@ let ctxRef, canvasRef, switchPageFn;
 function onTouch(e) {
   if (!e.changedTouches || !e.changedTouches[0]) return;
   const { clientX: x, clientY: y } = e.changedTouches[0];
+  if (btnBackRect && hit(x, y, btnBackRect)) {
+    return switchPageFn('home');
+  }
 
   console.log('[DEBUG] 用户触摸了坐标：', x, y);
 
@@ -642,6 +646,13 @@ drawStyledText(ctx, `进入第${level}关`,
 
 
   globalThis.adBtnRect = adBtnRect;
+// 返回按钮（左上角）
+btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
+ctx.fillStyle = '#5e3a7d';
+drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRect.height, 6, true, false);
+drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, {
+  font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle'
+});
 
   // 解锁弹窗
   drawUnlockDialog(ctx, canvas);

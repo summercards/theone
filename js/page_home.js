@@ -11,22 +11,6 @@ const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { shareMyStats } = require('./utils/share_utils.js');
 const { drawAllEffects } = require('./effects_engine.js');
 
-let buttonScales = {
-  enter: 1,
-  roguelike: 1,
-  ranking: 1,
-  share: 1,
-  heroIntro: 1
-};
-
-let buttonScaleVels = {
-  enter: 0,
-  roguelike: 0,
-  ranking: 0,
-  share: 0,
-  heroIntro: 0
-};
-
 export function initHomePage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -41,17 +25,13 @@ function drawHomeUI() {
   const yEnter = canvasRef.height - 240;
   const yRoguelike = yEnter + 80;
 
-  updateScales();
+  const scaledEnterW = btnWidth;
+  const scaledEnterH = btnHeight;
+  const offsetX = x;
+  const offsetYEnter = yEnter;
 
-  const scaleEnter = buttonScales.enter;
-  const scaledEnterW = btnWidth * scaleEnter;
-  const scaledEnterH = btnHeight * scaleEnter;
-  const offsetX = x + (btnWidth - scaledEnterW) / 2;
-  const offsetYEnter = yEnter + (btnHeight - scaledEnterH) / 2;
-
-  const scaleRoguelike = buttonScales.roguelike;
-  const scaledRogueW = btnWidth * scaleRoguelike;
-  const scaledRogueH = btnHeight * scaleRoguelike;
+  const scaledRogueW = btnWidth;
+  const scaledRogueH = btnHeight;
 
   const bgImg = globalThis.imageCache['bg'];
   if (bgImg && bgImg.complete) {
@@ -125,25 +105,6 @@ function drawHomeUI() {
   drawAllEffects(ctxRef, canvasRef);
 }
 
-function updateScales() {
-  for (let key in buttonScales) {
-    const target = 1;
-    const scale = buttonScales[key];
-    const vel = buttonScaleVels[key] || 0;
-    const spring = 0.15;
-    const damping = 0.8;
-    const force = (target - scale) * spring;
-    const newVel = (vel + force) * damping;
-    buttonScaleVels[key] = newVel;
-    buttonScales[key] += newVel;
-  }
-}
-
-function animateScale(key) {
-  buttonScales[key] = 0.85;
-  buttonScaleVels[key] = 0.15;
-}
-
 function onTouch(e) {
   const touch = e.changedTouches[0];
   const xTouch = touch.clientX;
@@ -156,7 +117,6 @@ function onTouch(e) {
   const yRoguelike = yEnter + 80;
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= yEnter && yTouch <= yEnter + btnHeight) {
-    animateScale('enter');
     setTimeout(() => switchPageFn('heroSelect'), 150);
     return;
   }
@@ -164,7 +124,6 @@ function onTouch(e) {
   if (roguelikeBtnArea &&
       xTouch >= roguelikeBtnArea.x && xTouch <= roguelikeBtnArea.x + roguelikeBtnArea.width &&
       yTouch >= roguelikeBtnArea.y && yTouch <= roguelikeBtnArea.y + roguelikeBtnArea.height) {
-    animateScale('roguelike');
     setTimeout(() => switchPageFn('roguelike'), 150);
     return;
   }
@@ -172,7 +131,6 @@ function onTouch(e) {
   if (rankingBtnArea &&
       xTouch >= rankingBtnArea.x && xTouch <= rankingBtnArea.x + rankingBtnArea.width &&
       yTouch >= rankingBtnArea.y && yTouch <= rankingBtnArea.y + rankingBtnArea.height) {
-    animateScale('ranking');
     setTimeout(() => switchPageFn('ranking'), 150);
     return;
   }
@@ -180,7 +138,6 @@ function onTouch(e) {
   if (shareBtnArea &&
       xTouch >= shareBtnArea.x && xTouch <= shareBtnArea.x + shareBtnArea.width &&
       yTouch >= shareBtnArea.y && yTouch <= shareBtnArea.y + shareBtnArea.height) {
-    animateScale('share');
     setTimeout(() => shareMyStats(), 150);
     return;
   }
@@ -188,7 +145,6 @@ function onTouch(e) {
   if (heroIntroBtnArea &&
       xTouch >= heroIntroBtnArea.x && xTouch <= heroIntroBtnArea.x + heroIntroBtnArea.width &&
       yTouch >= heroIntroBtnArea.y && yTouch <= heroIntroBtnArea.y + heroIntroBtnArea.height) {
-    animateScale('heroIntro');
     setTimeout(() => switchPageFn('heroIntro'), 150);
     return;
   }
