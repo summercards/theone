@@ -1,3 +1,18 @@
+/* ----------  新增 BEGIN ---------- */
+let heroPoolList = [];        // 本次胜利弹窗完整随机英雄列表
+
+function resetSessionState () {
+  playerActionCounter = 0;
+  cachedPopupHeroes   = [];
+  heroPageIndex       = 0;
+  heroPoolList        = [];
+  hiredHeroIds.clear();
+  showVictoryPopup    = false;
+  showGameOver        = false;
+}
+/* ----------  新增 END ------------ */
+
+
 let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
@@ -160,6 +175,7 @@ let selected = null;
 
 
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
+  resetSessionState();               // ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -1218,23 +1234,7 @@ if (heroIndex >= 0) {
     releaseAllReadySkills();
   }
 
-  /* === ④ 怪物回合 / 掉落新怪 === */
-  if (isMonsterDead()) {
-    earnedGold = getMonsterGold();         // 获取金币
-    addCoins(earnedGold);                  // 加入金币池
-    levelJustCompleted = getNextLevel() - 1; // 显示当前完成的是哪一关
-    showVictoryPopup = true;               // 显示胜利弹窗
-    const allUnlocked = HeroData.heroes.filter(h => !h.locked);
-    cachedPopupHeroes = allUnlocked
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .filter(h => h && h.id)
-      .map(h => new HeroState(h.id));
-    return;                                // 暂停，等待点击继续
-  }
-   else {
-    // 敌人仍存活：怪物回合已由其他逻辑处理（如 turnsLeft）
-  }
+ 
 
   return clearedCount > 0;
 }
@@ -1784,13 +1784,20 @@ showDamageText(pendingDamage, endX, endY + 50);
 
     if (isMonsterDead()) {
         setTimeout(() => {
-            earnedGold = getMonsterGold();
-            addCoins(earnedGold);
-            levelJustCompleted = currentLevel;  // ✅ 不再用 getNextLevel()
-            const all = HeroData.heroes;
-const shuffled = all.sort(() => Math.random() - 0.5);
-cachedPopupHeroes = shuffled.slice(0, 3).map(h => new HeroState(h.id));
-            showVictoryPopup = true;
+          earnedGold = getMonsterGold();
+          addCoins(earnedGold);
+          levelJustCompleted = currentLevel;
+
+          const shuffled = HeroData.heroes.slice()
+                          .sort(() => Math.random() - 0.5);
+
+          heroPoolList    = shuffled;        // ① 整池缓存
+          heroPageIndex   = 0;               // ② 首页
+          cachedPopupHeroes = shuffled.slice(0, 3)
+                           .map(h => new HeroState(h.id));
+
+          showVictoryPopup = true;
+
           
             rewardExpToHeroes(50);
           
