@@ -330,79 +330,79 @@ globalThis.__gridStartY = boardY;
   drawUI();
     // 👇 胜利弹窗绘制逻辑
     if (showVictoryPopup) {
-      const canvasW = canvasRef.width;
-      const canvasH = canvasRef.height;
-
-      // === 1. 黑色半透明背景遮罩（保留旧视觉）
-      ctxRef.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctxRef.fillRect(0, 0, canvasW, canvasH);
-    
-      // === 2. 主体区域背景（改为紫色，无透明度）
-      const bannerHeight = 260;
-      const bannerY = (canvasH - bannerHeight) / 2;
-      ctxRef.fillStyle = 'rgba(51, 17, 68, 1.0)';  // 半透明紫色
-      ctxRef.fillRect(0, bannerY, canvasW, bannerHeight);
-    
-      // === 3. 标题文字（白色）
-      const title = `第 ${levelJustCompleted} 关胜利！`;
-      ctxRef.fillStyle = '#FFFFFF';
-      ctxRef.font = 'bold 36px sans-serif';
-      ctxRef.textAlign = 'center';
-      ctxRef.textBaseline = 'top';
-      ctxRef.fillText(title, canvasW / 2, bannerY - 60);
-    
-      // === 4. 中间插图（美术角色图）
-// === 4. 中间插图（美术角色图）
-// === 4. 中间插图（美术角色图）
-if (!globalThis.victoryHeroImage) {
-  const img = wx.createImage();
-  img.src = 'assets/ui/victory_hero.png';
-  img.onload = () => {
-    globalThis.victoryHeroImage = img;
-    drawGame(); // 加载成功后强制刷新
-  };
-
-  // 加载中提示
-  ctxRef.fillStyle = '#FFFFFF';
-  ctxRef.font = '20px sans-serif';
-  ctxRef.textAlign = 'center';
-  ctxRef.fillText('加载中...', canvasW / 2, bannerY + 100);
-} else {
-  const img = globalThis.victoryHeroImage;
-  const imgW = 120;
-  const imgH = 120;
-  const imgX = (canvasW - imgW) / 2;
-  const imgY = bannerY + 52;
-  ctxRef.drawImage(img, imgX, imgY, imgW, imgH);
-}
-
-
-
-
-    
-      // === 5. 奖励金币文字
-      ctxRef.fillStyle = '#FFD700';
-      ctxRef.font = '20px sans-serif';
-      ctxRef.fillText(`获得金币：+${earnedGold}`, canvasW / 2, bannerY + 180);
-    
-      // === 6. “下一关”按钮
-      const btnW = 140, btnH = 42;
-      const btnX = (canvasW - btnW) / 2;
-      const btnY = bannerY + 520;
-    
-      ctxRef.fillStyle = '#FFD700';
-      drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
-    
-      ctxRef.fillStyle = '#000';
-      ctxRef.font = 'bold 18px sans-serif';
-      ctxRef.fillText('下一关', canvasW / 2, btnY + btnH / 2);
-    
-      // === 7. 存按钮区域以供点击判断
-      globalThis.victoryBtnArea = {
-        x: btnX, y: btnY, width: btnW, height: btnH
-      };
-      drawHeroSelectionUIInPopup(ctxRef, canvasRef); // 加在最后
-    }
+        const canvasW = canvasRef.width;
+        const canvasH = canvasRef.height;
+      
+        // 1. 遮罩背景
+        ctxRef.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctxRef.fillRect(0, 0, canvasW, canvasH);
+      
+        // 2. 插图锚点位置（稍微上移）
+        const imgW = 120;
+        const imgH = 120;
+        const imgX = (canvasW - imgW) / 2;
+        const imgY = canvasH * 0.36;
+      
+        if (!globalThis.victoryHeroImage) {
+          const img = wx.createImage();
+          img.src = 'assets/ui/victory_hero.png';
+          img.onload = () => {
+            globalThis.victoryHeroImage = img;
+            drawGame(); // 强制刷新画面
+          };
+      
+          ctxRef.fillStyle = '#AAA';
+          ctxRef.fillRect(imgX, imgY, imgW, imgH);
+          ctxRef.fillStyle = '#FFF';
+          ctxRef.font = '20px sans-serif';
+          ctxRef.textAlign = 'center';
+          ctxRef.textBaseline = 'middle';
+          ctxRef.fillText('加载中...', canvasW / 2, imgY + imgH / 2);
+        } else {
+          const img = globalThis.victoryHeroImage;
+          ctxRef.drawImage(img, imgX, imgY, imgW, imgH);
+        }
+      
+        // 3. 标题在插图上方
+        ctxRef.fillStyle = '#FFFFFF';
+        ctxRef.font = 'bold 36px sans-serif';
+        ctxRef.textAlign = 'center';
+        ctxRef.textBaseline = 'bottom';
+        ctxRef.fillText(`第 ${levelJustCompleted} 关胜利！`, canvasW / 2, imgY - 16);
+      
+        // 4. 奖励金币在插图下方
+        ctxRef.fillStyle = '#FFD700';
+        ctxRef.font = '20px sans-serif';
+        ctxRef.textAlign = 'center';
+        ctxRef.textBaseline = 'top';
+        ctxRef.fillText(`获得金币：+${earnedGold}`, canvasW / 2, imgY + imgH + 16);
+      
+        // 5. 英雄栏 + 随机池（图标已放大，请在函数中设置 ICON = 84）
+        drawHeroSelectionUIInPopup(ctxRef, canvasRef);
+      
+        // 6. “下一关”按钮（上移一点）
+        const btnW = 140, btnH = 42;
+        const btnX = (canvasW - btnW) / 2;
+        const btnY = canvasH - btnH - 60; // ✅ 原来是 -30
+      
+        ctxRef.fillStyle = '#FFD700';
+        drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
+      
+        ctxRef.fillStyle = '#000';
+        ctxRef.font = 'bold 18px sans-serif';
+        ctxRef.textAlign = 'center';
+        ctxRef.textBaseline = 'middle';
+        ctxRef.fillText('下一关', canvasW / 2, btnY + btnH / 2);
+      
+        globalThis.victoryBtnArea = {
+          x: btnX,
+          y: btnY,
+          width: btnW,
+          height: btnH
+        };
+      }
+      
+     
 }
 function drawHeroSelectionUIInPopup(ctx, canvas) {
     const ICON = 64;
@@ -430,44 +430,81 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
       if (hero) drawHeroIconFull(ctx, hero, x, y, ICON, 1);
     }
   
-    // === 英雄池逻辑 ===
-    const allHeroes = HeroData.heroes;
-    const shuffled = allHeroes.sort(() => Math.random() - 0.5);
+    // === 英雄池逻辑（纵向排列卡片） ===
     const pageHeroes = cachedPopupHeroes;
     heroIconRects = [];
   
-    const poolY = layoutY + ICON + 40;
-    const totalIcons = 3;
-    const totalWidth = totalIcons * ICON + (totalIcons - 1) * GAP;
-    const startX = (canvas.width - totalWidth) / 2;
+    const CARD_W = canvas.width * 0.88;
+    const CARD_H = 64;
+    const CARD_GAP = 16;
+    const AVATAR = 52;
   
-    for (let i = 0; i < 3; i++) {
-      const x = startX + i * (ICON + GAP);
-      const y = poolY;
+    const startX = (canvas.width - CARD_W) / 2;
+    let currentY = layoutY + ICON + 40;
   
-      ctx.strokeStyle = '#C084FC';
-      ctx.lineWidth = 2;
-      drawRoundedRect(ctx, x, y, ICON, ICON, 8, false, true);
+    for (let i = 0; i < pageHeroes.length; i++) {
+      const x = startX;
+      const y = currentY;
   
       const hero = pageHeroes[i];
-      if (hero) {
-        // 💡 强制去掉锁定标志位
-        hero.locked = false;
-        drawHeroIconFull(ctx, hero, x, y, ICON, 1);
-        heroIconRects.push({ rect: { x, y, width: ICON, height: ICON }, hero });
-      } else {
-        // 空位
-        ctx.fillStyle = '#4B0073';
-        drawRoundedRect(ctx, x + 4, y + 4, ICON - 8, ICON - 8, 8, true, false);
-        ctx.fillStyle = '#FFF';
-        ctx.font = '20px IndieFlower';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('?', x + ICON / 2, y + ICON / 2);
-      }
+      if (!hero) continue;
+  
+      hero.locked = false;
+      heroIconRects.push({ rect: { x, y, width: CARD_W, height: CARD_H }, hero });
+  
+      // 背景卡片
+      ctx.fillStyle = '#261e38';
+      drawRoundedRect(ctx, x, y, CARD_W, CARD_H, 8, true, false);
+      ctx.strokeStyle = '#A682FF';
+      ctx.lineWidth = 2;
+      drawRoundedRect(ctx, x, y, CARD_W, CARD_H, 8, false, true);
+  
+      // 头像（左）
+      drawHeroIconFull(ctx, hero, x + 6, y + 6, AVATAR, 1);
+  
+      // 文本（右）
+      const textX = x + AVATAR + 14;
+      const textY = y + 6;
+      const cost = hero.hireCost || 200;
+  
+      ctx.fillStyle = hiredHeroIds.has(hero.id) ? '#0F0' : '#FFD700';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(
+        hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`,
+        textX,
+        textY
+      );
+  
+      const desc = hero.skill?.description || '技能描述缺失';
+      ctx.fillStyle = '#FFF';
+      ctx.font = '12px sans-serif';
+      wrapText(ctx, desc, textX, textY + 20, CARD_W - AVATAR - 20, 14);
+  
+      // 往下一个卡片位置
+      currentY += CARD_H + CARD_GAP;
     }
   }
   
+  
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split('');
+    let line = '';
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n];
+      const metrics = ctx.measureText(testLine);
+      const testWidth = metrics.width;
+      if (testWidth > maxWidth && n > 0) {
+        ctx.fillText(line, x, y);
+        line = words[n];
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, y);
+  }
   
   
   
