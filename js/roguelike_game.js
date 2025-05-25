@@ -375,7 +375,7 @@ globalThis.__gridStartY = boardY;
         const imgW = 120;
         const imgH = 120;
         const imgX = (canvasW - imgW) / 2;
-        const imgY = canvasH * 0.36;
+        const imgY = canvasH * 0.20;
       
         if (!globalThis.victoryHeroImage) {
           const img = wx.createImage();
@@ -406,7 +406,7 @@ globalThis.__gridStartY = boardY;
       
         // 4. 奖励金币在插图下方
         ctxRef.fillStyle = '#FFD700';
-        ctxRef.font = '20px sans-serif';
+        ctxRef.font = 'bold 20px sans-serif';
         ctxRef.textAlign = 'center';
         ctxRef.textBaseline = 'top';
         ctxRef.fillText(`当前金币：${getSessionCoins()}`, canvasW / 2, imgY + imgH + 16);
@@ -417,7 +417,7 @@ globalThis.__gridStartY = boardY;
         // 6. “下一关”按钮（上移一点）
         const btnW = 140, btnH = 42;
         const btnX = (canvasW - btnW) / 2;
-        const btnY = canvasH - btnH - 40; // ✅ 原来是 -30
+        const btnY = canvasH - btnH - 50; // ✅ 原来是 -30
       
         ctxRef.fillStyle = '#FFD700';
         drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
@@ -438,24 +438,51 @@ globalThis.__gridStartY = boardY;
       
      
 }
+/**
+ * 弹窗里的出战栏 + 随机英雄池 UI
+ * 会根据屏幕可用高度自动统一缩放，避免
+ * 英雄卡片区与“下一关”按钮发生重叠。
+ */
 function drawHeroSelectionUIInPopup(ctx, canvas) {
-    const ICON = 64;
-    const GAP = 12;
-    const PAD_X = (canvas.width - (ICON * 5 + GAP * 4)) / 2;
-    const layoutY = canvas.height * 0.58;
+    /* ---------- ① 计算全局缩放值 ---------- */
+    const ICON0      = 64;   // 出战头像基准尺寸
+    const GAP0       = 12;   // 出战头像间距
+    const CARD_H0    = 64;   // 英雄卡片基准高度
+    const CARD_GAP0  = 8;    // 卡片竖向间距
+    const SAFE_GAP   = 24;   // 卡片区到底部按钮的安全间隔
+    const BTN_ZONE   = 80;   // 按钮本身高度 + 与屏幕底距
   
+    const heroBarY0  = canvas.height * 0.46;           // 出战栏 Y
+    const cardStartY0= heroBarY0 + ICON0 + 20;         // 第一张卡片 Y
+    const heroPoolH0 = CARD_H0 * 3 + CARD_GAP0 * 2;    // 3 张卡片总高
+    const idealTotal = cardStartY0 + heroPoolH0 + SAFE_GAP + BTN_ZONE;
+  
+    // 若 idealTotal 超出屏幕则整体按比例收缩
+    const scale = Math.min(1, (canvas.height - 40) / idealTotal);
+  
+    /* ---------- ② 根据缩放派生尺寸 ---------- */
+    const ICON     = ICON0     * scale;
+    const GAP      = GAP0      * scale;
+    const CARD_H   = CARD_H0   * scale;
+    const CARD_GAP = CARD_GAP0 * scale;
+    const AVATAR   = 52        * scale;          // 卡片里的头像
+    const CARD_W   = canvas.width * 0.88;        // 卡片宽保持百分比
+  
+    const PAD_X    = (canvas.width - (ICON * 5 + GAP * 4)) / 2;
+    const layoutY  = heroBarY0;                  // 出战栏 Y 不变
+  
+    /* ---------- ③ 出战英雄栏 ---------- */
     const selectedHeroes = getSelectedHeroes();
     heroSlotRects = [];
   
-    // === 出战英雄栏 ===
     for (let i = 0; i < 5; i++) {
       const x = PAD_X + i * (ICON + GAP);
       const y = layoutY;
   
-      ctx.fillStyle = '#444';
+      ctx.fillStyle   = '#444';
       drawRoundedRect(ctx, x, y, ICON, ICON, 8, true, false);
       ctx.strokeStyle = '#A64AC9';
-      ctx.lineWidth = 3;
+      ctx.lineWidth   = 3;
       drawRoundedRect(ctx, x, y, ICON, ICON, 8, false, true);
   
       heroSlotRects.push({ x, y, width: ICON, height: ICON });
@@ -464,45 +491,42 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
       if (hero) drawHeroIconFull(ctx, hero, x, y, ICON, 1);
     }
   
-    // === 英雄池逻辑（纵向排列卡片） ===
+    /* ---------- ④ 随机英雄池（纵向卡片） ---------- */
     const pageHeroes = cachedPopupHeroes;
     heroIconRects = [];
   
-    const CARD_W = canvas.width * 0.88;
-    const CARD_H = 64;
-    const CARD_GAP = 8;
-    const AVATAR = 52;
+    const startX   = (canvas.width - CARD_W) / 2;
+    let currentY   = layoutY + ICON + 20 * scale;   // 20 → 也跟随缩放
   
-    const startX = (canvas.width - CARD_W) / 2;
-    let currentY = layoutY + ICON + 20;  // 原来是 40，往上移整体位置
+    ctx.font       = `${14 * scale}px sans-serif`;  // 统一缩放字体
   
     for (let i = 0; i < pageHeroes.length; i++) {
-      const x = startX;
-      const y = currentY;
-  
       const hero = pageHeroes[i];
       if (!hero) continue;
+  
+      const x = startX;
+      const y = currentY;
   
       hero.locked = false;
       heroIconRects.push({ rect: { x, y, width: CARD_W, height: CARD_H }, hero });
   
       // 背景卡片
-      ctx.fillStyle = '#261e38';
+      ctx.fillStyle   = '#261e38';
       drawRoundedRect(ctx, x, y, CARD_W, CARD_H, 8, true, false);
       ctx.strokeStyle = '#A682FF';
-      ctx.lineWidth = 2;
+      ctx.lineWidth   = 2;
       drawRoundedRect(ctx, x, y, CARD_W, CARD_H, 8, false, true);
   
       // 头像（左）
-      drawHeroIconFull(ctx, hero, x + 6, y + 6, AVATAR, 1);
+      drawHeroIconFull(ctx, hero, x + 6 * scale, y + 6 * scale, AVATAR, 1);
   
       // 文本（右）
-      const textX = x + AVATAR + 14;
-      const textY = y + 6;
-      const cost = hero.hireCost || 200;
+      const textX = x + AVATAR + 14 * scale;
+      const textY = y + 6 * scale;
+      const cost  = hero.hireCost || 200;
   
       ctx.fillStyle = hiredHeroIds.has(hero.id) ? '#0F0' : '#FFD700';
-      ctx.font = 'bold 14px sans-serif';
+      ctx.font      = `bold ${14 * scale}px sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText(
@@ -513,13 +537,14 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
   
       const desc = hero.skill?.description || '技能描述缺失';
       ctx.fillStyle = '#FFF';
-      ctx.font = '12px sans-serif';
-      wrapText(ctx, desc, textX, textY + 20, CARD_W - AVATAR - 20, 14);
+      ctx.font      = `${12 * scale}px sans-serif`;
+      wrapText(ctx, desc, textX, textY + 20 * scale,
+               CARD_W - AVATAR - 20 * scale, 14 * scale);
   
-      // 往下一个卡片位置
       currentY += CARD_H + CARD_GAP;
     }
   }
+  
   
   
   function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
@@ -770,7 +795,7 @@ drawRoundedRect(ctxRef, btnBackX, btnBackY, btnBackSize, btnBackSize, 6);
 ctxRef.fill();
 
 ctxRef.fillStyle = '#FFF'; // 白色箭头
-ctxRef.font = '20px sans-serif';
+ctxRef.font = 'bold 30px sans-serif';
 ctxRef.textAlign = 'center';
 ctxRef.textBaseline = 'middle';
 ctxRef.fillText('⟵', btnBackX + btnBackSize / 2, btnBackY + btnBackSize / 2);
