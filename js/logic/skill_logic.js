@@ -1,4 +1,4 @@
-import { expandGridTo } from '../page_game.js';
+import { expandGridTo } from '../utils/game_shared.js';
 import { playBasketballEffect } from "../effects_engine.js";
 
 

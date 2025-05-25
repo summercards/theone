@@ -5,7 +5,8 @@
 
 const { drawRoundedRect } = require('../utils/canvas_utils.js');
 import { getMonster } from '../data/monster_state.js';
-import { monsterHitFlashTime } from '../page_game.js';
+import { monsterHitFlashTime } from '../utils/game_shared.js';
+
 
 const monsterImageCache = {};
 

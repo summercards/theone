@@ -2,7 +2,7 @@
 
 import { getSelectedHeroes } from '../data/hero_state.js';
 import HeroData from '../data/hero_data.js';
-import { addToAttackGauge } from '../page_game.js';
+import { addToAttackGauge } from '../utils/game_shared.js';
 import { logBattle } from '../utils/battle_log.js';
 
 export function renderBlockA(ctx, x, y, width, height) {

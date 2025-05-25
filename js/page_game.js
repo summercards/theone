@@ -26,7 +26,7 @@ import { applySkillEffect } from './logic/skill_logic.js';
 import { showDamageText } from './effects_engine.js';
 import SuperBlockSystem from './data/super_block_system.js';
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
-
+import { registerGameHooks } from './utils/game_shared.js';
 globalThis.renderBlockA = renderBlockA;
 globalThis.renderBlockB = renderBlockB;
 globalThis.renderBlockC = renderBlockC;
@@ -187,6 +187,11 @@ wx.onTouchEnd(onTouchend);
   const m = loadMonster(currentLevel);
   turnsLeft = m.skill.cooldown;
   drawGame();
+  registerGameHooks({
+    expand: expandGridTo,
+    addGauge: addToAttackGauge,
+    hitFlash: monsterHitFlashTime
+  });
 }
 
 
