@@ -10,10 +10,10 @@ let frameCount = 0;
 
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { shareMyStats } = require('./utils/share_utils.js');
-import { drawAllEffects, updateAllEffects, createFireParticles, createFireGlow } from './effects_engine.js';
-import { createPersistentFireGlow } from './effects_engine.js';
+import { drawAllEffects, updateAllEffects, createFireParticles, createFireGlow, createPersistentFireGlow, removeFireGlowEffect } from './effects_engine.js';
+
 let fireFrameCounter = 0;
-import { removeFireGlowEffect } from './effects_engine.js';
+
 export function initHomePage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -57,17 +57,13 @@ function drawHomeUI() {
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
   }
 
-  // 🔥 火星粒子与光晕生成控制
   fireFrameCounter++;
   if (fireFrameCounter % 15 === 0) {
     createFireParticles(canvasRef, 1);
   }
- 
 
-  // ✨ 效果绘制在按钮之前
   drawAllEffects(ctxRef, canvasRef);
 
-  // 🎯 按钮层
   ctxRef.fillStyle = '#b3134a';
   drawRoundedRect(ctxRef, offsetX, offsetYEnter, scaledEnterW, scaledEnterH, 20);
   ctxRef.fill();
@@ -130,6 +126,7 @@ function onTouch(e) {
   const yRoguelike = yEnter + 80;
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= yEnter && yTouch <= yEnter + btnHeight) {
+    removeFireGlowEffect();
     setTimeout(() => switchPageFn('heroSelect'), 150);
     return;
   }
@@ -137,6 +134,7 @@ function onTouch(e) {
   if (roguelikeBtnArea &&
       xTouch >= roguelikeBtnArea.x && xTouch <= roguelikeBtnArea.x + roguelikeBtnArea.width &&
       yTouch >= roguelikeBtnArea.y && yTouch <= roguelikeBtnArea.y + roguelikeBtnArea.height) {
+    removeFireGlowEffect();
     setTimeout(() => switchPageFn('roguelike'), 150);
     return;
   }
@@ -144,6 +142,7 @@ function onTouch(e) {
   if (rankingBtnArea &&
       xTouch >= rankingBtnArea.x && xTouch <= rankingBtnArea.x + rankingBtnArea.width &&
       yTouch >= rankingBtnArea.y && yTouch <= rankingBtnArea.y + rankingBtnArea.height) {
+    removeFireGlowEffect();
     setTimeout(() => switchPageFn('ranking'), 150);
     return;
   }
@@ -151,6 +150,7 @@ function onTouch(e) {
   if (shareBtnArea &&
       xTouch >= shareBtnArea.x && xTouch <= shareBtnArea.x + shareBtnArea.width &&
       yTouch >= shareBtnArea.y && yTouch <= shareBtnArea.y + shareBtnArea.height) {
+    removeFireGlowEffect();
     setTimeout(() => shareMyStats(), 150);
     return;
   }
@@ -158,30 +158,29 @@ function onTouch(e) {
   if (heroIntroBtnArea &&
       xTouch >= heroIntroBtnArea.x && xTouch <= heroIntroBtnArea.x + heroIntroBtnArea.width &&
       yTouch >= heroIntroBtnArea.y && yTouch <= heroIntroBtnArea.y + heroIntroBtnArea.height) {
+    removeFireGlowEffect();
     setTimeout(() => switchPageFn('heroIntro'), 150);
     return;
   }
 }
 
 function startHomeLoop() {
-    createPersistentFireGlow(canvasRef); // ✅ 只初始化一次光晕
-  
-    function loop() {
-      updateAllEffects();
-      drawHomeUI();
-      homeLoopId = requestAnimationFrame(loop);
-    }
-    loop();
+  createPersistentFireGlow(canvasRef);
+  function loop() {
+    updateAllEffects();
+    drawHomeUI();
+    homeLoopId = requestAnimationFrame(loop);
   }
-  
+  loop();
+}
 
-  function destroyHomePage() {
-    if (homeLoopId) {
-      cancelAnimationFrame(homeLoopId);
-      homeLoopId = null;
-    }
-    removeFireGlowEffect(); // ✅ 离开时移除光晕效果
+function destroyHomePage() {
+  if (homeLoopId) {
+    cancelAnimationFrame(homeLoopId);
+    homeLoopId = null;
   }
+  removeFireGlowEffect();
+}
 
 export function updateHomePage() {}
 export function onTouchend(e) { onTouch(e); }

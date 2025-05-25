@@ -416,7 +416,7 @@ const radius = baseRadius * scale;
   });
 
   for (let r = remove.length - 1; r >= 0; r--) effects.splice(remove[r], 1);
-  drawFireGlow(ctx, canvas, frameCount);
+
 }
 
 /* ========= 工具函数 ===================================================== */
