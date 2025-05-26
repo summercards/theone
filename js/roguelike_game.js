@@ -7,8 +7,8 @@ function resetSessionState () {
     cachedPopupHeroes   = [];
     heroPageIndex       = 0;
     heroPoolList        = [];
+    purchasedPropIds.clear();            // 清空本局“已购道具”记录
     hiredHeroIds.clear();
-    purchasedPropIds.clear();      // ← 清空道具购买状态
     showVictoryPopup    = false;
     showGameOver        = false;
   
@@ -511,7 +511,7 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
       const isHero = opt.kind === 'hero';
       const hero   = isHero ? opt.data : null;
       const prop   = isHero ? null     : opt.data;
-      const purchased = !isHero && purchasedPropIds.has(prop.id);
+      const purchased = !isHero && purchasedPropIds.has(prop.id); // ← 🔧 新增
   
       const x = startX;
       const y = currentY;
@@ -555,38 +555,42 @@ if (!isHero && !purchased) {
 
       }
       
-  
-      // 文本（右）
-      const textX = x + AVATAR + 14 * scale;
-      const textY = y + 6 * scale;
-      const cost  = isHero ? (hero.hireCost || 200) : (prop.price || 100);
-  
-      if (isHero) {
-        ctx.fillStyle = hiredHeroIds.has(hero.id) ? '#0F0' : '#FFD700';
-      } else {
-        ctx.fillStyle = purchased ? '#0F0' : '#FFD700';
-      }
-      
-      ctx.font      = `bold ${14 * scale}px sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
- // ① 先算出要显示的文字
- const label = isHero
- ? (hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`)
- : (purchased            ? '已购买' : `购买：${cost}金币`);
+      // —— 右侧文字区 —— 
+            const textX = x + AVATAR + 14 * scale;
+      const textY = y + 6  * scale;
+      const cost  = isHero ? (hero.hireCost || 200)
+                           : (prop.price   || 100);
 
-// ② 再统一绘制
-ctx.fillText(label, textX, textY);
+      /* ① 颜色：已拥有 / 未拥有 */
+      ctx.fillStyle = isHero
+        ? (hiredHeroIds.has(hero.id)      ? '#0F0' : '#FFD700')
+        : (purchasedPropIds.has(prop.id)  ? '#0F0' : '#FFD700');
 
-  
-      const desc = isHero ? (hero.skill?.description || '技能描述缺失')
-      : (prop.desc || '——');
+      /* ② 主标签文案 */
+      const label = isHero
+        ? (hiredHeroIds.has(hero.id)      ? '已雇佣'  : `雇佣：${cost}金币`)
+        : (purchasedPropIds.has(prop.id)  ? '已购买'  : `购买：${cost}金币`);
+
+      ctx.font        = `bold ${14 * scale}px sans-serif`;
+      ctx.textAlign   = 'left';
+      ctx.textBaseline= 'top';
+      ctx.fillText(label, textX, textY);
+
+      /* ③ 描述文字 */
+      const desc = isHero
+        ? (hero.skill?.description || '技能描述缺失')
+        : (prop.desc || '——');
+
       ctx.fillStyle = '#FFF';
       ctx.font      = `${12 * scale}px sans-serif`;
-      wrapText(ctx, desc, textX, textY + 20 * scale,
-               CARD_W - AVATAR - 20 * scale, 14 * scale);
-  
+      wrapText(ctx, desc,
+               textX,
+               textY + 20 * scale,
+               CARD_W - AVATAR - 20 * scale,
+               14 * scale);
+
       currentY += CARD_H + CARD_GAP;
+
     }
   }
   
@@ -855,37 +859,34 @@ globalThis.backToHomeBtn = {
 
 
 
-
 /* --- 操作计数展示 --- */
-// === 操作计数展示（固定在棋盘上方） ===
-const countText = `${gaugeCount}/5`;
-const countX = canvasRef.width / 2;   // ⬅️ 先声明
-const countY = __gridStartY - 10;     // ⬅️
-// 闪烁：触发后 600 ms 内黄白交替
-let color = '#FFF';
-if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
-  color = (Date.now() % 200 < 100) ? '#FFD700' : '#FFF';
-} else if (gaugeFlashTime && Date.now() - gaugeFlashTime >= 600) {
-  gaugeFlashTime = 0;
+{
+  const countText = `${gaugeCount}/5`;
+  const countX    = canvasRef.width / 2;
+  const countY    = __gridStartY - 10;
+
+  // 闪烁：触发后 600 ms 内黄白交替
+  let color = '#FFF';
+  if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
+    color = (Date.now() % 200 < 100) ? '#FFD700' : '#FFF';
+  } else if (gaugeFlashTime && Date.now() - gaugeFlashTime >= 600) {
+    gaugeFlashTime = 0;
+  }
+
+  ctxRef.font        = 'bold 16px sans-serif';
+  ctxRef.textAlign   = 'center';
+  ctxRef.textBaseline= 'middle';
+
+  // 描边
+  ctxRef.lineWidth   = 2;
+  ctxRef.strokeStyle = '#000';
+  ctxRef.strokeText(countText, countX, countY);
+
+  // 填充
+  ctxRef.fillStyle   = color;
+  ctxRef.fillText(countText, countX, countY);
 }
 
-// 设置文字样式
-ctxRef.font = 'bold 16px sans-serif';
-ctxRef.textAlign = 'center';
-ctxRef.textBaseline = 'middle';
-
-// 描边
-ctxRef.lineWidth = 2;
-ctxRef.strokeStyle = '#000';
-ctxRef.strokeText(countText, countX, countY);
-
-// 填充
-ctxRef.fillStyle = color;
-ctxRef.fillText(countText, countX, countY);
-
-
-
-ctxRef.fillText(countText, countX, countY);
 
 
 
@@ -1488,24 +1489,29 @@ function onTouchend(e) {
         if (hit(px, py, rect)) {
           const isHero = !!hero;   // 👉 统一判断
       // ---------- 道具购买 ----------
-if (prop) {
-  const cost = prop.price || 100;        // ⬅️ 补这行
-  if (purchasedPropIds.has(prop.id)) {   // 已经买过
-    createFloatingText('已购买', px, py, '#AAAAAA');
-    return;
-  }
-  if (getSessionCoins() < cost) {
-    createFloatingText(`金币不足（${cost})`, px, py, '#FF4444');
-    return;
-  }
-  addCoins(-cost);
-  purchasedPropIds.add(prop.id);      // 记录为已购买
-  createFloatingText(`获得道具 -${cost}`, px, py, '#00FF00');
-
-  applyProp(prop.id);      // 立即生效或写入下一场标记
-  drawGame();
-  return;
-}
+      if (prop) {
+        const cost = prop.price || 100;
+        if (purchasedPropIds.has(prop.id)) {
+          createFloatingText('已购买', px, py, '#AAAAAA');
+          return;
+        }
+      
+        // 钱不够
+        if (getSessionCoins() < cost) {
+          createFloatingText(`金币不足（${cost})`, px, py, '#FF4444');
+          return;
+        }
+      
+        // 付款 + 标记已购 + 功能生效
+        addCoins(-cost);
+        purchasedPropIds.add(prop.id);
+        applyProp(prop.id);
+        createFloatingText(`获得道具 -${cost}`, px, py, '#00FF00');
+      
+        drawGame();          // 立即刷新卡片状态
+        return;              // 别往下跑了
+      }
+      
           // ✅ 若尚未雇佣，检查金币
           if (isHero && !hiredHeroIds.has(hero.id)) {
             const cost = hero.hireCost || 200;
@@ -1893,7 +1899,7 @@ showDamageText(pendingDamage, endX, endY + 50);
           earnedGold = getMonsterGold();
           addCoins(earnedGold);
           levelJustCompleted = currentLevel;
-
+          purchasedPropIds.clear();           
           const mixedPool = [
             ...HeroData.heroes.map(h => ({ kind: 'hero', data: h })),
             ...PropData.getAll().map(p => ({ kind: 'prop', data: p }))
