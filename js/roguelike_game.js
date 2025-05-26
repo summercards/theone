@@ -438,16 +438,30 @@ globalThis.__gridStartY = boardY;
         // 6. “下一关”按钮（上移一点）
         const btnW = 140, btnH = 42;
         const btnX = (canvasW - btnW) / 2;
-        const btnY = canvasH - btnH - 50; // ✅ 原来是 -30
-      
-        ctxRef.fillStyle = '#C32C54';
-        drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
-      
-        ctxRef.fillStyle = '#000';
-        ctxRef.font = 'bold 18px sans-serif';
-        ctxRef.textAlign = 'center';
-        ctxRef.textBaseline = 'middle';
-        ctxRef.fillText('下一关', canvasW / 2, btnY + btnH / 2);
+        const btnY = canvasH - btnH - 50;
+        
+        // ✅ 添加滑入动画（从下方滑入）
+        withSlideInAnim(ctxRef, 7, btnY, () => {
+          const slideY = 0;
+        
+          ctxRef.fillStyle = '#C32C54';
+          drawRoundedRect(ctxRef, btnX, slideY, btnW, btnH, 10, true, false);
+        
+          ctxRef.fillStyle = '#000';
+          ctxRef.font = 'bold 18px sans-serif';
+          ctxRef.textAlign = 'center';
+          ctxRef.textBaseline = 'middle';
+          ctxRef.fillText('下一关', canvasW / 2, slideY + btnH / 2);
+        }, 'bottom');
+        
+        // ✅ 保留点击区域记录
+        globalThis.victoryBtnArea = {
+          x: btnX,
+          y: btnY,
+          width: btnW,
+          height: btnH
+        };
+        
       
         globalThis.victoryBtnArea = {
           x: btnX,
@@ -522,96 +536,71 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
     ctx.font       = `${14 * scale}px sans-serif`;  // 统一缩放字体
   
     for (let i = 0; i < pageHeroes.length; i++) {
-      const opt    = pageHeroes[i];
+      const opt = pageHeroes[i];
       if (!opt) continue;
-      
+    
       const isHero = opt.kind === 'hero';
       const hero   = isHero ? opt.data : null;
       const prop   = isHero ? null     : opt.data;
-      const purchased = !isHero && purchasedPropIds.has(prop.id); // ← 🔧 新增
-  
+      const purchased = !isHero && purchasedPropIds.has(prop.id);
+    
       const x = startX;
       const y = currentY;
-  
+    
       if (isHero && hero) hero.locked = false;
-
+    
       heroIconRects.push({
         rect: { x, y, width: CARD_W, height: CARD_H },
         hero: isHero ? hero : null,
         prop: isHero ? null : prop
       });
-  
-      // 背景卡片
-      ctx.fillStyle   = '#261e38';
-      drawRoundedRect(ctx, x, y, CARD_W, CARD_H, 8, true, false);
-      ctx.strokeStyle = '#A682FF';
-      ctx.lineWidth   = 2;
-      drawRoundedRect(ctx, x, y, CARD_W, CARD_H, 8, false, true);
-  
-      // 头像（左）
-      if (isHero) {
-        // ── 普通英雄：沿用原来的头像绘制 ──
-        drawHeroIconFull(
-          ctx,
-          hero,
-          x + 6 * scale,
-          y + 6 * scale,
-          AVATAR,
-          1               // 传 1 表示不另外缩放
-        );
-      } else {
-        // ── 道具：改用纯色 + 系统图标的绘制函数 ──
-        // drawPropIcon 定义在 ui/prop_ui.js
-        drawPropIcon(
-          ctx,
-          prop,                       // 道具元数据
-          x + 6 * scale,              // 位置 X
-          y + 6 * scale,              // 位置 Y
-          AVATAR,                     // 尺寸
-          purchased,                  // 是否已购买 → 控制锁遮罩
-          scale                       // 当前全局缩放
-        );
-      }
-
-      
-      
-      // —— 右侧文字区 —— 
-            const textX = x + AVATAR + 14 * scale;
-      const textY = y + 6  * scale;
-      const cost  = isHero ? (hero.hireCost || 200)
-                           : (prop.price   || 100);
-
-      /* ① 颜色：已拥有 / 未拥有 */
-      ctx.fillStyle = isHero
-        ? (hiredHeroIds.has(hero.id)      ? '#0F0' : '#FFD700')
-        : (purchasedPropIds.has(prop.id)  ? '#0F0' : '#FFD700');
-
-      /* ② 主标签文案 */
-      const label = isHero
-        ? (hiredHeroIds.has(hero.id)      ? '已雇佣'  : `雇佣：${cost}金币`)
-        : (purchasedPropIds.has(prop.id)  ? '已购买'  : `购买：${cost}金币`);
-
-      ctx.font        = `bold ${14 * scale}px sans-serif`;
-      ctx.textAlign   = 'left';
-      ctx.textBaseline= 'top';
-      ctx.fillText(label, textX, textY);
-
-      /* ③ 描述文字 */
-      const desc = isHero
-        ? (hero.skill?.description || '技能描述缺失')
-        : (prop.desc || '——');
-
-      ctx.fillStyle = '#FFF';
-      ctx.font      = `${12 * scale}px sans-serif`;
-      wrapText(ctx, desc,
-               textX,
-               textY + 20 * scale,
-               CARD_W - AVATAR - 20 * scale,
-               14 * scale);
-
+    
+      // ✅ 整块滑入动画（卡片 + 头像 + 文字）
+      withSlideInAnim(ctx, 4 + i, y, () => {
+        const slideY = 0;
+    
+        // 卡片背景
+        ctx.fillStyle = '#261e38';
+        drawRoundedRect(ctx, x, slideY, CARD_W, CARD_H, 8, true, false);
+        ctx.strokeStyle = '#A682FF';
+        ctx.lineWidth = 2;
+        drawRoundedRect(ctx, x, slideY, CARD_W, CARD_H, 8, false, true);
+    
+        // 头像
+        const avatarX = x + 6 * scale;
+        const avatarY = slideY + 6 * scale;
+        if (isHero) {
+          drawHeroIconFull(ctx, hero, avatarX, avatarY, AVATAR, 1);
+        } else {
+          drawPropIcon(ctx, prop, avatarX, avatarY, AVATAR, purchased, scale);
+        }
+    
+        // 文字区域
+        const textX = x + AVATAR + 14 * scale;
+        const textY = slideY + 6 * scale;
+        const cost = isHero ? (hero.hireCost || 200) : (prop.price || 100);
+    
+        const label = isHero
+          ? (hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`)
+          : (purchasedPropIds.has(prop.id) ? '已购买' : `购买：${cost}金币`);
+    
+        ctx.fillStyle = (isHero && hiredHeroIds.has(hero.id)) || (prop && purchasedPropIds.has(prop.id))
+          ? '#0F0' : '#FFD700';
+    
+        ctx.font = `bold ${14 * scale}px sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(label, textX, textY);
+    
+        const desc = isHero ? (hero.skill?.description || '技能描述缺失') : (prop.desc || '——');
+        ctx.fillStyle = '#FFF';
+        ctx.font = `${12 * scale}px sans-serif`;
+        wrapText(ctx, desc, textX, textY + 20 * scale, CARD_W - AVATAR - 20 * scale, 14 * scale);
+      }, 'bottom');
+    
       currentY += CARD_H + CARD_GAP;
-
     }
+    
   }
   
   
