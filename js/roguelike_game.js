@@ -51,6 +51,9 @@ import { showDamageText } from './effects_engine.js';
 import SuperBlockSystem from './data/super_block_system.js';
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 import { registerGameHooks } from './utils/game_shared.js';
+import PropData from './data/prop_data.js';
+import { applyProp } from './logic/prop_effects.js';
+
 globalThis.renderBlockA = renderBlockA;
 globalThis.renderBlockB = renderBlockB;
 globalThis.renderBlockC = renderBlockC;
@@ -501,14 +504,24 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
     ctx.font       = `${14 * scale}px sans-serif`;  // 统一缩放字体
   
     for (let i = 0; i < pageHeroes.length; i++) {
-      const hero = pageHeroes[i];
-      if (!hero) continue;
+      const opt    = pageHeroes[i];
+      if (!opt) continue;
+      
+      const isHero = opt.kind === 'hero';
+      const hero   = isHero ? opt.data : null;
+      const prop   = isHero ? null     : opt.data;
+  
   
       const x = startX;
       const y = currentY;
   
-      hero.locked = false;
-      heroIconRects.push({ rect: { x, y, width: CARD_W, height: CARD_H }, hero });
+      if (isHero && hero) hero.locked = false;
+
+      heroIconRects.push({
+        rect: { x, y, width: CARD_W, height: CARD_H },
+        hero: isHero ? hero : null,
+        prop: isHero ? null : prop
+      });
   
       // 背景卡片
       ctx.fillStyle   = '#261e38';
@@ -518,24 +531,44 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
       drawRoundedRect(ctx, x, y, CARD_W, CARD_H, 8, false, true);
   
       // 头像（左）
-      drawHeroIconFull(ctx, hero, x + 6 * scale, y + 6 * scale, AVATAR, 1);
+      if (isHero) {
+        drawHeroIconFull(ctx, hero, x + 6 * scale, y + 6 * scale, AVATAR, 1);
+      } else {
+        const img = globalThis.imageCache?.[prop.icon];
+        if (img?.complete) {
+          ctx.drawImage(img, x + 6 * scale, y + 6 * scale, AVATAR, AVATAR);
+        } else {
+          ctx.fillStyle = '#666';
+          ctx.fillRect(x + 6 * scale, y + 6 * scale, AVATAR, AVATAR);
+        }
+      }
+      
   
       // 文本（右）
       const textX = x + AVATAR + 14 * scale;
       const textY = y + 6 * scale;
-      const cost  = hero.hireCost || 200;
+      const cost  = isHero ? (hero.hireCost || 200) : (prop.price || 100);
   
-      ctx.fillStyle = hiredHeroIds.has(hero.id) ? '#0F0' : '#FFD700';
+      if (isHero) {
+        ctx.fillStyle = hiredHeroIds.has(hero.id) ? '#0F0' : '#FFD700';
+      } else {
+        ctx.fillStyle = '#FFD700';        // 道具恒为金币色
+      }
+      
       ctx.font      = `bold ${14 * scale}px sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(
-        hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`,
-        textX,
-        textY
-      );
+ // ① 先算出要显示的文字
+const label = isHero
+? (hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`)
+: `购买：${cost}金币`;
+
+// ② 再统一绘制
+ctx.fillText(label, textX, textY);
+
   
-      const desc = hero.skill?.description || '技能描述缺失';
+      const desc = isHero ? (hero.skill?.description || '技能描述缺失')
+      : (prop.desc || '——');
       ctx.fillStyle = '#FFF';
       ctx.font      = `${12 * scale}px sans-serif`;
       wrapText(ctx, desc, textX, textY + 20 * scale,
@@ -1440,12 +1473,25 @@ function onTouchend(e) {
     }
   
     // === 检查是否点击英雄池头像
-    for (const { rect, hero } of heroIconRects) {
+    for (const { rect, hero, prop } of heroIconRects) {
         if (hit(px, py, rect)) {
-          if (!hero?.id) return;
-      
+          const isHero = !!hero;   // 👉 统一判断
+      // ---------- 道具购买 ----------
+if (prop) {
+  const cost = prop.price || 100;
+  if (getSessionCoins() < cost) {
+    createFloatingText(`金币不足（${cost})`, px, py, '#FF4444');
+    return;
+  }
+  addCoins(-cost);
+  createFloatingText(`获得道具 -${cost}`, px, py, '#00FF00');
+
+  applyProp(prop.id);      // 立即生效或写入下一场标记
+  drawGame();
+  return;
+}
           // ✅ 若尚未雇佣，检查金币
-          if (!hiredHeroIds.has(hero.id)) {
+          if (isHero && !hiredHeroIds.has(hero.id)) {
             const cost = hero.hireCost || 200;
             if (getSessionCoins() < cost) {
               createFloatingText(`金币不足（${cost}）`, px, py, '#FF4444');
@@ -1832,13 +1878,15 @@ showDamageText(pendingDamage, endX, endY + 50);
           addCoins(earnedGold);
           levelJustCompleted = currentLevel;
 
-          const shuffled = HeroData.heroes.slice()
-                          .sort(() => Math.random() - 0.5);
-
-          heroPoolList    = shuffled;        // ① 整池缓存
-          heroPageIndex   = 0;               // ② 首页
-          cachedPopupHeroes = shuffled.slice(0, 3)
-                           .map(h => new HeroState(h.id));
+          const mixedPool = [
+            ...HeroData.heroes.map(h => ({ kind: 'hero', data: h })),
+            ...PropData.getAll().map(p => ({ kind: 'prop', data: p }))
+          ].sort(() => Math.random() - 0.5);
+          
+          heroPoolList      = mixedPool;
+          heroPageIndex     = 0;
+          cachedPopupHeroes = mixedPool.slice(0, 3);
+          
 
           showVictoryPopup = true;
 

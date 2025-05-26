@@ -585,7 +585,7 @@ function blendColors(color1, color2, t) {
       const startY = canvas.height - Math.random() * 40;
   
       // 判断是否为“大粒子”
-      const isBig = Math.random() < 0.15;
+      const isBig = Math.random() < 0.35;
   
       effects.push({
         type: 'particle',
@@ -598,8 +598,8 @@ function blendColors(color1, color2, t) {
           : -0.3 - Math.random() * 0.3,   // 70% 快速：-0.3 ~ -0.6
   
         radius: isBig
-          ? 2.0 + Math.random() * 1.0     // 15% 大粒子：2.0 ~ 3.0
-          : 1.0 + Math.random() * 0.5,    // 85% 普通粒子：1.0 ~ 1.5
+          ? 3.0 + Math.random() * 1.0     // 15% 大粒子：2.0 ~ 3.0
+          : 2.0 + Math.random() * 0.5,    // 85% 普通粒子：1.0 ~ 1.5
   
         color: '#FF9933',
         alpha: 1,
