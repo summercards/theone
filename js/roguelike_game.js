@@ -54,7 +54,7 @@ import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 import { registerGameHooks } from './utils/game_shared.js';
 import PropData from './data/prop_data.js';
 import { applyProp } from './logic/prop_effects.js';
-
+import { drawPropIcon } from './ui/prop_ui.js';   // ★ 新增
 globalThis.renderBlockA = renderBlockA;
 globalThis.renderBlockB = renderBlockB;
 globalThis.renderBlockC = renderBlockC;
@@ -533,27 +533,30 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
   
       // 头像（左）
       if (isHero) {
-        drawHeroIconFull(ctx, hero, x + 6 * scale, y + 6 * scale, AVATAR, 1);
+        // ── 普通英雄：沿用原来的头像绘制 ──
+        drawHeroIconFull(
+          ctx,
+          hero,
+          x + 6 * scale,
+          y + 6 * scale,
+          AVATAR,
+          1               // 传 1 表示不另外缩放
+        );
       } else {
-        const img = globalThis.imageCache?.[prop.icon];
-        if (img?.complete) {
-          ctx.drawImage(img, x + 6 * scale, y + 6 * scale, AVATAR, AVATAR);
-        } else {
-          ctx.fillStyle = '#666';
-          ctx.fillRect(x + 6 * scale, y + 6 * scale, AVATAR, AVATAR);
-        }/* —— 道具锁遮罩 —— */
-if (!isHero && !purchased) {
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(x + 6 * scale, y + 6 * scale, AVATAR, AVATAR);
-
-  ctx.fillStyle   = '#FFD700';
-  ctx.font        = `bold ${18 * scale}px sans-serif`;
-  ctx.textAlign   = 'center';
-  ctx.textBaseline= 'middle';
-  ctx.fillText('💰', x + 6 * scale + AVATAR / 2, y + 6 * scale + AVATAR / 2);
-}
-
+        // ── 道具：改用纯色 + 系统图标的绘制函数 ──
+        // drawPropIcon 定义在 ui/prop_ui.js
+        drawPropIcon(
+          ctx,
+          prop,                       // 道具元数据
+          x + 6 * scale,              // 位置 X
+          y + 6 * scale,              // 位置 Y
+          AVATAR,                     // 尺寸
+          purchased,                  // 是否已购买 → 控制锁遮罩
+          scale                       // 当前全局缩放
+        );
       }
+
+      
       
       // —— 右侧文字区 —— 
             const textX = x + AVATAR + 14 * scale;
