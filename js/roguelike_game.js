@@ -1,6 +1,6 @@
 /* ----------  新增 BEGIN ---------- */
 let heroPoolList = [];        // 本次胜利弹窗完整随机英雄列表
-
+let purchasedPropIds = new Set();   // 本局已购买的道具
 function resetSessionState () {
     /* —— 本局 UI / 弹窗相关 —— */
     playerActionCounter = 0;
@@ -8,6 +8,7 @@ function resetSessionState () {
     heroPageIndex       = 0;
     heroPoolList        = [];
     hiredHeroIds.clear();
+    purchasedPropIds.clear();      // ← 清空道具购买状态
     showVictoryPopup    = false;
     showGameOver        = false;
   
@@ -510,7 +511,7 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
       const isHero = opt.kind === 'hero';
       const hero   = isHero ? opt.data : null;
       const prop   = isHero ? null     : opt.data;
-  
+      const purchased = !isHero && purchasedPropIds.has(prop.id);
   
       const x = startX;
       const y = currentY;
@@ -540,7 +541,18 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
         } else {
           ctx.fillStyle = '#666';
           ctx.fillRect(x + 6 * scale, y + 6 * scale, AVATAR, AVATAR);
-        }
+        }/* —— 道具锁遮罩 —— */
+if (!isHero && !purchased) {
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(x + 6 * scale, y + 6 * scale, AVATAR, AVATAR);
+
+  ctx.fillStyle   = '#FFD700';
+  ctx.font        = `bold ${18 * scale}px sans-serif`;
+  ctx.textAlign   = 'center';
+  ctx.textBaseline= 'middle';
+  ctx.fillText('💰', x + 6 * scale + AVATAR / 2, y + 6 * scale + AVATAR / 2);
+}
+
       }
       
   
@@ -552,16 +564,16 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
       if (isHero) {
         ctx.fillStyle = hiredHeroIds.has(hero.id) ? '#0F0' : '#FFD700';
       } else {
-        ctx.fillStyle = '#FFD700';        // 道具恒为金币色
+        ctx.fillStyle = purchased ? '#0F0' : '#FFD700';
       }
       
       ctx.font      = `bold ${14 * scale}px sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
  // ① 先算出要显示的文字
-const label = isHero
-? (hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`)
-: `购买：${cost}金币`;
+ const label = isHero
+ ? (hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`)
+ : (purchased            ? '已购买' : `购买：${cost}金币`);
 
 // ② 再统一绘制
 ctx.fillText(label, textX, textY);
@@ -847,7 +859,8 @@ globalThis.backToHomeBtn = {
 /* --- 操作计数展示 --- */
 // === 操作计数展示（固定在棋盘上方） ===
 const countText = `${gaugeCount}/5`;
-
+const countX = canvasRef.width / 2;   // ⬅️ 先声明
+const countY = __gridStartY - 10;     // ⬅️
 // 闪烁：触发后 600 ms 内黄白交替
 let color = '#FFF';
 if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
@@ -870,9 +883,7 @@ ctxRef.strokeText(countText, countX, countY);
 ctxRef.fillStyle = color;
 ctxRef.fillText(countText, countX, countY);
 
-// ✅ 直接居中固定在棋盘上方 20px
-const countX = canvasRef.width / 2;
-const countY = __gridStartY - 10;
+
 
 ctxRef.fillText(countText, countX, countY);
 
@@ -1478,12 +1489,17 @@ function onTouchend(e) {
           const isHero = !!hero;   // 👉 统一判断
       // ---------- 道具购买 ----------
 if (prop) {
-  const cost = prop.price || 100;
+  const cost = prop.price || 100;        // ⬅️ 补这行
+  if (purchasedPropIds.has(prop.id)) {   // 已经买过
+    createFloatingText('已购买', px, py, '#AAAAAA');
+    return;
+  }
   if (getSessionCoins() < cost) {
     createFloatingText(`金币不足（${cost})`, px, py, '#FF4444');
     return;
   }
   addCoins(-cost);
+  purchasedPropIds.add(prop.id);      // 记录为已购买
   createFloatingText(`获得道具 -${cost}`, px, py, '#00FF00');
 
   applyProp(prop.id);      // 立即生效或写入下一场标记
