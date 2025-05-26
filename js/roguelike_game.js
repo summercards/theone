@@ -90,7 +90,7 @@ import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
 import { clearSelectedHeroes } from './data/hero_state.js';
-
+import { withSlideInAnim } from './effects_engine.js';
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
 let damagePopTime       = 0;    // 最近一次数值变化时刻（ms）
@@ -367,6 +367,9 @@ globalThis.__gridStartY = boardY;
   // 在单独的绘制层绘制UI元素
   drawUI();
     // 👇 胜利弹窗绘制逻辑
+    if (showVictoryPopup && !globalThis.victoryPopupStartTime) {
+      globalThis.victoryPopupStartTime = Date.now();
+    }
     if (showVictoryPopup) {
         const canvasW = canvasRef.width;
         const canvasH = canvasRef.height;
@@ -376,8 +379,8 @@ globalThis.__gridStartY = boardY;
         ctxRef.fillRect(0, 0, canvasW, canvasH);
       
         // 2. 插图锚点位置（稍微上移）
-        const imgW = 120;
-        const imgH = 120;
+        const imgW = 180;
+        const imgH = 180;
         const imgX = (canvasW - imgW) / 2;
         const imgY = canvasH * 0.20;
       
@@ -398,7 +401,9 @@ globalThis.__gridStartY = boardY;
           ctxRef.fillText('加载中...', canvasW / 2, imgY + imgH / 2);
         } else {
           const img = globalThis.victoryHeroImage;
-          ctxRef.drawImage(img, imgX, imgY, imgW, imgH);
+          withSlideInAnim(ctxRef, 1, imgY, () => {
+            ctxRef.drawImage(img, imgX, 0, imgW, imgH);
+          }, 'top');
         }
       
         // 3. 标题在插图上方
@@ -406,14 +411,26 @@ globalThis.__gridStartY = boardY;
         ctxRef.font = 'bold 36px sans-serif';
         ctxRef.textAlign = 'center';
         ctxRef.textBaseline = 'bottom';
-        ctxRef.fillText(`第 ${levelJustCompleted} 关胜利！`, canvasW / 2, imgY - 16);
+        withSlideInAnim(ctxRef, 0, imgY - 16, () => {
+          ctxRef.fillStyle = '#FFFFFF';
+          ctxRef.font = 'bold 36px sans-serif';
+          ctxRef.textAlign = 'center';
+          ctxRef.textBaseline = 'bottom';
+          ctxRef.fillText(`第 ${levelJustCompleted} 关胜利！`, canvasW / 2, 0);
+        }, 'top');
       
         // 4. 奖励金币在插图下方
         ctxRef.fillStyle = '#FFD700';
         ctxRef.font = 'bold 20px sans-serif';
         ctxRef.textAlign = 'center';
         ctxRef.textBaseline = 'top';
-        ctxRef.fillText(`当前金币：${getSessionCoins()}`, canvasW / 2, imgY + imgH + 16);
+        withSlideInAnim(ctxRef, 2, imgY + imgH + 16, () => {
+          ctxRef.fillStyle = '#FFD700';
+          ctxRef.font = 'bold 20px sans-serif';
+          ctxRef.textAlign = 'center';
+          ctxRef.textBaseline = 'top';
+          ctxRef.fillText(`当前金币：${getSessionCoins()}`, canvasW / 2, 0);
+        }, 'bottom');
       
         // 5. 英雄栏 + 随机池（图标已放大，请在函数中设置 ICON = 84）
         drawHeroSelectionUIInPopup(ctxRef, canvasRef);
@@ -1573,6 +1590,7 @@ function onTouchend(e) {
     if (btn && px >= btn.x && px <= btn.x + btn.width &&
                py >= btn.y && py <= btn.y + btn.height) {
       showVictoryPopup = false;
+      globalThis.victoryPopupStartTime = null;
       currentLevel = getNextLevel();
       levelJustCompleted = currentLevel;
       const monster = loadMonster(currentLevel);
@@ -1581,6 +1599,7 @@ function onTouchend(e) {
       drawGame();
       return;
     }
+
   }
   
   
