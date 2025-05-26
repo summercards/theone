@@ -653,36 +653,7 @@ function blendColors(color1, color2, t) {
     }
   }
 
-  /**
- * 用于弹窗模块逐个动画展示的通用函数。
- * 让每个模块以“缩放 + 淡入”的方式依次登场。
- *
- * @param {CanvasRenderingContext2D} ctx - canvas 上下文
- * @param {number} index - 第几个模块（控制延迟）
- * @param {Function} drawFn - 绘制函数
- * @param {number} [delayPer=120] - 每个模块之间的间隔
- * @param {number} [duration=400] - 动画持续时间
- */
-export function withVictoryAnim(ctx, index, drawFn, delayPer = 120, duration = 400) {
-  const startTime = globalThis.victoryPopupStartTime || 0;
-  const delay = index * delayPer;
-  const now = Date.now();
-  const elapsed = now - startTime - delay;
 
-  if (elapsed < 0) return;
-
-  const p = Math.min(elapsed / duration, 1);
-  const scale = 0.7 + 0.3 * Math.sin(p * Math.PI); // 弹性放大
-  const alpha = p;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-
-  // 👇 这里不做 scale()，而是让 drawFn 自己决定居中缩放（居中）
-  drawFn(scale);
-
-  ctx.restore();
-}
 
 export function withSlideInAnim(ctx, index, targetY, drawFn, from = 'top', delayPer = 100, duration = 400) {
   const startTime = globalThis.victoryPopupStartTime || 0;
