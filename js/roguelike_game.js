@@ -4,6 +4,7 @@ let purchasedPropIds = new Set();   // 本局已购买的道具
 function resetSessionState () {
     /* —— 本局 UI / 弹窗相关 —— */
     playerActionCounter = 0;
+    gaugeCount = 0;  // ✅ 新增：攻击槽次数清零
     cachedPopupHeroes   = [];
     heroPageIndex       = 0;
     heroPoolList        = [];
@@ -91,6 +92,7 @@ import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
 import { clearSelectedHeroes } from './data/hero_state.js';
 import { withSlideInAnim } from './effects_engine.js';
+import { applyNextBattleFlags } from './logic/prop_effects.js';
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
 let damagePopTime       = 0;    // 最近一次数值变化时刻（ms）
@@ -870,7 +872,7 @@ globalThis.backToHomeBtn = {
 
 /* --- 操作计数展示 --- */
 {
-  const countText = `${gaugeCount}/5`;
+  const countText = `${playerActionCounter}/${globalThis.actionLimit || 5}`;
   const countX    = canvasRef.width / 2;
   const countY    = __gridStartY - 10;
 
@@ -1514,7 +1516,17 @@ function onTouchend(e) {
         // 付款 + 标记已购 + 功能生效
         addCoins(-cost);
         purchasedPropIds.add(prop.id);
-        applyProp(prop.id);
+        const selectedHeroes = getSelectedHeroes();
+        const firstHero = selectedHeroes.find(h => h); // 默认第一个有英雄的槽位
+        
+        if (firstHero) {
+          applyProp(prop.id, {
+            logBattle,
+          }, {
+            hero: firstHero,
+            key: 'physical'  // 如果道具类型不同可调整为 'magical' 等
+          });
+        }
         createFloatingText(`获得道具 -${cost}`, px, py, '#00FF00');
       
         drawGame();          // 立即刷新卡片状态
@@ -1577,17 +1589,34 @@ function onTouchend(e) {
     // === 点击“下一关”
     const btn = globalThis.victoryBtnArea;
     if (btn && px >= btn.x && px <= btn.x + btn.width &&
-               py >= btn.y && py <= btn.y + btn.height) {
-      showVictoryPopup = false;
-      globalThis.victoryPopupStartTime = null;
-      currentLevel = getNextLevel();
-      levelJustCompleted = currentLevel;
-      const monster = loadMonster(currentLevel);
-      turnsLeft = monster.skill.cooldown;
-      initGrid();
-      drawGame();
-      return;
-    }
+      py >= btn.y && py <= btn.y + btn.height) {
+
+showVictoryPopup = false;
+globalThis.victoryPopupStartTime = null;
+currentLevel = getNextLevel();
+levelJustCompleted = currentLevel;
+
+// ✅ 1. 读取道具 flag
+const sessionCtx = {
+ actionLimit: 5,
+ turnsLeft: 0,
+ goldMultiplier: 1,
+ autoRevive: false,
+ reroll: 0
+};
+applyNextBattleFlags(sessionCtx);
+
+// ✅ 2. 应用道具效果
+const monster = loadMonster(currentLevel);
+turnsLeft = monster.skill.cooldown + (sessionCtx.turnsLeft || 0);
+globalThis.goldMultiplier = sessionCtx.goldMultiplier || 1;
+globalThis.actionLimit = sessionCtx.actionLimit || 5;
+playerActionCounter = 0;
+initGrid();
+drawGame();
+return;
+}
+
 
   }
   
@@ -1682,6 +1711,12 @@ if (btn &&
 
 
 function handleSwap(src, dst) {
+    // ✅ 新增：操作次数限制
+    if (typeof globalThis.actionLimit === 'number' && playerActionCounter >= globalThis.actionLimit) {
+      createFloatingText('操作次数已达上限', canvasRef.width / 2, 160, '#FF4444');
+      return;
+    }
+  
   const temp = gridData[dst.row][dst.col];
   gridData[dst.row][dst.col] = gridData[src.row][src.col];
   gridData[src.row][src.col] = temp;
@@ -1737,7 +1772,7 @@ function handleSwap(src, dst) {
           logBattle("棋盘扩展效果结束，恢复为 6x6");
         }
       }
-      if (gaugeCount >= 5) {
+      if (gaugeCount >= (globalThis.actionLimit || 5)) {
         const dmgToDeal = attackGaugeDamage;
         gaugeFlashTime = Date.now();
         gaugeCount = 0;
@@ -1908,7 +1943,8 @@ showDamageText(pendingDamage, endX, endY + 50);
     if (isMonsterDead()) {
         setTimeout(() => {
           earnedGold = getMonsterGold();
-          addCoins(earnedGold);
+          const finalGold = Math.floor(earnedGold * (globalThis.goldMultiplier || 1));
+          addCoins(finalGold);
           levelJustCompleted = currentLevel;
           purchasedPropIds.clear();           
           const mixedPool = [
