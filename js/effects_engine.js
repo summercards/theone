@@ -173,23 +173,61 @@ export function drawAllEffects(ctx, canvas) {
 
       ctx.restore();
     }
+  
     else if (e.type === 'block_pulse') {
-      const t = now - e.startTime;
-      const p = t / e.duration;
-      if (p >= 1) return remove.push(i);
-    
-      const scale = 1 + 0.2 * Math.sin(p * Math.PI);
+      const now = Date.now();
+      const totalT = now - e.startTime;
+      if (totalT > e.duration) return remove.push(i);
     
       ctx.save();
-      ctx.translate(e.x, e.y);
-      ctx.scale(scale, scale);
-      ctx.translate(-e.size / 2, -e.size / 2);
     
-      ctx.fillStyle = '#FFD700';
-      drawRoundedRect(ctx, 0, 0, e.size, e.size, 6, true, false);
+      e.particles.forEach(p => {
+        const t = now - p.startTime;
+        const life = p.life;
+        if (t < 0 || t > life) return; // 尚未开始 或 已结束
+    
+        const progress = t / life; // 0~1
+        const scale = 1 + 0.3 * Math.sin(progress * Math.PI); // 呼吸式缩放
+    
+        // alpha 渐隐可加可不加
+        ctx.save();
+        ctx.globalAlpha = 1.0; // 或: 1 - progress
+    
+        ctx.translate(e.x + p.offsetX, e.y + p.offsetY);
+        ctx.scale(scale, scale);
+        ctx.translate(-p.size / 2, -p.size / 2);
+    
+        ctx.fillStyle = e.color || '#FFD700';
+        ctx.fillRect(0, 0, p.size, p.size);
+    
+        ctx.restore();
+      });
     
       ctx.restore();
     }
+    
+    
+    
+    
+
+    else if (e.type === 'square_particle') {
+      const t = now - e.startTime;
+      if (t > e.duration) return;
+    
+      const progress = t / e.duration;
+      const size = e.size * (1 - progress);         // 粒子逐渐变小
+      const alpha = 1 - progress;                   // 逐渐透明
+    
+      const px = e.x + e.vx * t;
+      const py = e.y + e.vy * t;
+    
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = e.color;
+      ctx.fillRect(px - size / 2, py - size / 2, size, size);
+      ctx.restore();
+    }
+    
     else if (e.type === 'fire_glow') {
         const centerX = canvas.width / 2;
         const glowY = canvas.height - 50;
@@ -569,16 +607,51 @@ function blendColors(color1, color2, t) {
     });
   }
 
-  export function createBlockPulseEffect(x, y, size = 48, duration = 400) {
+  export function createBlockPulseEffect(x, y, size = 48, duration = 400, color = '#FFD700') {
+    const particleCount = 2 + Math.floor(Math.random() * 2); // 2~3 个粒子
+  
+    const particles = [];
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        offsetX: (Math.random() - 0.5) * size * 0.6,
+        offsetY: (Math.random() - 0.5) * size * 0.6,
+        size: 10 + Math.random() * 6,
+        startTime: Date.now() + i * 30,             // 每个粒子可以略微错峰
+        life: 300 + Math.random() * 150             // 每个粒子生命周期
+      });
+    }
+  
     effects.push({
       type: 'block_pulse',
       x,
       y,
       size,
+      color,
       startTime: Date.now(),
       duration,
+      particles,   // 💡 加上粒子数组
     });
+  
+    // 然后额外添加多粒子效果（小方块）
+    for (let i = 0; i < 10 + Math.floor(Math.random() * 4); i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1 + Math.random() * 1.5;
+  
+      effects.push({
+        type: 'square_particle',
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 6,
+        color: color,
+        startTime: Date.now(),
+        duration: 300 + Math.random() * 400
+      });
+    }
   }
+  
+  
   export function createFireParticles(canvas, count = 1) {
     for (let i = 0; i < count; i++) {
       const startX = Math.random() * canvas.width;
