@@ -36,6 +36,39 @@ export function drawPropIcon(
   const bgColor  = PROP_COLOR_MAP[prop.category] || '#666';   // 底色
   const char     = prop.iconChar || '?';                      // 中央符号
 
+  // —— Super Block: 特殊样式渲染 ——
+if (prop.id === 'super_block') {
+  const r = 6 * scale;
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+
+  // 背景渐变
+  const gradient = ctx.createRadialGradient(centerX, centerY, size * 0.2, centerX, centerY, size / 1.5);
+  gradient.addColorStop(0, '#FFD700');  // 金色中心
+  gradient.addColorStop(1, '#FF4A6A');  // 粉红边缘
+
+  ctx.fillStyle = gradient;
+  drawRoundedRect(ctx, x, y, size, size, r, true, false);
+
+  // 发光描边
+  ctx.strokeStyle = '#FFF';
+  ctx.lineWidth = 4;
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = '#FFD700';
+  drawRoundedRect(ctx, x, y, size, size, r, false, true);
+  ctx.shadowBlur = 0;
+
+  // 图标绘制
+  ctx.fillStyle   = '#222';
+  ctx.font        = `bold ${size * 0.75}px sans-serif`;
+  ctx.textAlign   = 'center';
+  ctx.textBaseline= 'middle';
+  ctx.fillText(char, centerX, centerY);
+
+  return; // 结束超级方块渲染，不走后面默认逻辑
+}
+
+
   /* —— 2. 底板 —— */
   ctx.fillStyle = bgColor;
   drawRoundedRect(ctx, x, y, size, size, r, true, false);

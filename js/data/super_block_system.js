@@ -13,40 +13,61 @@ const SuperBlockSystem = {
   },
 
   /**
-   * 渲染不同超级方块（带缩放和光影动画）
+   * 渲染不同超级方块（带缩放和光影动画 + 类型底色区分）
    */
   render(ctx, x, y, width, height, type = 'S1') {
-    const now = Date.now();
-    const pulse = 0.05 * Math.sin(now / 300); // 缩放幅度 ±5%
-    const scale = 1 + pulse;
-    const flicker = 0.85 + 0.15 * Math.sin(now / 180); // 透明度闪烁
-
     const centerX = x + width / 2;
     const centerY = y + height / 2;
+    const r = 6;
+
+    // 动态缩放 + 闪烁动画
+    const now = Date.now();
+    const pulse = 0.05 * Math.sin(now / 300);
+    const scale = 1 + pulse;
+    const flicker = 0.85 + 0.15 * Math.sin(now / 180);
 
     ctx.save();
     ctx.translate(centerX, centerY);
     ctx.scale(scale, scale);
     ctx.translate(-centerX, -centerY);
-
     ctx.globalAlpha = flicker;
 
-    ctx.strokeStyle = '#FFD700';
+    // 类型底色区分（更扁平化）
+    let startColor = '#FFD700', endColor = '#FF4A6A';
+    switch (type) {
+      case 'S1':
+        startColor = '#FF9A9A'; endColor = '#D84444'; break; // 红系
+      case 'S2':
+        startColor = '#8DDCFF'; endColor = '#3CA7E0'; break; // 蓝系
+      case 'S3':
+        startColor = '#D1B3FF'; endColor = '#8F6AE2'; break; // 紫系
+    }
+
+    const gradient = ctx.createRadialGradient(centerX, centerY, width * 0.2, centerX, centerY, width / 1.5);
+    gradient.addColorStop(0, startColor);
+    gradient.addColorStop(1, endColor);
+    ctx.fillStyle = gradient;
+    drawRoundedRect(ctx, x + 2, y + 2, width - 4, height - 4, r, true, false);
+
+    // 白色发光描边
+    ctx.strokeStyle = '#FFF';
     ctx.lineWidth = 4;
-    ctx.fillStyle = '#FFF';
-    ctx.font = `${Math.floor(width / 2.2)}px sans-serif`;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#FFD700';
+    drawRoundedRect(ctx, x + 2, y + 2, width - 4, height - 4, r, false, true);
+
+    // 中央图标
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#222';
+    ctx.font = `bold ${Math.floor(width * 0.6)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
-    drawRoundedRect(ctx, x + 2, y + 2, width - 4, height - 4, 8, true, true);
-
-    ctx.fillStyle = '#222';
     const displayMap = {
       S1: '★',
       S2: '⚡',
       S3: '☢',
     };
-    ctx.fillText(displayMap[type] || 'S', x + width / 2, y + height / 2);
+    ctx.fillText(displayMap[type] || 'S', centerX, centerY);
 
     ctx.restore();
   },
