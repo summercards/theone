@@ -306,7 +306,7 @@ globalThis.__gridStartY = boardY;
         renderer(ctxRef, x, y, actualBlockSize, actualBlockSize, block);
       } else {
         // ✅ 无论 block 是否存在，都画一个灰底圆角方块
-        ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
+        ctxRef.fillStyle = BlockConfig[block]?.color || '#511c2d ';
         drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, true, false);
       
         // ✅ 仅当 block 存在（不是 null）时才画文字

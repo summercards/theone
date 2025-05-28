@@ -344,7 +344,7 @@ globalThis.__gridStartY = boardY;
         renderer(ctxRef, x, y, actualBlockSize, actualBlockSize, block);
       } else {
         // ✅ 无论 block 是否存在，都画一个灰底圆角方块
-        ctxRef.fillStyle = BlockConfig[block]?.color || '#666';
+        ctxRef.fillStyle = BlockConfig[block]?.color || '#3B0C50';
         drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, true, false);
       
         // ✅ 仅当 block 存在（不是 null）时才画文字
@@ -1776,6 +1776,7 @@ function handleSwap(src, dst) {
         const dmgToDeal = attackGaugeDamage;
         gaugeFlashTime = Date.now();
         gaugeCount = 0;
+        playerActionCounter = 0; // ✅ 重置操作次数
       
         const heroes = getSelectedHeroes(); // 获取出战英雄（长度始终是 5）
         const interval = 650;
