@@ -76,7 +76,7 @@ const HeroData = {
     },
     {
       id: "hero004",
-      name: "任天堂",
+      name: "旺财",
       icon: "knight.png",
       role: "坦克",
       rarity: "R",
@@ -92,11 +92,12 @@ const HeroData = {
         unlockSkills: {}
       },
       skill: {
-        name: "盾击",
-        description: "用盾牌击晕敌人",
-        effect: { type: "physicalDamage", amount: 90 },
-        cooldown: 2
+        name: "汪！",
+        description: "清除所有金币方块，每个金币方块获得5金币",
+        effect: { type: "clearCoinBlocks", coinPerBlock: 5 },
+        cooldown: 3
       }
+      
     },
     {
       id: "hero005",

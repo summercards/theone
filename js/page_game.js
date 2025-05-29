@@ -1502,6 +1502,8 @@ export { expandGridTo };  // ✅ 添加这行
   
     const eff = hero.skill?.effect;
     if (!eff) return;
+
+    console.log("释放技能：", hero.name, hero.skill?.effect);
     const context = {
       dealDamage,
       log: logBattle,
@@ -1513,6 +1515,7 @@ export { expandGridTo };  // ✅ 添加这行
       mulGauge: (factor) => {
         attackGaugeDamage = Math.round(attackGaugeDamage * factor);
         damagePopTime = Date.now();
+ 
       }
     };
     
@@ -1662,6 +1665,10 @@ function resetSessionState () {
   
 
 
-export { monsterHitFlashTime };
-export { gridData };
-export { dropBlocks, fillNewBlocks, checkAndClearMatches };
+  export {
+    monsterHitFlashTime,
+    gridData,
+    dropBlocks,
+    fillNewBlocks,
+    checkAndClearMatches  // ✅ 不要再重复 export drawGame
+  };
