@@ -477,9 +477,18 @@ export function createEnergyParticles(x0, y0, x1, y1, color = '#FFD700', count =
     }
   }
   
-export function createFloatingText(text, x, y, color = '#FF4444', size = 36, duration = 1000) {
-  effects.push({ type: 'float', text, x, y, color, size, duration, startTime: Date.now() });
-}
+  export function createFloatingText(text, x, y, color = '#FF4444', size = 36, duration = 1000) {
+    effects.push({ 
+      type: 'float', 
+      text, 
+      x, 
+      y, 
+      color, 
+      size, 
+      duration, 
+      startTime: Date.now() 
+    });
+  }
 
 export function createExplosion(x, y, color = '#FFD700') {
   for (let i = 0; i < 8; i++) {

@@ -44,9 +44,9 @@ const HeroData = {
         unlockSkills: { 3: "piercingRain" }
       },
       skill: {
-        name: "贯穿射击",
+        name: "精灵悦动",
         description: "将当前伤害池翻倍",
-        effect: { type: "mulGauge", factor: 2 },
+        effect: { type: "mulGauge", factor: 1.1 },
         cooldown: 2
       }
     },

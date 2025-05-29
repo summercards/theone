@@ -127,6 +127,7 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
   
 
 export function addToAttackGauge(value) {
+    
   attackGaugeDamage += value;
   damagePopTime = Date.now(); // 让数字弹跳动画正常
 }
@@ -1054,7 +1055,7 @@ if (heroIndex >= 0) {
       const count = colorCounter[letter];
       const added = baseDamage * count;
       attackGaugeDamage += added;
-
+      console.log(`[调试] 方块消除，累计伤害巢: ${attackGaugeDamage}`);
       logBattle(`方块[${letter}] ×${count} → 攻击槽 +${added}`);
 
       // ✅ 触发额外方块特效

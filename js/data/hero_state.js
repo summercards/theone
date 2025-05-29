@@ -79,7 +79,13 @@ class HeroState {
       if (!this.attributes[key]) this.attributes[key] = 0;
       this.attributes[key] += growth[key];
     }
-
+  // 针对MIO英雄（hero002），每次升级时，增加技能倍数
+  if (this.id === 'hero002') {
+    const skillEffect = this.skill.effect;
+    if (skillEffect && skillEffect.type === "mulGauge") {
+      skillEffect.factor += 0.05; // 每次升级时，增加0.05
+    }
+  }
     if (this.levelUpConfig.unlockSkills?.[this.level]) {
       console.log(`${this.name} 解锁技能：${this.levelUpConfig.unlockSkills[this.level]}`);
     }
