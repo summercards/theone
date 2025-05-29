@@ -22,7 +22,27 @@ class HeroState {
 
     // --- 进度（本地覆盖） ---
     const saved = wx.getStorageSync('heroProgress')?.[id];
-    this.attributes = saved?.attributes ?? { ...base.attributes };
+
+    const rawAttrs = saved?.attributes ?? { ...base.attributes };
+    const heroName = base.name ?? "未知英雄";  // 提前保存名称
+    
+    this.attributes = new Proxy(rawAttrs, {
+      set(target, prop, value) {
+        const old = target[prop];
+        if (old !== value) {
+          console.log(
+            `%c⚠️ ${heroName} 属性变更: [${prop}] 从 ${old} ➜ ${value}`,
+            'color: red; font-weight: bold; background: #fff3f3; padding: 2px 4px;'
+          );
+        }
+        target[prop] = value;
+        return true;
+      },
+      get(target, prop) {
+        return target[prop];
+      }
+    });
+    
     this.level      = saved?.level      ?? base.level ?? 1;
     this.exp        = saved?.exp        ?? base.exp   ?? 0;
     this.locked     = saved?.locked ?? base.locked ?? false;

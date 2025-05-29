@@ -3,14 +3,14 @@ const HeroData = {
   heroes: [
     {
       id: "hero001",
-      name: "原味肠",
+      name: "勇者",
       icon: "swordsman.png",
       role: "战士",
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
-      attributes: { physical: 8 },
+      attributes: { physical: 5 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
@@ -21,7 +21,7 @@ const HeroData = {
       skill: {
         name: "破甲斩",
         description: "将自身物攻注入伤害槽",
-        effect: { type: "addGauge", source: "physical", scale: 1 },
+        effect: { type: "addGauge", source: "physical", scale: 10 },
         cooldown: 3
       }
     },

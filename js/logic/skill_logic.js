@@ -12,23 +12,35 @@ export function applySkillEffect(hero, effect, context) {
 
     case "addGauge": {
       let add = 0;
-      if ('value' in effect) add = effect.value;
-      else if (effect.source === "physical")
-        add = hero.attributes.physical * (effect.scale ?? 1);
-      else if (effect.source === "magical")
-        add = hero.attributes.magical * (effect.scale ?? 1);
-
-      context.addGauge(add); // 用函数更新外部 gauge
+      let usedValue = 0;
+      let sourceName = "";
+    
+      if ('value' in effect) {
+        add = effect.value;
+        usedValue = add;
+        sourceName = "直接数值";
+      } else if (effect.source === "physical") {
+        usedValue = hero.attributes.physical;
+        add = usedValue * (effect.scale ?? 1);
+        sourceName = "物攻";
+      } else if (effect.source === "magical") {
+        usedValue = hero.attributes.magical;
+        add = usedValue * (effect.scale ?? 1);
+        sourceName = "法攻";
+      }
+    
+      context.addGauge(add);
+    
+      // ✅ 详细调试日志
+      console.log(`[技能释放] ${hero.name}`);
+      console.log(`  ↳ 当前等级: Lv.${hero.level}`);
+      console.log(`  ↳ 当前 ${sourceName}: ${usedValue}`);
+      console.log(`  ↳ 技能倍率: x${effect.scale ?? 1}`);
+      console.log(`  ↳ 注入攻击槽值: ${add}`);
+    
       context.log(`${hero.name} 注入攻击槽：+${Math.round(add)}`);
       break;
     }
-
-    case "mulGauge": {
-      context.mulGauge(effect.factor ?? 1);
-      context.log(`${hero.name} 翻倍攻击槽 ×${effect.factor}`);
-      break;
-    }
-
     case "physicalDamage":
     case "magicalDamage": {
       context.dealDamage(effect.amount);
