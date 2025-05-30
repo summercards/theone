@@ -117,9 +117,9 @@ const HeroData = {
         unlockSkills: { 5: "shadowKill" }
       },
       skill: {
-        name: "暗影突袭",
-        description: "瞬间移动并攻击敌人要害",
-        effect: { type: "physicalDamage", amount: 140 },
+        name: "爆炸咯！",
+        description: "随机将棋盘上的若干方块变成刺客方块（E），每级增加一个",
+        effect: { type: "convertToEBlocks" },
         cooldown: 3
       }
     },

@@ -156,6 +156,57 @@ export function applySkillEffect(hero, effect, context) {
       break;
     }
 
+    case "convertToEBlocks": {
+      const pageGame = (() => {
+        try {
+          return require("../page_game.js");
+        } catch {
+          return {};
+        }
+      })();
+
+      const grid = pageGame.gridData ?? globalThis.gridData;
+      const { createPopEffect } = require("../effects_engine.js");
+      const startX = globalThis.__gridStartX ?? 0;
+      const startY = globalThis.__gridStartY ?? 0;
+      const blockSize = globalThis.__blockSize ?? 48;
+
+      if (!Array.isArray(grid)) {
+        context.log("技能失败：未检测到棋盘");
+        break;
+      }
+
+      // 收集所有非E方块位置
+      const candidates = [];
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          if (grid[r][c] && grid[r][c] !== 'E') {
+            candidates.push({ r, c });
+          }
+        }
+      }
+
+      // 随机打乱，选出 N 个目标
+      const count = 2 + (hero.level - 1);
+      const shuffled = candidates.sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, count);
+
+      for (const { r, c } of selected) {
+        grid[r][c] = 'E';
+        const x = startX + c * blockSize + blockSize / 2;
+        const y = startY + r * blockSize + blockSize / 2;
+        createPopEffect(x, y, blockSize, 'E');
+      }
+
+      context.log(`${hero.name} 将 ${selected.length} 个方块变成了刺客方块（E）`);
+
+      try {
+        pageGame.drawGame?.();
+      } catch {}
+      break;
+    }
+
+    
     default:
       console.warn("未知技能类型：", effect.type);
   }
