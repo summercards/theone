@@ -48,6 +48,30 @@ export function applySkillEffect(hero, effect, context) {
       break;
     }
     
+    case "addGaugeWithWarriorMultiplier": {
+        // 确保 context.allies 存在，如果不存在，使用空数组作为默认值
+        let warriorsOnField = 0;
+        const allHeroes = (context.allies || []).concat(hero); // 确保所有英雄（包括当前英雄自己）都被计算在内
+    
+        console.log("所有英雄：", allHeroes); // 输出所有英雄，检查是否包括战士
+        
+        allHeroes.forEach(h => {
+            console.log("英雄角色：", h.role); // 输出每个英雄的角色，确认它们是否正确
+            if (h.role.trim().toLowerCase() === '战士'.toLowerCase()) {  // 确保 role 不包含空格并正确匹配
+                warriorsOnField++;
+            }
+        });
+    
+        // 计算伤害加成：物理攻击力 * 每个战士的数量
+        const baseDamage = hero.attributes.physical * effect.scale;
+        const totalDamage = baseDamage * warriorsOnField; // 根据战士数量计算总伤害
+    
+        context.addGauge(totalDamage);
+        context.log(`${hero.name} 注入攻击槽：+${Math.round(totalDamage)} （包含 ${warriorsOnField} 个战士的伤害加成）`);
+        break;
+    }
+    
+    
 
     case "physicalDamage":
     case "magicalDamage": {

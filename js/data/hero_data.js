@@ -304,7 +304,7 @@ const HeroData = {
     
     {
       id: "hero013",
-      name: "铁血帝王",
+      name: "狮子",
       icon: "swordsman3.png",
       role: "战士",
       rarity: "SR",
@@ -320,8 +320,8 @@ const HeroData = {
       },
       skill: {
         name: "帝王裁决",
-        description: "造成极高物理伤害并充满攻击槽",
-        effect: { type: "addGauge", source: "physical", scale: 2.2 },
+        description: "每有一个战士，伤害增加自身攻击力乘以场上战士数量。",
+        effect: { type: "addGaugeWithWarriorMultiplier", source: "physical", scale: 2.2 },
         cooldown: 2
       }
     },
