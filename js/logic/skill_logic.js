@@ -206,7 +206,22 @@ export function applySkillEffect(hero, effect, context) {
       break;
     }
 
-    
+    case "boostAllGauge": {
+      const percent = 10 + (hero.level - 1); // 每级 +1%
+      const gaugeFraction = percent / 100;
+
+      const allHeroes = [hero, ...(context.allies ?? [])];
+
+      for (const h of allHeroes) {
+        const max = h.skill?.cooldown ?? 3;
+        const gain = Math.ceil(max * gaugeFraction);
+        h.skillGauge = Math.min((h.skillGauge ?? 0) + gain, max);
+      }
+
+      context.log(`${hero.name} 技能触发，所有英雄的技能槽增加 ${percent}%`);
+      break;
+    }
+
     default:
       console.warn("未知技能类型：", effect.type);
   }

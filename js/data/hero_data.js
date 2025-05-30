@@ -126,7 +126,7 @@ const HeroData = {
 
     {
       id: "hero006",
-      name: "艾蕾娜",
+      name: "小蘑菇",
       icon: "priest.png",
       role: "辅助",
       rarity: "R",
@@ -142,16 +142,12 @@ const HeroData = {
         unlockSkills: { 3: "divineGrace" }
       },
       skill: {
-        name: "圣光祷言",
-        description: "治疗己方全体，并提升下一回合攻击力",
-        effect: {
-          type: "teamHealAndBuff",
-          healScale: 1.2,
-          buff: { physical: 2, magical: 2 },
-          duration: 1
-        },
+        name: "能量共鸣",
+        description: "所有在场英雄的技能条增加 10% + 等级%",
+        effect: { type: "boostAllGauge" },
         cooldown: 3
       }
+      
     },
 
     {

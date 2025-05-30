@@ -61,6 +61,58 @@ function hit(px, py, rect) {
   return rect && px >= rect.x && px <= rect.x + rect.width && py >= rect.y && py <= rect.y + rect.height;
 }
 
+function getSkillDescription(hero) {
+  const level = hero.level ?? 1;
+  const effect = hero.skill?.effect ?? {};
+  let text = "";
+
+  switch (effect.type) {
+    case "addGauge": {
+      const source = effect.source ?? "physical";
+      const scale = effect.scale ?? 1;
+      const amount = Math.round((hero.attributes?.[source] ?? 0) * scale);
+      text = `将${source === "physical" ? "物理攻击" : "法术攻击"}注入伤害槽，<highlight>+${amount}</highlight>`;
+      break;
+    }
+
+    case "mulGauge": {
+      const factor = effect.factor ?? 1;
+      text = `将当前伤害翻倍：<highlight>×${factor.toFixed(2)}</highlight>`;
+      break;
+    }
+
+    case "magicalDamage":
+    case "physicalDamage": {
+      text = `造成<highlight>${effect.amount}</highlight>点${effect.type === "magicalDamage" ? "法术" : "物理"}伤害`;
+      break;
+    }
+
+    case "clearCoinBlocks": {
+      const coin = (effect.coinPerBlock ?? 5) + (level - 1);
+      text = `清除所有金币方块，每个获得<highlight>${coin}</highlight>金币`;
+      break;
+    }
+
+    case "convertToEBlocks": {
+      const count = 2 + (level - 1);
+      text = `随机将<highlight>${count}</highlight>个非E方块转为E方块`;
+      break;
+    }
+
+    case "boostAllGauge": {
+      const percent = 10 + level;
+      text = `所有英雄技能条充能<highlight>+${percent}%</highlight>`;
+      break;
+    }
+
+    default:
+      text = hero.skill?.description ?? "未知技能";
+  }
+
+  return text;
+}
+
+
 function render() {
   const ctx = ctxRef, canvas = canvasRef;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -161,12 +213,15 @@ function render() {
   drawStyledText(ctx, '下一页 >', btnNextRect.x + btnW / 2, btnNextRect.y + btnH / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
   drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
 
+
+  
+
   if (popupHero) drawPopup(ctx, canvas, popupHero);
 }
 
 function drawPopup(ctx, canvas, hero) {
   const W = canvas.width * 0.85;
-  const H = 180;
+  const H = 200;
   const x = (canvas.width - W) / 2;
   const y = (canvas.height - H) / 2;
 
@@ -175,18 +230,51 @@ function drawPopup(ctx, canvas, hero) {
 
   const lineHeight = 24;
   let cy = y + 24;
-  drawStyledText(ctx, hero.name, x + 20, cy, { font: 'bold 18px IndieFlower', fill: '#FFD700', align: 'left', baseline: 'top' });
-  cy += lineHeight;
-  drawStyledText(ctx, `职业：${hero.role}  等级：${hero.level}`, x + 20, cy, { font: '14px IndieFlower', fill: '#FFF', align: 'left', baseline: 'top' });
-  cy += lineHeight;
-  drawStyledText(ctx, `技能：${hero.skill.name}`, x + 20, cy, { font: 'bold 14px IndieFlower', fill: '#66CCFF', align: 'left', baseline: 'top' });
-  cy += lineHeight;
-  drawStyledText(ctx, hero.skill.description, x + 20, cy, { font: '13px IndieFlower', fill: '#EEE', align: 'left', baseline: 'top' });
 
+  // 🔹 标题 + 等级信息
+  drawStyledText(ctx, `${hero.name}（等级 ${hero.level}）`, x + 20, cy, {
+    font: 'bold 16px IndieFlower', fill: '#FFD700', align: 'left', baseline: 'top'
+  });
+  cy += lineHeight;
+
+  drawStyledText(ctx, `职业：${hero.role}`, x + 20, cy, {
+    font: '14px IndieFlower', fill: '#FFF', align: 'left', baseline: 'top'
+  });
+  cy += lineHeight;
+
+  // 🔹 技能名称
+  drawStyledText(ctx, `技能：${hero.skill.name}`, x + 20, cy, {
+    font: 'bold 14px IndieFlower', fill: '#66CCFF', align: 'left', baseline: 'top'
+  });
+  cy += lineHeight;
+
+  // 🔹 技能描述（支持高亮）
+  const desc = getSkillDescription(hero);
+  const lines = desc.split(/<highlight>|<\/highlight>/);
+  let useHighlight = false;
+
+  for (const part of lines) {
+    if (part.trim() === "") continue;
+
+    drawStyledText(ctx, part, x + 20, cy, {
+      font: '13px IndieFlower',
+      fill: useHighlight ? '#FFD700' : '#EEE',
+      align: 'left',
+      baseline: 'top'
+    });
+
+    const metrics = ctx.measureText(part);
+    cy += metrics.actualBoundingBoxAscent + 4;
+
+    useHighlight = !useHighlight;
+  }
+
+  // 🔹 关闭提示
   drawStyledText(ctx, '点击任意处关闭', x + W / 2, y + H - 24, {
     font: '12px IndieFlower', fill: '#AAA', align: 'center', baseline: 'top'
   });
 }
+
 
 export default {
   init,
