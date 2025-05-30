@@ -33,19 +33,14 @@ export function applySkillEffect(hero, effect, context) {
         const { createFloatingTextUp } = require('../effects_engine.js');
         const factor = hero.skill?.effect?.factor ?? effect.factor ?? 1;
         const text = `X${factor.toFixed(2)}`;
-        
-        // 根据 MIO 头像位置右侧计算
-        const slotIndex = context.slotIndex ?? 1;
-        const iconSize = 48;
-        const spacing = 12;
-        const totalWidth = 5 * iconSize + 4 * spacing;
-        const startX = (context.canvas.width - totalWidth) / 2;
-        const avatarX = startX + slotIndex * (iconSize + spacing);
-        const avatarY = globalThis.__gridStartY - 80;
-        
-        const x = avatarX + iconSize + 72; // 头像右方偏移
-        const y = avatarY + iconSize / 2 - 52;
-        
+      
+        // ✅ 以画布中心为基准，向右偏移
+        const centerX = context.canvas.width / 2;
+        const baseY = globalThis.__gridStartY - 100;
+      
+        const x = centerX + 80;   // 👉 向右偏移 80 像素
+        const y = baseY;
+      
         createFloatingTextUp(text, x, y, '#2DAD5A', 32, 620);
       }
       
