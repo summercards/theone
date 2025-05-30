@@ -1,6 +1,6 @@
 import { expandGridTo } from '../utils/game_shared.js';
 import { playBasketballEffect } from "../effects_engine.js";
-import { createFloatingText } from "../effects_engine.js";  // 引入 createFloatingText 函数
+
 
 export function applySkillEffect(hero, effect, context) {
   switch (effect.type) {
@@ -12,43 +12,23 @@ export function applySkillEffect(hero, effect, context) {
 
     case "addGauge": {
       let add = 0;
-      let usedValue = 0;
-      let sourceName = "";
-    
-      if ('value' in effect) {
-        add = effect.value;
-        usedValue = add;
-        sourceName = "直接数值";
-      } else if (effect.source === "physical") {
-        usedValue = hero.attributes.physical;
-        add = usedValue * (effect.scale ?? 1);
-        sourceName = "物攻";
-      } else if (effect.source === "magical") {
-        usedValue = hero.attributes.magical;
-        add = usedValue * (effect.scale ?? 1);
-        sourceName = "法攻";
-      }
-    
-      context.addGauge(add);
-    
-      // 获取技能倍数（例如 X1.1, X1.2）
-      const factor = effect.scale ?? 1;  // 获取技能的倍数
-    
-      // 调用 createFloatingText 来显示倍数
-      createFloatingText(`X${factor.toFixed(1)}`, canvasRef.width / 2, 200, 'red', 48, 5000);
+      if ('value' in effect) add = effect.value;
+      else if (effect.source === "physical")
+        add = hero.attributes.physical * (effect.scale ?? 1);
+      else if (effect.source === "magical")
+        add = hero.attributes.magical * (effect.scale ?? 1);
 
-    
-      // 详细调试日志
-      console.log(`[技能释放] ${hero.name}`);
-      console.log(`  ↳ 当前等级: Lv.${hero.level}`);
-      console.log(`  ↳ 当前 ${sourceName}: ${usedValue}`);
-      console.log(`  ↳ 技能倍率: x${effect.scale ?? 1}`);
-      console.log(`  ↳ 注入攻击槽值: ${add}`);
-    
+      context.addGauge(add); // 用函数更新外部 gauge
       context.log(`${hero.name} 注入攻击槽：+${Math.round(add)}`);
       break;
     }
-    
+
+    case "mulGauge": {
+      context.mulGauge(effect.factor ?? 1);
+      context.log(`${hero.name} 翻倍攻击槽 ×${effect.factor}`);
+      break;
+    }
+
     case "physicalDamage":
     case "magicalDamage": {
       context.dealDamage(effect.amount);
@@ -66,12 +46,12 @@ export function applySkillEffect(hero, effect, context) {
     
       globalThis.__delayedSkillDamage = damage; // 给动画使用（可选）
     
-      // 播放动画（可选）
+      // ✅ 播放动画（可选）
       if (effect.animation === "basketball") {
         playBasketballEffect(context.canvas);
       }
     
-      // 延迟触发伤害（如有）
+      // ✅ 延迟触发伤害（如有）
       if (effect.delay && typeof globalThis.startAttackEffect === "function") {
         setTimeout(() => {
           globalThis.startAttackEffect(damage);
@@ -120,17 +100,18 @@ export function applySkillEffect(hero, effect, context) {
         const total = cleared * perBlock;
         addCoins(total);
     
-        // 显示金币增加效果
         createFloatingText(`+${total} 金币`, canvas.width / 2, 100, '#FFD700');
         context.log(`${hero.name} 技能清除 D 方块 ×${cleared}，每个 +${perBlock} 金币，共 ${total}`);
     
         dropBlocks();
         fillNewBlocks();
         drawGame();
-      }, 500); // 延迟 300 毫秒执行技能动画与效果
+      }, 500); // ⏱ 延迟 300 毫秒执行技能动画与效果
     
       break;
     }
+    
+    
     
     case "teamHealAndBuff": {
       context.allies?.forEach(ally => {
