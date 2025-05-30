@@ -27,14 +27,14 @@ export function onEliminateGreenBlock(count) {
     const target = heroes[Math.floor(Math.random() * heroes.length)];
 
     if (random < 0.33) {
-      target.attributes.physical += 5;
-      logBattle(`[B道具] ${target.name} 力量 +5`);
+      target.attributes.physical += 1;
+      logBattle(`[B道具] ${target.name} 力量 +1`);
     } else if (random < 0.66) {
-      target.attributes.magical += 5;
-      logBattle(`[B道具] ${target.name} 智力 +5`);
+      target.attributes.magical += 1;
+      logBattle(`[B道具] ${target.name} 智力 +1`);
     } else {
-      addGold(5);
-      logBattle(`[B道具] 获得金币 +5`);
+      addGold(1);
+      logBattle(`[B道具] 获得金币 +1`);
     }
   }
 }
