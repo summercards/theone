@@ -24,10 +24,35 @@ export function applySkillEffect(hero, effect, context) {
     }
 
     case "mulGauge": {
-      context.mulGauge(effect.factor ?? 1);
-      context.log(`${hero.name} 翻倍攻击槽 ×${effect.factor}`);
+      const factor = effect.factor ?? 1;
+      context.mulGauge(factor);
+      context.log(`${hero.name} 翻倍攻击槽 ×${factor}`);
+    
+      // MIO 专属：显示技能倍数飘字
+      if (hero.id === 'hero002' && context.canvas) {
+        const { createFloatingTextUp } = require('../effects_engine.js');
+        const factor = hero.skill?.effect?.factor ?? effect.factor ?? 1;
+        const text = `X${factor.toFixed(2)}`;
+        
+        // 根据 MIO 头像位置右侧计算
+        const slotIndex = context.slotIndex ?? 1;
+        const iconSize = 48;
+        const spacing = 12;
+        const totalWidth = 5 * iconSize + 4 * spacing;
+        const startX = (context.canvas.width - totalWidth) / 2;
+        const avatarX = startX + slotIndex * (iconSize + spacing);
+        const avatarY = globalThis.__gridStartY - 80;
+        
+        const x = avatarX + iconSize + 72; // 头像右方偏移
+        const y = avatarY + iconSize / 2 - 52;
+        
+        createFloatingTextUp(text, x, y, '#2DAD5A', 32, 620);
+      }
+      
+    
       break;
     }
+    
 
     case "physicalDamage":
     case "magicalDamage": {

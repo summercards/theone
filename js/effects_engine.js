@@ -207,7 +207,23 @@ export function drawAllEffects(ctx, canvas) {
     }
     
     
+    else if (e.type === 'floatUp') {
+      const t = now - e.startTime;
+      if (t > e.duration) return remove.push(i);
     
+      const rise = (t / e.duration) * 20; // ⬆️ 总共上升 30 像素
+    
+      ctx.save();
+      ctx.globalAlpha = 1.0; // ❗始终不透明
+    
+      ctx.font = `bold ${e.size}px Impact, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = e.color;
+    
+      ctx.fillText(e.text, e.x, e.y - rise);
+      ctx.restore();
+    }
     
 
     else if (e.type === 'square_particle') {
@@ -389,7 +405,20 @@ export function drawAllEffects(ctx, canvas) {
         ctx.restore();
       }
       
-
+      else if (e.type === 'staticText') {
+        const t = now - e.startTime;
+        if (t > e.duration) return remove.push(i);
+      
+        ctx.save();
+        ctx.globalAlpha = 1.0; // ❗ 不透明
+        ctx.font = `bold ${e.size}px Impact, sans-serif`;
+        ctx.fillStyle = e.color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.text, e.x, e.y);
+        ctx.restore();
+      }
+      
       
       else if (e.type === 'charge_glow') {
         const t = now - e.startTime;
@@ -753,4 +782,29 @@ export function withSlideInAnim(ctx, index, targetY, drawFn, from = 'top', delay
   ctx.translate(0, offset + targetY);
   drawFn();
   ctx.restore();
+}
+
+export function createStaticText(text, x, y, color = '#FFFFFF', size = 20, duration = 1000) {
+  effects.push({
+    type: 'staticText',
+    text,
+    x,
+    y,
+    color,
+    size,
+    duration,
+    startTime: Date.now()
+  });
+}
+export function createFloatingTextUp(text, x, y, color = '#66CCFF', size = 20, duration = 1000) {
+  effects.push({
+    type: 'floatUp',
+    text,
+    x,
+    y,
+    color,
+    size,
+    duration,
+    startTime: Date.now()
+  });
 }
