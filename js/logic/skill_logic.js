@@ -85,32 +85,39 @@ export function applySkillEffect(hero, effect, context) {
     }
 
     case "clearCoinBlocks": {
-      const { gridData, dropBlocks, fillNewBlocks, drawGame } = require("../page_game.js");
       const { createPopEffect, createExplosion, createFloatingText } = require("../effects_engine.js");
-      const { __gridStartX, __gridStartY, __blockSize } = globalThis;
       const { addCoins } = require('../data/coin_state.js');
       const canvas = context.canvas;
+      const pageGame = (() => {
+        try {
+          return require("../page_game.js");
+        } catch {
+          return {};
+        }
+      })();
+      const grid = pageGame.gridData ?? globalThis.gridData;
+      
+
+      const startX = globalThis.__gridStartX ?? 0;
+      const startY = globalThis.__gridStartY ?? 0;
+      const blockSize = globalThis.__blockSize ?? 48;
     
-      // 延迟执行主技能效果（300ms）
       setTimeout(() => {
+        if (!Array.isArray(grid)) {
+          context.log("清除金币失败：未检测到棋盘");
+          return;
+        }
+    
         let cleared = 0;
-        const grid = gridData;
     
         for (let r = 0; r < grid.length; r++) {
           for (let c = 0; c < grid[r].length; c++) {
             if (grid[r][c] === 'D') {
               grid[r][c] = null;
               cleared++;
-            }
-          }
-        }
-    
-        for (let r = 0; r < grid.length; r++) {
-          for (let c = 0; c < grid[r].length; c++) {
-            if (grid[r][c] === null) {
-              const x = __gridStartX + c * __blockSize + __blockSize / 2;
-              const y = __gridStartY + r * __blockSize + __blockSize / 2;
-              createPopEffect(x, y, __blockSize, 'D');
+              const x = startX + c * blockSize + blockSize / 2;
+              const y = startY + r * blockSize + blockSize / 2;
+              createPopEffect(x, y, blockSize, 'D');
               createExplosion(x, y, '#FFD700');
             }
           }
@@ -123,13 +130,20 @@ export function applySkillEffect(hero, effect, context) {
         createFloatingText(`+${total} 金币`, canvas.width / 2, 100, '#FFD700');
         context.log(`${hero.name} 技能清除 D 方块 ×${cleared}，每个 +${perBlock} 金币，共 ${total}`);
     
-        dropBlocks();
-        fillNewBlocks();
-        drawGame();
-      }, 500); // ⏱ 延迟 300 毫秒执行技能动画与效果
+        try {
+          const pageGame = require("../page_game.js");
+          pageGame.dropBlocks?.();
+          pageGame.fillNewBlocks?.();
+          pageGame.drawGame?.();
+        } catch (err) {
+          // 忽略错误：说明当前非 page_game 模式
+        }
+    
+      }, 500);
     
       break;
     }
+    
     
     
     
