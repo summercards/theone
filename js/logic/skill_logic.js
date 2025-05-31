@@ -48,6 +48,32 @@ export function applySkillEffect(hero, effect, context) {
       break;
     }
  
+    case "mulGaugeByRangerCount": {
+      const { baseFactor = 1.0, bonusPerRanger = 0.2, maxBonus = 2.0 } = effect;
+      const { getSelectedHeroes } = require('../data/hero_state.js');
+    
+      const allHeroes = getSelectedHeroes(); // ✅ 获取真实上场英雄
+      const rangerCount = allHeroes.filter(h => h?.role?.trim() === '游侠').length;
+    
+      const bonus = Math.min(bonusPerRanger * rangerCount, maxBonus);
+      const finalFactor = baseFactor + bonus;
+    
+      context.mulGauge(finalFactor);
+      context.log(`${hero.name} 技能触发，发现 ${rangerCount} 名游侠，攻击槽 ×${finalFactor.toFixed(2)}`);
+    
+      if (context.canvas) {
+        const { createFloatingTextUp } = require('../effects_engine.js');
+        const centerX = context.canvas.width / 2;
+        const baseY = globalThis.__gridStartY - 100;
+        const x = centerX + 80;
+        const y = baseY;
+        createFloatingTextUp(`×${finalFactor.toFixed(2)}`, x, y, '#2DAD5A', 32, 620);
+      }
+    
+      break;
+    }
+    
+    
     case "multiHitPhysical": {
       const {
         baseHits = 2,
@@ -86,33 +112,21 @@ export function applySkillEffect(hero, effect, context) {
     
       break;
     }
-    
-    
-    
-
+   
     
     case "addGaugeWithWarriorMultiplier": {
-        // 确保 context.allies 存在，如果不存在，使用空数组作为默认值
-        let warriorsOnField = 0;
-        const allHeroes = (context.allies || []).concat(hero); // 确保所有英雄（包括当前英雄自己）都被计算在内
+      const { getSelectedHeroes } = require('../data/hero_state.js');
+      const allHeroes = getSelectedHeroes();
+      const warriorCount = allHeroes.filter(h => h?.role?.trim() === '战士').length;
     
-        console.log("所有英雄：", allHeroes); // 输出所有英雄，检查是否包括战士
-        
-        allHeroes.forEach(h => {
-            console.log("英雄角色：", h.role); // 输出每个英雄的角色，确认它们是否正确
-            if (h.role.trim().toLowerCase() === '战士'.toLowerCase()) {  // 确保 role 不包含空格并正确匹配
-                warriorsOnField++;
-            }
-        });
+      const baseDamage = hero.attributes.physical * (effect.scale ?? 1);
+      const totalDamage = baseDamage * warriorCount;
     
-        // 计算伤害加成：物理攻击力 * 每个战士的数量
-        const baseDamage = hero.attributes.physical * effect.scale;
-        const totalDamage = baseDamage * warriorsOnField; // 根据战士数量计算总伤害
-    
-        context.addGauge(totalDamage);
-        context.log(`${hero.name} 注入攻击槽：+${Math.round(totalDamage)} （包含 ${warriorsOnField} 个战士的伤害加成）`);
-        break;
+      context.addGauge(totalDamage);
+      context.log(`${hero.name} 注入攻击槽：+${Math.round(totalDamage)} （包含 ${warriorCount} 个战士的伤害加成）`);
+      break;
     }
+    
     
     
 

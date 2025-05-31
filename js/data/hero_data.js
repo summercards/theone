@@ -352,9 +352,14 @@ const HeroData = {
         attributeGrowth: { physical: 3, magical: 2 }
       },
       skill: {
-        name: "千影箭雨",
-        description: "将当前攻击槽伤害提升至3倍",
-        effect: { type: "mulGauge", factor: 3 },
+        name: "影袭连爆",
+        description: "将当前攻击槽伤害翻倍，每存在1名游侠，额外提升20%。",
+        effect: {
+          type: "mulGaugeByRangerCount",
+          baseFactor: 1.0,
+          bonusPerRanger: 0.2,
+          maxBonus: 2.0
+        },
         cooldown: 2
       }
     },
