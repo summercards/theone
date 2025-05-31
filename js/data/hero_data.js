@@ -380,9 +380,12 @@ const HeroData = {
         attributeGrowth: { magical: 5 }
       },
       skill: {
-        name: "星爆术",
-        description: "造成极高魔法伤害",
-        effect: { type: "magicalDamage", amount: 200 },
+        name: "星辰共鸣",
+        description: "造成魔法伤害，强度与场上法师数量相关。",
+        effect: {
+          type: "mageCountMagicDamage",
+          scale: 1.5
+        },
         cooldown: 3
       }
     },

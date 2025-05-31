@@ -72,6 +72,29 @@ export function applySkillEffect(hero, effect, context) {
     
       break;
     }
+    case "mageCountMagicDamage": {
+      const { getSelectedHeroes } = require('../data/hero_state.js');
+      const allHeroes = getSelectedHeroes();
+      const mageCount = allHeroes.filter(h => h?.role?.trim() === '法师').length;
+    
+      const scale = effect.scale ?? 1.0;
+      const damage = hero.attributes.magical * scale * mageCount;
+    
+      context.dealDamage(damage);
+      context.log(`${hero.name} 造成 ${Math.round(damage)} 点魔法伤害（${mageCount} 名法师加成）`);
+    
+      // ✅ 飘字
+      if (context.canvas) {
+        const { createFloatingTextUp } = require('../effects_engine.js');
+        const centerX = context.canvas.width / 2;
+        const centerY = context.canvas.height * 0.3;
+        const x = centerX + (Math.random() * 20 - 10);
+        const y = centerY + (Math.random() * 10 - 5);
+        createFloatingTextUp(`-${Math.round(damage)}`, x, y, '#66CCFF', 32, 500);
+      }
+    
+      break;
+    }
     
     
     case "multiHitPhysical": {
