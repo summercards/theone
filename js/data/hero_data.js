@@ -101,7 +101,7 @@ const HeroData = {
     },
     {
       id: "hero005",
-      name: "男鼠鼠",
+      name: "鼠鼠",
       icon: "assassin.png",
       role: "刺客",
       rarity: "R",
@@ -152,7 +152,7 @@ const HeroData = {
 
     {
       id: "hero007",
-      name: "狂战凯",
+      name: "地狱吼",
       icon: "swordsman2.png",
       role: "战士",
       rarity: "SR",
@@ -167,11 +167,21 @@ const HeroData = {
         attributeGrowth: { physical: 3 }
       },
       skill: {
-        name: "怒焰斩",
-        description: "造成强力物理伤害，并注入部分攻击槽",
-        effect: { type: "addGauge", source: "physical", scale: 1.5 },
+        name: "狂热连斩",
+        description: "连续斩击2次，每次造成自身物攻伤害，第二次提升10%。",
+        effect: {
+          type: "multiHitPhysical",
+          baseHits: 2,
+          baseScale: 1.0,
+          scaleStep: 0.1,
+          delayStep: 300
+        },
         cooldown: 3
       }
+      
+      
+      
+      
     },
 
     {

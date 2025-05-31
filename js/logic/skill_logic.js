@@ -47,6 +47,49 @@ export function applySkillEffect(hero, effect, context) {
     
       break;
     }
+ 
+    case "multiHitPhysical": {
+      const {
+        baseHits = 2,
+        // growthPerLevel = 3, // 等级成长功能已注释
+        baseScale = 1.0,
+        scaleStep = 0.1,
+        delayStep = 300
+      } = effect;
+    
+      // 🚫 注销等级成长逻辑，固定使用 baseHits
+      // const level = hero.level ?? 1;
+      // const totalHits = baseHits + Math.floor((level - 1) / growthPerLevel);
+      const totalHits = baseHits;
+    
+      const canvas = context.canvas;
+      const { createFloatingTextUp } = require('../effects_engine.js');
+    
+      for (let i = 0; i < totalHits; i++) {
+        const delay = i * delayStep;
+        const scale = baseScale + i * scaleStep;
+    
+        setTimeout(() => {
+          const damage = Math.round(hero.attributes.physical * scale);
+          context.dealDamage(damage);
+          context.log(`${hero.name} 第 ${i + 1} 次斩击造成 ${damage} 点物理伤害`);
+    
+          if (canvas) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height * 0.3;
+            const x = centerX + (Math.random() * 20 - 10);
+            const y = centerY + (Math.random() * 10 - 5);
+            createFloatingTextUp(`-${damage}`, x, y, '#FF3333', 32, 500);
+          }
+        }, delay);
+      }
+    
+      break;
+    }
+    
+    
+    
+
     
     case "addGaugeWithWarriorMultiplier": {
         // 确保 context.allies 存在，如果不存在，使用空数组作为默认值
