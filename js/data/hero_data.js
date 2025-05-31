@@ -186,7 +186,7 @@ const HeroData = {
 
     {
       id: "hero008",
-      name: "风刃艾玛",
+      name: "塞尔达",
       icon: "archer2.png",
       role: "游侠",
       rarity: "SR",
@@ -201,7 +201,7 @@ const HeroData = {
         attributeGrowth: { physical: 2, magical: 1 }
       },
       skill: {
-        name: "箭雨连发",
+        name: "你再叫我……",
         description: "翻倍当前伤害并小幅追加",
         effect: { type: "mulGauge", factor: 2.2 },
         cooldown: 2
@@ -210,7 +210,7 @@ const HeroData = {
 
     {
       id: "hero009",
-      name: "炎咒师莱雅",
+      name: "来福",
       icon: "mage2.png",
       role: "法师",
       rarity: "SR",
@@ -421,7 +421,7 @@ const HeroData = {
     },
     {
       id: "hero017",
-      name: "阿丝呆伦",
+      name: "呆伦",
       icon: "assassin3.png",
       role: "刺客",
       rarity: "UR",
