@@ -449,7 +449,7 @@ const HeroData = {
     },
     {
       id: "hero018",
-      name: "天启救赎",
+      name: "米酷酱",
       icon: "priest3.png",
       role: "辅助",
       rarity: "SSR",
@@ -464,7 +464,7 @@ const HeroData = {
         attributeGrowth: { magical: 3, healing: 4 }
       },
       skill: {
-        name: "神启祷告",
+        name: "歌唱吧！",
         description: "为所有在场英雄随机提升30~40%技能槽，每升一级+1%。",
         effect: {
           type: "randomBoostAllGauge",
