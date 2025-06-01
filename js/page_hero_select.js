@@ -115,7 +115,9 @@ let ctxRef, canvasRef, switchPageFn;
     ctxRef = ctx;
     canvasRef = canvas;
     switchPageFn = switchPage;
-
+    globalThis.canvasRef = canvas;        // ✅ 让 effects_engine.js 能读取 canvas
+    globalThis.__gridStartY = canvas.height * 0.35;  // ✅ 若你的头像行高度是根据此值布局的
+    
       // ⬇️ 在初始化后立即记录当前金币
   const currentGold = getTotalCoins();
   updatePlayerStats({ gold: currentGold });
@@ -351,7 +353,20 @@ for (const { hero } of iconRects) {
     if (coins >= cost) {
       // ✅ 升级英雄（保存到 heroProgress）
       const hs = new HeroState(hero.id);
-      hs.gainExp(hs.expToNextLevel);                  // 自动保存
+
+      // 🔥 在英雄池中升级时设置升级特效坐标回调
+      hs.onLevelUp = () => {
+        const { createHeroLevelUpEffectAt } = require('./effects_engine.js');
+        const rect = iconRects.find(r => r.hero?.id === hero.id)?.rect;
+        if (rect) {
+          const centerX = rect.x + rect.width / 2;
+          const centerY = rect.y;
+          createHeroLevelUpEffectAt(centerX, centerY); // 在头像正上方播放特效
+        }
+      };
+      
+      hs.gainExp(hs.expToNextLevel);
+                      // 自动保存
 
       wx.setStorageSync('totalCoins', coins - cost);  // 扣金币
 
@@ -398,8 +413,9 @@ function hit(px, py, r) {
 
 // ======================= 渲染 =============================
 function render() {
-  const ctx = ctxRef, canvas = canvasRef;
-  const layoutRects = []; // 🆕 用于记录每个模块的占位区域，避免互相遮挡
+    const ctx = ctxRef;
+    const canvas = canvasRef;
+    const layoutRects = [];
   ctx.setTransform(1, 0, 0, 1, 0, 0); // 清除变换
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -653,9 +669,13 @@ drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRec
 drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, {
   font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle'
 });
-
-  // 解锁弹窗
-  drawUnlockDialog(ctx, canvas);
+const { updateAllEffects, drawAllEffects } = require('./effects_engine.js');
+// 所有 UI 元素之后
+drawUnlockDialog(ctx, canvas);
+ctx.save();
+updateAllEffects();
+drawAllEffects(ctx, canvas);
+ctx.restore();
 }
 
 

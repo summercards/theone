@@ -1,5 +1,6 @@
 const HeroData = require('./hero_data.js');
 const { spendCoins } = require('./coin_state.js');
+const { createHeroLevelUpEffect } = require('../effects_engine.js');
 
 // ========================================================
 // 单个英雄的运行时状态
@@ -19,7 +20,7 @@ class HeroState {
     this.expToNextLevel  = base.expToNextLevel || 100;
     this.unlockCost      = base.unlockCost     || 0;
     this.hireCost        = base.hireCost || 200;  // ✅ 加上这一行
-
+    this.onLevelUp = null; // 可供页面绑定升级事件
     // --- 进度（本地覆盖） ---
     const saved = wx.getStorageSync('heroProgress')?.[id];
 
@@ -89,7 +90,17 @@ class HeroState {
     if (this.levelUpConfig.unlockSkills?.[this.level]) {
       console.log(`${this.name} 解锁技能：${this.levelUpConfig.unlockSkills[this.level]}`);
     }
-
+    // ✅ 升级完成后触发升级特效（仅对已出战英雄）
+    if (typeof getSelectedHeroes === 'function') {
+        const index = getSelectedHeroes().findIndex(h => h?.id === this.id);
+        if (index >= 0) {
+          createHeroLevelUpEffect(index);
+        }
+      }
+      // ✅ 通知 UI 触发升级特效
+if (typeof this.onLevelUp === 'function') {
+    this.onLevelUp();
+  }
     this.expToNextLevel = Math.floor(this.expToNextLevel * 1.2);
   }
 }

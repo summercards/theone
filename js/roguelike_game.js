@@ -195,6 +195,17 @@ export function initGamePage(ctx, switchPage, canvas, options = {}) {
   canvasRef = canvas;
 
   const heroes = getSelectedHeroes?.();
+  if (heroes?.length) {
+    heroes.forEach((hero, index) => {
+      if (hero) {
+        hero.onLevelUp = () => {
+          const { createHeroLevelUpEffect } = require('./effects_engine.js');
+          createHeroLevelUpEffect(index); // 🔥 使用出战栏索引播放特效
+        };
+      }
+    });
+  }
+  
 if (heroes?.length) {
   heroes.forEach(h => {
     if (h?.tempEffects) {

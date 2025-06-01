@@ -808,3 +808,49 @@ export function createFloatingTextUp(text, x, y, color = '#66CCFF', size = 20, d
     startTime: Date.now()
   });
 }
+export function createHeroLevelUpEffectAt(x, y) {
+    createFloatingTextUp('升级！', x, y, '#FFD700', 26, 1000);
+    for (let i = 0; i < 12; i++) {
+      effects.push({
+        type: 'particle',
+        x: x + (Math.random() - 0.5) * 30,
+        y: y + 10 + Math.random() * 10,
+        vx: 0,
+        vy: -0.5 - Math.random() * 0.5,
+        radius: 2 + Math.random() * 1.5,
+        color: '#FFD700',
+        alpha: 1,
+        life: 30 + Math.floor(Math.random() * 10)
+      });
+    }
+  }
+export function createHeroLevelUpEffect(slotIndex) {
+    // 获取头像位置
+    const size = 48;
+    const spacing = 12;
+    const totalWidth = 5 * size + 4 * spacing;
+    const canvas = globalThis.canvasRef;
+    const startX = (canvas.width - totalWidth) / 2;
+    const topMargin = globalThis.__gridStartY - 80;
+    const x = startX + slotIndex * (size + spacing) + size / 2;
+    const y = topMargin;
+  
+    // 漂浮“升级”字样
+    createFloatingTextUp('升级！', x, y, '#FFD700', 26, 1000);
+  
+    // 粒子上升特效
+    for (let i = 0; i < 12; i++) {
+      effects.push({
+        type: 'particle',
+        x: x + (Math.random() - 0.5) * 30,
+        y: y + 10 + Math.random() * 10,
+        vx: 0,
+        vy: -0.5 - Math.random() * 0.5,
+        radius: 2 + Math.random() * 1.5,
+        color: '#FFD700',
+        alpha: 1,
+        life: 30 + Math.floor(Math.random() * 10)
+      });
+    }
+  }
+  

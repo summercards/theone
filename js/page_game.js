@@ -162,16 +162,26 @@ export function initGamePage(ctx, switchPage, canvas, options = {}) {
   ctxRef = ctx;
   switchPageFn = switchPage;
   canvasRef = canvas;
+  globalThis.canvasRef = canvas;
+  globalThis.ctxRef = ctx;
+  globalThis.__gridStartY = canvas.height * 0.38;  // 头像显示行顶部的 Y 坐标（你可微调）
 
-  const heroes = getSelectedHeroes?.();
+  const { getSelectedHeroes } = require('./data/hero_state.js');
+const { createHeroLevelUpEffect } = require('./effects_engine.js');
+
+// ✅ 为每个出战英雄绑定升级特效回调
+const heroes = getSelectedHeroes?.();
 if (heroes?.length) {
-  heroes.forEach(h => {
-    if (h?.tempEffects) {
-      delete h.tempEffects.gridExpandGaugeBase;
-      delete h.tempEffects.gridExpandSteps;
+  heroes.forEach((hero, index) => {
+    if (hero) {
+      hero.onLevelUp = () => {
+        createHeroLevelUpEffect(index); // 🎉 播放升级特效
+      };
     }
   });
 }
+
+
 globalThis.gridSize = 6;  // ✅ 强制还原为 6×6
 
 
