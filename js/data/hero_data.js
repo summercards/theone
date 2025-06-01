@@ -464,13 +464,12 @@ const HeroData = {
         attributeGrowth: { magical: 3, healing: 4 }
       },
       skill: {
-        name: "神启之光",
-        description: "强力全体治疗并提升攻击力",
+        name: "神启祷告",
+        description: "为所有在场英雄随机提升30~40%技能槽，每升一级+1%。",
         effect: {
-          type: "teamHealAndBuff",
-          healScale: 2,
-          buff: { physical: 4, magical: 4 },
-          duration: 2
+          type: "randomBoostAllGauge",
+          baseMin: 30,
+          baseMax: 40
         },
         cooldown: 3
       }

@@ -72,6 +72,37 @@ export function applySkillEffect(hero, effect, context) {
     
       break;
     }
+
+    case "randomBoostAllGauge": {
+        const { getSelectedHeroes } = require('../data/hero_state.js');
+        const { getCharges, setCharge } = require('../data/hero_charge_state.js');
+      
+        const allHeroes = getSelectedHeroes();
+        const charges = getCharges();
+      
+        const baseMin = effect.baseMin ?? 30;
+        const baseMax = effect.baseMax ?? 40;
+        const level = hero.level ?? 1;
+      
+        const realMin = baseMin + level;
+        const realMax = baseMax + level;
+      
+        for (let i = 0; i < allHeroes.length; i++) {
+          const h = allHeroes[i];
+          if (!h) continue;
+      
+          const percent = Math.floor(Math.random() * (realMax - realMin + 1)) + realMin;
+          const currentCharge = charges[i] ?? 0;
+          const after = Math.min(100, currentCharge + percent);
+      
+          setCharge(i, after);
+          context.log(`${hero.name} 为 ${h.name} 注入技能槽：+${percent}%（原 ${currentCharge} → ${after}）`);
+        }
+      
+        break;
+      }
+      
+      
     case "mageCountMagicDamage": {
       const { getSelectedHeroes } = require('../data/hero_state.js');
       const allHeroes = getSelectedHeroes();
