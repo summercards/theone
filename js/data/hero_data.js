@@ -212,7 +212,7 @@ const HeroData = {
       id: "hero009",
       name: "来福",
       icon: "mage2.png",
-      role: "法师",
+      role: "坦克",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
 
@@ -226,18 +226,18 @@ const HeroData = {
         attributeGrowth: { magical: 4 }
       },
       skill: {
-        name: "烈焰风暴",
-        description: "大范围魔法伤害",
-        effect: { type: "magicalDamage", amount: 160 },
-        cooldown: 4
+        name: "嗷呜！",
+        description: "随机将棋盘上的3个非金币方块变成金币方块（D）",
+        effect: { type: "convertToDBlocks", count: 3 },
+        cooldown: 3
       }
     },
 
     {
       id: "hero010",
-      name: "铠甲兽",
+      name: "小画师",
       icon: "tank2.png",
-      role: "坦克",
+      role: "法师",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
 
@@ -251,9 +251,9 @@ const HeroData = {
         attributeGrowth: { physical: 3 }
       },
       skill: {
-        name: "冲撞",
-        description: "造成物理伤害并击退敌人（效果可拓展）",
-        effect: { type: "physicalDamage", amount: 100 },
+        name: "点金妙笔",
+        description: "随机将棋盘上的3个非金币方块变成魔法方块",
+        effect: { type: "convertToDBlocks", count: 3 },
         cooldown: 3
       }
     },
@@ -276,19 +276,21 @@ const HeroData = {
         attributeGrowth: { physical: 4 }
       },
       skill: {
-        name: "刺骨连击",
-        description: "连续造成两次高伤物攻（模拟）",
-        effect: { type: "physicalDamage", amount: 160 },
+        name: "爆裂感应",
+        description: "每个炸弹方块使其注入自身攻击的伤害值",
+        effect: {
+          type: "addGaugeByDBlockCount"
+        },
         cooldown: 3
-      }
+      }  
     },
     
     {
       id: "hero012",
-      name: "圣女菲奥娜",
+      name: "冰魔女",
       icon: "priest2.png",
-      role: "牧师",
-      rarity: "SR",
+      role: "辅助",
+      rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
       locked: true,
       unlockCost: 200,

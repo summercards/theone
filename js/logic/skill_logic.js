@@ -279,8 +279,93 @@ export function applySkillEffect(hero, effect, context) {
       break;
     }
     
-    
-    
+    case "convertToDBlocks": {
+        const pageGame = (() => {
+          try {
+            return require("../page_game.js");
+          } catch {
+            return {};
+          }
+        })();
+      
+        const grid = pageGame.gridData ?? globalThis.gridData;
+        const { createPopEffect, createExplosion } = require("../effects_engine.js");
+        const startX = globalThis.__gridStartX ?? 0;
+        const startY = globalThis.__gridStartY ?? 0;
+        const blockSize = globalThis.__blockSize ?? 48;
+      
+        if (!Array.isArray(grid)) {
+          context.log("技能失败：未检测到棋盘");
+          break;
+        }
+      
+        const candidates = [];
+        for (let r = 0; r < grid.length; r++) {
+          for (let c = 0; c < grid[r].length; c++) {
+            if (grid[r][c] && grid[r][c] !== 'C') {
+              candidates.push({ r, c });
+            }
+          }
+        }
+      
+        const count = effect.count ?? 3;
+        const shuffled = candidates.sort(() => Math.random() - 0.5);
+        const selected = shuffled.slice(0, count);
+      
+        selected.forEach(({ r, c }, i) => {
+          const delay = i * 300;
+          setTimeout(() => {
+            grid[r][c] = 'C';
+            const x = startX + c * blockSize + blockSize / 2;
+            const y = startY + r * blockSize + blockSize / 2;
+            createPopEffect(x, y, blockSize, 'C');
+            createExplosion(x, y, '#FFD700');
+      
+            if (i === selected.length - 1) {
+              try {
+                pageGame.drawGame?.();
+              } catch {}
+            }
+          }, delay);
+        });
+      
+        context.log(`${hero.name} 将 ${selected.length} 个方块变成了魔法方块（C）`);
+        break;
+      }
+      
+      
+      case "addGaugeByDBlockCount": {
+        const pageGame = (() => {
+          try {
+            return require("../page_game.js");
+          } catch {
+            return {};
+          }
+        })();
+      
+        const grid = pageGame.gridData ?? globalThis.gridData;
+        if (!Array.isArray(grid)) {
+          context.log("技能失败：未检测到棋盘");
+          break;
+        }
+      
+        let count = 0;
+        for (let r = 0; r < grid.length; r++) {
+          for (let c = 0; c < grid[r].length; c++) {
+            if (grid[r][c] === 'D') {
+              count++;
+            }
+          }
+        }
+      
+        const base = hero.attributes.physical ?? 0;
+        const total = base * count;
+        context.addGauge(total);
+      
+        context.log(`${hero.name} 技能触发，发现 ${count} 个炸弹方块，注入伤害槽 +${total}`);
+        break;
+      }
+      
     
     case "teamHealAndBuff": {
       context.allies?.forEach(ally => {
