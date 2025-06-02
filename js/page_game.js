@@ -2,7 +2,7 @@ let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
 let playerActionCounter = 0;
-
+let heroLevelUps = [];           // 本关升级信息，供弹窗读取
 let touchStart = null;     // 记录起始格子位置
 let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
@@ -342,79 +342,121 @@ globalThis.__gridStartY = boardY;
   // 在单独的绘制层绘制UI元素
   drawUI();
     // 👇 胜利弹窗绘制逻辑
-    if (showVictoryPopup) {
-      const canvasW = canvasRef.width;
-      const canvasH = canvasRef.height;
-
-      // === 1. 黑色半透明背景遮罩（保留旧视觉）
-      ctxRef.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctxRef.fillRect(0, 0, canvasW, canvasH);
-    
-      // === 2. 主体区域背景（改为紫色，无透明度）
-      const bannerHeight = 260;
-      const bannerY = (canvasH - bannerHeight) / 2;
-      ctxRef.fillStyle = 'rgba(51, 17, 68, 1.0)';  // 半透明紫色
-      ctxRef.fillRect(0, bannerY, canvasW, bannerHeight);
-    
-      // === 3. 标题文字（白色）
-      const title = `第 ${levelJustCompleted} 关胜利！`;
-      ctxRef.fillStyle = '#FFFFFF';
-      ctxRef.font = 'bold 36px sans-serif';
-      ctxRef.textAlign = 'center';
-      ctxRef.textBaseline = 'top';
-      ctxRef.fillText(title, canvasW / 2, bannerY - 60);
-    
-      // === 4. 中间插图（美术角色图）
-// === 4. 中间插图（美术角色图）
-// === 4. 中间插图（美术角色图）
-if (!globalThis.victoryHeroImage) {
-  const img = wx.createImage();
-  img.src = 'assets/ui/victory_hero.png';
-  img.onload = () => {
-    globalThis.victoryHeroImage = img;
-    drawGame(); // 加载成功后强制刷新
-  };
-
-  // 加载中提示
-  ctxRef.fillStyle = '#FFFFFF';
-  ctxRef.font = '20px sans-serif';
-  ctxRef.textAlign = 'center';
-  ctxRef.fillText('加载中...', canvasW / 2, bannerY + 100);
-} else {
-  const img = globalThis.victoryHeroImage;
-  const imgW = 120;
-  const imgH = 120;
-  const imgX = (canvasW - imgW) / 2;
-  const imgY = bannerY + 52;
-  ctxRef.drawImage(img, imgX, imgY, imgW, imgH);
-}
-
-
-
-
-    
-      // === 5. 奖励金币文字
-      ctxRef.fillStyle = '#FFD700';
-      ctxRef.font = '20px sans-serif';
-      ctxRef.fillText(`获得金币：+${earnedGold}`, canvasW / 2, bannerY + 180);
-    
-      // === 6. “下一关”按钮
-      const btnW = 140, btnH = 42;
-      const btnX = (canvasW - btnW) / 2;
-      const btnY = bannerY + 320;
-    
-      ctxRef.fillStyle = '#FFD700';
-      drawRoundedRect(ctxRef, btnX, btnY, btnW, btnH, 10, true, false);
-    
-      ctxRef.fillStyle = '#000';
-      ctxRef.font = 'bold 18px sans-serif';
-      ctxRef.fillText('下一关', canvasW / 2, btnY + btnH / 2);
-    
-      // === 7. 存按钮区域以供点击判断
-      globalThis.victoryBtnArea = {
-        x: btnX, y: btnY, width: btnW, height: btnH
+// === 胜利弹窗绘制逻辑（保留原插图及时间逻辑，仅按需求增减）===
+// === 胜利弹窗绘制逻辑 ===
+if (showVictoryPopup) {
+    const ctx = ctxRef;
+    const W = canvasRef.width;
+    const H = canvasRef.height;
+  
+    /**************************** 1. 黑色半透明背景遮罩 ****************************/
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';      // 加深背景避免干扰
+    ctx.fillRect(0, 0, W, H);
+  
+    /**************************** 2. 标题文字 ****************************/
+    const title = `第 ${levelJustCompleted} 关胜利！`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const titleY = H * 0.18;
+    ctx.fillText(title, W / 2, titleY);
+  
+    /**************************** 3. 中央插图（保持原逻辑） ****************************/
+    const heroImgW = 120;
+    const heroImgH = 120;
+    const heroImgX = (W - heroImgW) / 2;
+    const heroImgY = titleY + 60;
+  
+    if (!globalThis.victoryHeroImage) {
+      const img = wx.createImage();
+      img.src = 'assets/ui/victory_hero.png';
+      img.onload = () => {
+        globalThis.victoryHeroImage = img;
+        drawGame();                         // 加载成功后刷新一次
       };
+  
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '20px sans-serif';
+      ctx.fillText('加载中...', W / 2, heroImgY + 40);
+    } else {
+      const img = globalThis.victoryHeroImage;
+      ctx.drawImage(img, heroImgX, heroImgY, heroImgW, heroImgH);
     }
+  
+    /**************************** 4. 奖励金币 ****************************/
+    const goldY = heroImgY + heroImgH + 24;
+    ctx.fillStyle = '#FFD700';
+    ctx.font = '20px sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(`获得金币：+${earnedGold}`, W / 2, goldY);
+  
+    /**************************** 5. 其他奖励列表 ****************************/
+    const rewards       = globalThis.levelRewards || [];   // 例：['强化石 x10', '精魄 x2']
+    const rewardStartY  = goldY + 32;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '18px sans-serif';
+    rewards.forEach((txt, i) => {
+      ctx.fillText(txt, W / 2, rewardStartY + i * 28);
+    });
+  
+    /**************************** 6. 英雄升级展示 ****************************/
+    const ups = globalThis.heroLevelUps || [];             // 例：{ name, oldLevel, newLevel, avatar }
+    if (ups.length > 0) {
+      const size = 64;                                     // 头像边长
+      const gap  = 24;                                     // 头像间距
+      const rowW = ups.length * size + (ups.length - 1) * gap;
+      let curX   = (W - rowW) / 2;
+      const avatarsY = rewardStartY + rewards.length * 28 + 40;
+  
+      ups.forEach(up => {
+        /* 6.1 头像（未加载时自动刷新） */
+        if (up.avatar && !up.avatar.complete) {
+          up.avatar.onload = drawGame;                     // 头像加载完成后自动刷新
+        }
+  
+        if (up.avatar && up.avatar.complete) {
+          ctx.drawImage(up.avatar, curX, avatarsY, size, size);
+        } else {
+          ctx.fillStyle = '#555';
+          ctx.fillRect(curX, avatarsY, size, size);        // 灰色占位
+        }
+  
+        /* 6.2 名字 */
+        ctx.fillStyle = '#FFD700';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(up.name, curX + size / 2, avatarsY + size + 4);
+  
+        /* 6.3 等级变化 */
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '14px sans-serif';
+        ctx.fillText(`Lv.${up.oldLevel} → Lv.${up.newLevel}`, curX + size / 2, avatarsY + size + 22);
+  
+        curX += size + gap;
+      });
+    }
+  
+    /**************************** 7. “下一关”按钮 ****************************/
+    const btnW = 160;
+    const btnH = 48;
+    const btnX = (W - btnW) / 2;
+    const btnY = H * 0.83;
+  
+    ctx.fillStyle = '#FFD700';
+    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
+  
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('下一关', W / 2, btnY + btnH / 2);
+  
+    /* 保存按钮区域供 onTouchend() 使用 */
+    globalThis.victoryBtnArea = { x: btnX, y: btnY, width: btnW, height: btnH };
+  }
+  
+  
 }
 
 function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
@@ -1114,10 +1156,12 @@ if (heroIndex >= 0) {
 
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
-    earnedGold = getMonsterGold();         // 获取金币
-    addCoins(earnedGold);                  // 加入金币池
-    levelJustCompleted = getNextLevel() - 1; // 显示当前完成的是哪一关
-    showVictoryPopup = true;               // 显示胜利弹窗
+        earnedGold = getMonsterGold();
+        addCoins(earnedGold);
+        levelJustCompleted = getNextLevel() - 1;
+    
+        rewardExpToHeroes(50);             // ★ 先统计升级
+        showVictoryPopup = true;           // ★ 再弹窗
     return;                                // 暂停，等待点击继续
   }
    else {
@@ -1660,15 +1704,38 @@ function expandGridTo({ size = 7, steps = 3, hero }) {
   drawGame();
 }
 
+/**
+ * 给上阵英雄分配经验，并收集“谁升了级”
+ * @param {number} expAmount - 要分配的经验值
+ */
 function rewardExpToHeroes(expAmount) {
-  const heroes = getSelectedHeroes();
-  heroes.forEach(hero => {
-    if (hero) {
-      hero.gainExp(expAmount);
-      console.log(`${hero.name} 获得经验 +${expAmount}，当前等级 Lv.${hero.level}`);
-    }
-  });
-}
+    heroLevelUps = [];                           // 先清空上一关的数据
+  
+    const heroes = getSelectedHeroes();          // 你自己已有的函数，返回本关参战英雄数组
+  
+    heroes.forEach(hero => {
+      if (!hero) return;
+  
+      const oldLv = hero.level;                  // 记录旧等级
+      hero.gainExp(expAmount);                   // 原有经验逻辑
+  
+      if (hero.level > oldLv) {                  // 只有真正升级才记录
+        // 头像，如果已经在全局缓存里，就用；否则留空，弹窗那边会用灰色占位
+        const avatar = globalThis.imageCache?.[hero.icon] || null;
+  
+        heroLevelUps.push({
+          name: hero.name,                       // 显示名字
+          oldLevel: oldLv,                       // 原等级
+          newLevel: hero.level,                  // 新等级
+          avatar                                 // <Image> 或 null
+        });
+      }
+    });
+  
+    // 给弹窗用（drawGame 会读取）
+    globalThis.heroLevelUps = heroLevelUps;
+  }
+  
 function resetSessionState () {
     gaugeCount = 0;
     attackGaugeDamage = 0;
