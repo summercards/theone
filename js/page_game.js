@@ -1582,6 +1582,7 @@ function startAttackEffect(dmg) {
   const endY   = 180;                           // 怪物中心高度，按你的 UI 调
 
   createProjectile(startX, startY, endX, endY, 500, () => {
+      
     // 飞弹到达 ⇒ 怪物掉血 & 受击闪
     dealDamage(pendingDamage);
     createMonsterBounce(); // ✅ 添加弹性缩放动画
@@ -1645,8 +1646,10 @@ showDamageText(pendingDamage, endX, endY + 50);
       }
     }
     
-  });
+}, pendingDamage);
 }
+
+
 function expandGridTo({ size = 7, steps = 3, hero }) {
   globalThis.gridSize = size;
 

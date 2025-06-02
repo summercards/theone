@@ -136,14 +136,55 @@ export function drawAllEffects(ctx, canvas) {
       globalThis.monsterScale = scale;
     }
 
-    else if (e.type === 'proj') {
-      const p = Math.min(1, (now - e.startTime) / e.duration);
-      const x = e.x0 + (e.x1 - e.x0) * p;
-      const y = e.y0 + (e.y1 - e.y0) * p;
-      ctx.fillStyle = '#FFAA00';
-      ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
-      if (p === 1) { e.onArrive?.(); remove.push(i); }
+/* ==== 旧的 6px 黄色点 → 新的火球 ==== */
+/* ==== 火球（大小随 power 变化） ==== */
+else if (e.type === 'proj') {
+    const now = Date.now();
+    const p   = Math.min(1, (now - e.startTime) / e.duration);
+  
+    // 轨迹插值
+    const x = e.x0 + (e.x1 - e.x0) * p;
+    const y = e.y0 + (e.y1 - e.y0) * p;
+  
+    /* === 1) 根据伤害计算半径 === */
+    const power = e.power || 1;                     // 没传时回落到 1
+    const radius    = 10 + Math.min(20, Math.sqrt(power) * 0.5); // 10-30 px
+    const tailProb  = 0.4 + Math.min(0.4, power / 5000);         // 0.4-0.8
+  
+    /* === 2) 火球本体 === */
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,120,0,0.9)';
+    ctx.shadowBlur  = radius * 1.5;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    grad.addColorStop(0.00, '#FFFFAA');
+    grad.addColorStop(0.35, '#FF9933');
+    grad.addColorStop(0.70, '#FF3300');
+    grad.addColorStop(1.00, 'rgba(255,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  
+    /* === 3) 粒子拖尾 === */
+    if (Math.random() < tailProb) {
+      effects.push({
+        type:'particle',
+        x, y,
+        vx:(Math.random()-0.5)*0.4,
+        vy:(Math.random()-0.5)*0.4,
+        radius: 2 + Math.random() * (power > 2000 ? 4 : 2),
+        color:'#FF9933',
+        alpha:1,
+        life:20
+      });
     }
+  
+    /* === 4) 终点判定 === */
+    if (p === 1) { e.onArrive?.(); remove.push(i); }
+  }
+  
+  
 
     else if (e.type === 'float') {
       const t = now - e.startTime;
@@ -487,9 +528,16 @@ const radius = baseRadius * scale;
 }
 
 /* ========= 工具函数 ===================================================== */
-export function createProjectile(x0, y0, x1, y1, duration, onArrive) {
-  effects.push({ type: 'proj', x0, y0, x1, y1, duration, startTime: Date.now(), onArrive });
-}
+export function createProjectile(
+      x0, y0, x1, y1, duration, onArrive,
+      power = 1                       // ★ 新增参数，默认 1
+    ) {
+      effects.push({
+        type:'proj', x0, y0, x1, y1,
+        duration, power,              // ★ 多了 power 字段
+        startTime: Date.now(), onArrive
+      });
+    }
 
 export function createEnergyParticles(x0, y0, x1, y1, color = '#FFD700', count = 6) {
     const now = Date.now();

@@ -2020,7 +2020,7 @@ showDamageText(pendingDamage, endX, endY + 50);
       }
     }
     
-  });
+}, pendingDamage);
 }
 function expandGridTo({ size = 7, steps = 3, hero }) {
   globalThis.gridSize = size;
