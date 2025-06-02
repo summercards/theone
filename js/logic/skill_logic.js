@@ -333,7 +333,6 @@ export function applySkillEffect(hero, effect, context) {
         break;
       }
       
-      
       case "addGaugeByDBlockCount": {
         const pageGame = (() => {
           try {
@@ -360,11 +359,23 @@ export function applySkillEffect(hero, effect, context) {
       
         const base = hero.attributes.physical ?? 0;
         const total = base * count;
-        context.addGauge(total);
       
+        context.addGauge(total);
         context.log(`${hero.name} 技能触发，发现 ${count} 个炸弹方块，注入伤害槽 +${total}`);
+      
+        // ✅ 飘字提示
+        if (context.canvas) {
+          const { createFloatingTextUp } = require('../effects_engine.js');
+          const centerX = context.canvas.width / 2;
+          const baseY = globalThis.__gridStartY - 100;
+          const x = centerX + 80;
+          const y = baseY;
+          createFloatingTextUp(`+${total}`, x, y, '#FFAA00', 32, 620);
+        }
+      
         break;
       }
+      
       
     
     case "teamHealAndBuff": {
