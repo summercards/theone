@@ -263,6 +263,8 @@ function initGrid() {
   if (!hasPossibleMatches()) {
     initGrid();
   }
+    // ✅ 修复：让技能能在肉鸽模式中访问棋盘
+  globalThis.gridData = gridData;
 }
 
 export function drawGame() {
@@ -1867,7 +1869,7 @@ export { expandGridTo };  // ✅ 添加这行
     const context = {
       dealDamage,
       log: logBattle,
-      canvas: canvasRef,   // ✅ 加上这行！
+      canvas: canvasRef,
       addGauge: (value) => {
         attackGaugeDamage += Math.round(value);
         damagePopTime = Date.now();
@@ -1875,8 +1877,19 @@ export { expandGridTo };  // ✅ 添加这行
       mulGauge: (factor) => {
         attackGaugeDamage = Math.round(attackGaugeDamage * factor);
         damagePopTime = Date.now();
-      }
+      },
+    
+      // ✅ 兼容技能对棋盘的访问
+      gridData: globalThis.gridData,
+      __gridStartX: globalThis.__gridStartX,
+      __gridStartY: globalThis.__gridStartY,
+      __blockSize: globalThis.__blockSize,
+    
+      dropBlocks: globalThis.dropBlocks,
+      fillNewBlocks: globalThis.fillNewBlocks,
+      drawGame: globalThis.drawGame
     };
+    
     
   
     applySkillEffect(hero, eff, context);
@@ -1927,7 +1940,7 @@ function startAttackEffect(dmg) {
   const startX = canvasRef.width / 2;
   const startY = __gridStartY - 40;  // 让它从计数器区域或头像栏中飞出                           
   const endX   = canvasRef.width / 2;
-  const endY   = 120;                           // 怪物中心高度，按你的 UI 调
+  const endY   = 180;                           // 怪物中心高度，按你的 UI 调
 
   createProjectile(startX, startY, endX, endY, 500, () => {
     // 飞弹到达 ⇒ 怪物掉血 & 受击闪
@@ -1938,6 +1951,7 @@ function startAttackEffect(dmg) {
 
     // 飘字
   // 🎯 根据伤害值动态设定颜色和大小
+  
 const color = pendingDamage > 10000 ? '#FFFF00'
 : pendingDamage > 2000 ? '#FF6600'
 : '#FF4444';

@@ -1579,7 +1579,7 @@ function startAttackEffect(dmg) {
   const startX = canvasRef.width / 2;
   const startY = __gridStartY - 40;  // 让它从计数器区域或头像栏中飞出                           
   const endX   = canvasRef.width / 2;
-  const endY   = 120;                           // 怪物中心高度，按你的 UI 调
+  const endY   = 180;                           // 怪物中心高度，按你的 UI 调
 
   createProjectile(startX, startY, endX, endY, 500, () => {
     // 飞弹到达 ⇒ 怪物掉血 & 受击闪

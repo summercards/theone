@@ -230,12 +230,11 @@ export function applySkillEffect(hero, effect, context) {
           return {};
         }
       })();
-      const grid = pageGame.gridData ?? globalThis.gridData;
+      const grid = context.gridData ?? pageGame.gridData ?? globalThis.gridData;
+      const startX = context.__gridStartX ?? globalThis.__gridStartX ?? 0;
+      const startY = context.__gridStartY ?? globalThis.__gridStartY ?? 0;
+      const blockSize = context.__blockSize ?? globalThis.__blockSize ?? 48;
       
-
-      const startX = globalThis.__gridStartX ?? 0;
-      const startY = globalThis.__gridStartY ?? 0;
-      const blockSize = globalThis.__blockSize ?? 48;
     
       setTimeout(() => {
         if (!Array.isArray(grid)) {
@@ -269,7 +268,8 @@ export function applySkillEffect(hero, effect, context) {
           const pageGame = require("../page_game.js");
           pageGame.dropBlocks?.();
           pageGame.fillNewBlocks?.();
-          pageGame.drawGame?.();
+          (context.drawGame ?? pageGame.drawGame)?.();
+
         } catch (err) {
           // 忽略错误：说明当前非 page_game 模式
         }
@@ -288,11 +288,13 @@ export function applySkillEffect(hero, effect, context) {
           }
         })();
       
-        const grid = pageGame.gridData ?? globalThis.gridData;
+
         const { createPopEffect, createExplosion } = require("../effects_engine.js");
-        const startX = globalThis.__gridStartX ?? 0;
-        const startY = globalThis.__gridStartY ?? 0;
-        const blockSize = globalThis.__blockSize ?? 48;
+        const grid = context.gridData ?? pageGame.gridData ?? globalThis.gridData;
+        const startX = context.__gridStartX ?? globalThis.__gridStartX ?? 0;
+        const startY = context.__gridStartY ?? globalThis.__gridStartY ?? 0;
+        const blockSize = context.__blockSize ?? globalThis.__blockSize ?? 48;
+        
       
         if (!Array.isArray(grid)) {
           context.log("技能失败：未检测到棋盘");
@@ -323,7 +325,8 @@ export function applySkillEffect(hero, effect, context) {
       
             if (i === selected.length - 1) {
               try {
-                pageGame.drawGame?.();
+                (context.drawGame ?? pageGame.drawGame)?.();
+
               } catch {}
             }
           }, delay);
@@ -342,7 +345,7 @@ export function applySkillEffect(hero, effect, context) {
           }
         })();
       
-        const grid = pageGame.gridData ?? globalThis.gridData;
+        const grid = context.gridData ?? pageGame.gridData ?? globalThis.gridData;
         if (!Array.isArray(grid)) {
           context.log("技能失败：未检测到棋盘");
           break;
@@ -396,11 +399,13 @@ export function applySkillEffect(hero, effect, context) {
         }
       })();
 
-      const grid = pageGame.gridData ?? globalThis.gridData;
+
       const { createPopEffect } = require("../effects_engine.js");
-      const startX = globalThis.__gridStartX ?? 0;
-      const startY = globalThis.__gridStartY ?? 0;
-      const blockSize = globalThis.__blockSize ?? 48;
+      const grid = context.gridData ?? pageGame.gridData ?? globalThis.gridData;
+      const startX = context.__gridStartX ?? globalThis.__gridStartX ?? 0;
+      const startY = context.__gridStartY ?? globalThis.__gridStartY ?? 0;
+      const blockSize = context.__blockSize ?? globalThis.__blockSize ?? 48;
+      
 
       if (!Array.isArray(grid)) {
         context.log("技能失败：未检测到棋盘");
@@ -432,7 +437,8 @@ export function applySkillEffect(hero, effect, context) {
       context.log(`${hero.name} 将 ${selected.length} 个方块变成了刺客方块（E）`);
 
       try {
-        pageGame.drawGame?.();
+        (context.drawGame ?? pageGame.drawGame)?.();
+
       } catch {}
       break;
     }
