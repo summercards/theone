@@ -334,7 +334,7 @@ globalThis.__gridStartY = boardY;
       
 
       if (selected && selected.row === row && selected.col === col) {
-        ctxRef.strokeStyle = '#00FF00';
+        ctxRef.strokeStyle = '#cf20a0';
         ctxRef.lineWidth = 4;
         drawRoundedRect(ctxRef, x, y, actualBlockSize - 4, actualBlockSize - 4, 6, false, true);
       }
