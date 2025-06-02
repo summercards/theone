@@ -1,6 +1,9 @@
 let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
+let popupGoldDisplayed = 0; // 用于胜利弹窗中金币滚动显示
+let displayedGold = 0; // 当前动画显示的金币
+let popupGoldStartTime = 0; // ⏱ 胜利弹窗金币滚动起始时间
 let playerActionCounter = 0;
 let heroLevelUps = [];           // 本关升级信息，供弹窗读取
 let touchStart = null;     // 记录起始格子位置
@@ -15,6 +18,7 @@ let showVictoryPopup = false;
 let earnedGold = 0;
 let levelJustCompleted = 0;
 let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
+let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
 // === 变更：把另外两个特效工具也引进来
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
@@ -381,10 +385,20 @@ if (showVictoryPopup) {
   
     /* 4. 金币奖励 */
     const goldY = heroImgY + heroImgH + 24;
-    ctx.fillStyle = '#FFD700';
-    ctx.font = '20px sans-serif';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(`获得金币：+${earnedGold}`, W / 2, goldY);
+    if (popupGoldDisplayed < earnedGold) {
+        const diff = earnedGold - popupGoldDisplayed;
+        popupGoldDisplayed += Math.ceil(diff * 0.1); // ✨ 更慢滚动（从 0.2 降为 0.1）
+      } else {
+        popupGoldDisplayed = earnedGold;
+      }
+      
+      const popupGoldText = `获得金币：+${popupGoldDisplayed}`;
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(popupGoldText, W / 2, goldY);
+      
   
     /* 5. 其他奖励文本 */
     const rewards = globalThis.levelRewards || [];
@@ -623,29 +637,43 @@ ctxRef.strokeText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
 ctxRef.fillText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
 ctxRef.restore();
 
+/* === 本局金币 HUD ============================== */
+ctxRef.resetTransform?.(); // 防止变形残留
 
+// 🎯 滚动逻辑
+const targetGold = getSessionCoins();
+if (displayedGold < targetGold) {
+  const diff = targetGold - displayedGold;
+  displayedGold += Math.ceil(diff * 0.2);
+} else {
+  displayedGold = targetGold;
+}
 
+// 🎯 放大缩放动画逻辑
+let goldScale = 1;
+const goldAnimDuration = 800; // 延长到 0.8 秒
+if (Date.now() - goldPopTime < goldAnimDuration) {
+  const p = 1 - (Date.now() - goldPopTime) / goldAnimDuration;
+  goldScale = 1 + 0.6 * Math.sin(p * Math.PI); // 更大的弹跳幅度
+}
+const goldFontSize = Math.floor(18 * goldScale);
 
+// 🎯 金币文本设置
+const goldText = `金币: ${displayedGold}`;
+ctxRef.font = `bold ${goldFontSize}px IndieFlower, sans-serif`; // ✅ 使用缩放字体
+ctxRef.textAlign = 'left';
+ctxRef.textBaseline = 'top';
 
+// 🎯 描边
+ctxRef.lineWidth = 2;
+ctxRef.strokeStyle = '#000';
+ctxRef.strokeText(goldText, 26, 116);
 
-  /* === 本局金币 HUD ============================== */
-  ctxRef.resetTransform?.();      // 小程序 2.32 起支持；低版本可再 setTransform(1…)
-  ctxRef.font = 'bold 18px IndieFlower, sans-serif';
-  ctxRef.textAlign = 'left';
-  ctxRef.textBaseline = 'top';
-  
-  // 描边
-  ctxRef.lineWidth = 2;
-  ctxRef.strokeStyle = '#000';
-  ctxRef.strokeText(`金币: ${getSessionCoins()}`, 26, 116);
-  
-  // 填充
-  ctxRef.fillStyle = '#FFD700';
-  ctxRef.fillText(`金币: ${getSessionCoins()}`, 26, 116);
-ctxRef.restore();
-/* ======================================================== */
+// 🎯 填充
+ctxRef.fillStyle = '#FFD700';
+ctxRef.fillText(goldText, 26, 116);
+/* ============================================== */
 
-// === 回合 HUD ===
 // === 回合 HUD（加粗 + 描边） ===
 ctxRef.font = 'bold 18px sans-serif';
 ctxRef.textAlign = 'right';
@@ -1156,10 +1184,13 @@ if (heroIndex >= 0) {
   if (isMonsterDead()) {
         earnedGold = getMonsterGold();
         addCoins(earnedGold);
+        goldPopTime = Date.now();              // ← 加这一行
+        displayedGold = getSessionCoins(); // 让动画从当前金币值开始
         levelJustCompleted = getNextLevel() - 1;
     
         rewardExpToHeroes(50);             // ★ 先统计升级
         showVictoryPopup = true;           // ★ 再弹窗
+        goldPopTime = Date.now(); // ✨ 胜利弹窗金币弹跳
     return;                                // 暂停，等待点击继续
   }
    else {
@@ -1649,9 +1680,12 @@ showDamageText(pendingDamage, endX, endY + 50);
         setTimeout(() => {
             earnedGold = getMonsterGold();
             addCoins(earnedGold);
+            goldPopTime = Date.now();              // ← 加这一行
+            displayedGold = getSessionCoins(); // 让动画从当前金币值开始
             levelJustCompleted = currentLevel;  // ✅ 不再用 getNextLevel()
             showVictoryPopup = true;
-          
+            popupGoldDisplayed = 0; // ✨ 初始化为 0，开始滚动动画
+            popupGoldStartTime = Date.now(); // ⏱ 标记开始时间
             rewardExpToHeroes(50);
           
             // ✅ 保存最高记录
