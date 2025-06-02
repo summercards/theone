@@ -344,16 +344,17 @@ globalThis.__gridStartY = boardY;
     // 👇 胜利弹窗绘制逻辑
 // === 胜利弹窗绘制逻辑（保留原插图及时间逻辑，仅按需求增减）===
 // === 胜利弹窗绘制逻辑 ===
+// === 胜利弹窗绘制逻辑（纵向“升级！”版本） ===
 if (showVictoryPopup) {
     const ctx = ctxRef;
     const W = canvasRef.width;
     const H = canvasRef.height;
   
-    /**************************** 1. 黑色半透明背景遮罩 ****************************/
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';      // 加深背景避免干扰
+    /* 1. 背景遮罩 */
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, W, H);
   
-    /**************************** 2. 标题文字 ****************************/
+    /* 2. 标题 */
     const title = `第 ${levelJustCompleted} 关胜利！`;
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 36px sans-serif';
@@ -362,99 +363,96 @@ if (showVictoryPopup) {
     const titleY = H * 0.18;
     ctx.fillText(title, W / 2, titleY);
   
-    /**************************** 3. 中央插图（保持原逻辑） ****************************/
-    const heroImgW = 120;
-    const heroImgH = 120;
+    /* 3. 中央插图 */
+    const heroImgW = 120, heroImgH = 120;
     const heroImgX = (W - heroImgW) / 2;
     const heroImgY = titleY + 60;
   
     if (!globalThis.victoryHeroImage) {
       const img = wx.createImage();
       img.src = 'assets/ui/victory_hero.png';
-      img.onload = () => {
-        globalThis.victoryHeroImage = img;
-        drawGame();                         // 加载成功后刷新一次
-      };
-  
+      img.onload = () => { globalThis.victoryHeroImage = img; drawGame(); };
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '20px sans-serif';
       ctx.fillText('加载中...', W / 2, heroImgY + 40);
     } else {
-      const img = globalThis.victoryHeroImage;
-      ctx.drawImage(img, heroImgX, heroImgY, heroImgW, heroImgH);
+      ctx.drawImage(globalThis.victoryHeroImage, heroImgX, heroImgY, heroImgW, heroImgH);
     }
   
-    /**************************** 4. 奖励金币 ****************************/
+    /* 4. 金币奖励 */
     const goldY = heroImgY + heroImgH + 24;
     ctx.fillStyle = '#FFD700';
     ctx.font = '20px sans-serif';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText(`获得金币：+${earnedGold}`, W / 2, goldY);
   
-    /**************************** 5. 其他奖励列表 ****************************/
-    const rewards       = globalThis.levelRewards || [];   // 例：['强化石 x10', '精魄 x2']
-    const rewardStartY  = goldY + 32;
+    /* 5. 其他奖励文本 */
+    const rewards = globalThis.levelRewards || [];
+    const rewardStartY = goldY + 32;
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '18px sans-serif';
     rewards.forEach((txt, i) => {
       ctx.fillText(txt, W / 2, rewardStartY + i * 28);
     });
   
-    /**************************** 6. 英雄升级展示 ****************************/
-    const ups = globalThis.heroLevelUps || [];             // 例：{ name, oldLevel, newLevel, avatar }
+    /* 6. 英雄升级纵向列表 */
+    const ups = globalThis.heroLevelUps || [];
     if (ups.length > 0) {
-      const size = 64;                                     // 头像边长
-      const gap  = 24;                                     // 头像间距
-      const rowW = ups.length * size + (ups.length - 1) * gap;
-      let curX   = (W - rowW) / 2;
-      const avatarsY = rewardStartY + rewards.length * 28 + 40;
+      const avatar = 64;                    // 头像尺寸
+      const rowGap = 8;                    // 行距
+      const startX = W * 0.18;              // 左边距，与出战栏齐
+      const startY = rewardStartY + rewards.length * 28 + 12;
   
-      ups.forEach(up => {
-        /* 6.1 头像（未加载时自动刷新） */
-        if (up.avatar && !up.avatar.complete) {
-          up.avatar.onload = drawGame;                     // 头像加载完成后自动刷新
-        }
+      ups.forEach((up, i) => {
+        const rowY = startY + i * (avatar + rowGap);
   
-        if (up.avatar && up.avatar.complete) {
-          ctx.drawImage(up.avatar, curX, avatarsY, size, size);
-        } else {
-          ctx.fillStyle = '#555';
-          ctx.fillRect(curX, avatarsY, size, size);        // 灰色占位
-        }
+        /* 6.1 头像 */
+         /* 6-1 头像：直接复用出战栏绘制函数 */
+         drawHeroIconFull(ctx, up.hero, startX, rowY, avatar, 0.85);  // 最后一个参数是 scale（1 = 原尺寸）
   
-        /* 6.2 名字 */
-        ctx.fillStyle = '#FFD700';
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(up.name, curX + size / 2, avatarsY + size + 4);
-  
-        /* 6.3 等级变化 */
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '14px sans-serif';
-        ctx.fillText(`Lv.${up.oldLevel} → Lv.${up.newLevel}`, curX + size / 2, avatarsY + size + 22);
-  
-        curX += size + gap;
+/* 6.2 名字（头像右侧，靠上） */
+const nameX = startX + avatar + 12;   // 头像右侧 12px
+const nameY = rowY + 6;               // 距头像顶 6px
+ctx.fillStyle   = '#FFFFFF';
+ctx.font        = 'bold 18px sans-serif';
+ctx.textAlign   = 'left';
+ctx.textBaseline= 'top';
+ctx.fillText(up.name ?? '', nameX, nameY);
+
+/* 6.3 “升级！”（与名字同行，右对齐） */
+ctx.fillStyle   = '#FFD700';
+ctx.font        = 'bold 18px sans-serif';
+ctx.textAlign   = 'right';
+ctx.textBaseline= 'top';
+ctx.fillText('升级！', W - startX, nameY);
+
+/* 6.4 等级变化（紧贴名字下方） */
+const lvlY = nameY + 20;              // 行距 
+ctx.fillStyle   = '#CCCCCC';
+ctx.font        = 'bold 18px sans-serif';
+ctx.textAlign   = 'left';
+ctx.textBaseline= 'top';
+ctx.fillText(`Lv.${up.oldLevel} → Lv.${up.newLevel}`, nameX, lvlY);
       });
     }
   
-    /**************************** 7. “下一关”按钮 ****************************/
-    const btnW = 160;
-    const btnH = 48;
+    /* 7. “下一关”按钮 */
+    const btnW = 160, btnH = 48;
     const btnX = (W - btnW) / 2;
     const btnY = H * 0.83;
   
-    ctx.fillStyle = '#FFD700';
+    ctx.fillStyle = '#D43C44';
     drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
   
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#F3E9DB';
     ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('下一关', W / 2, btnY + btnH / 2);
   
-    /* 保存按钮区域供 onTouchend() 使用 */
     globalThis.victoryBtnArea = { x: btnX, y: btnY, width: btnW, height: btnH };
   }
+  
   
   
 }
@@ -1723,11 +1721,11 @@ function rewardExpToHeroes(expAmount) {
         // 头像，如果已经在全局缓存里，就用；否则留空，弹窗那边会用灰色占位
         const avatar = globalThis.imageCache?.[hero.icon] || null;
   
-        heroLevelUps.push({
-          name: hero.name,                       // 显示名字
-          oldLevel: oldLv,                       // 原等级
-          newLevel: hero.level,                  // 新等级
-          avatar                                 // <Image> 或 null
+         heroLevelUps.push({
+               hero,         
+               name : hero.name,                                  // 直接塞整只英雄对象
+               oldLevel: oldLv,
+               newLevel: hero.level
         });
       }
     });
