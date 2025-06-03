@@ -219,6 +219,56 @@ export function applySkillEffect(hero, effect, context) {
       break;
     }
 
+    case "convertToFBlocks": {
+      const pageGame = (() => {
+        try {
+          return require("../page_game.js");
+        } catch {
+          return {};
+        }
+      })();
+    
+      const { createPopEffect } = require("../effects_engine.js");
+      const grid = context.gridData ?? pageGame.gridData ?? globalThis.gridData;
+      const startX = context.__gridStartX ?? globalThis.__gridStartX ?? 0;
+      const startY = context.__gridStartY ?? globalThis.__gridStartY ?? 0;
+      const blockSize = context.__blockSize ?? globalThis.__blockSize ?? 48;
+    
+      if (!Array.isArray(grid)) {
+        context.log("技能失败：未检测到棋盘");
+        break;
+      }
+    
+      const candidates = [];
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          if (grid[r][c] && grid[r][c] !== 'F') {
+            candidates.push({ r, c });
+          }
+        }
+      }
+    
+      const count = 2 + (hero.level - 1);  // 初始2个，每级+1
+      const shuffled = candidates.sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, count);
+    
+      for (const { r, c } of selected) {
+        grid[r][c] = 'F';
+        const x = startX + c * blockSize + blockSize / 2;
+        const y = startY + r * blockSize + blockSize / 2;
+        createPopEffect(x, y, blockSize, 'F');
+      }
+    
+      context.log(`${hero.name} 将 ${selected.length} 个方块变成了寒冰方块（F）`);
+    
+      try {
+        (context.drawGame ?? pageGame.drawGame)?.();
+      } catch {}
+    
+      break;
+    }
+
+    
     case "clearCoinBlocks": {
       const { createPopEffect, createExplosion, createFloatingText } = require("../effects_engine.js");
       const { addCoins } = require('../data/coin_state.js');

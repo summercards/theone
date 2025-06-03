@@ -302,14 +302,9 @@ const HeroData = {
         attributeGrowth: { magical: 2, healing: 3 }
       },
       skill: {
-        name: "神圣祷言",
-        description: "治疗并提升队友攻击力",
-        effect: {
-          type: "teamHealAndBuff",
-          healScale: 1.5,
-          buff: { physical: 3, magical: 3 },
-          duration: 2
-        },
+        name: "寒冰侵蚀",
+        description: "随机将棋盘上的若干方块变成寒冰方块（F），每级增加一个",
+        effect: { type: "convertToFBlocks" },
         cooldown: 3
       }
     },
