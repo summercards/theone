@@ -1,3 +1,4 @@
+
 let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
@@ -160,6 +161,20 @@ let gridData = [];
 let selected = null;
 
 
+/* ================= 背景层：黑 → 紫渐变 =================== */
+function drawBackground() {
+    ctxRef.setTransform(1, 0, 0, 1, 0, 0);          // 复位矩阵
+    const darkPurple = '#4C0013';                   // 最底端色
+    const g = ctxRef.createLinearGradient(0, 0, 0, canvasRef.height * 0.9);
+    g.addColorStop(0, '#000');                      // 顶部纯黑
+    g.addColorStop(1, darkPurple);                  // 90% 处过渡到暗紫
+    ctxRef.fillStyle = g;
+    ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height * 0.9);
+    ctxRef.fillStyle = darkPurple;                  // 余下 10%
+    ctxRef.fillRect(0, canvasRef.height * 0.9, canvasRef.width, canvasRef.height * 0.1);
+  }
+  
+
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
@@ -245,27 +260,12 @@ export function drawGame() {
   globalThis.layoutRects = [];
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   // 创建背景层并清空画布
-// === 画布底层
-ctxRef.fillStyle = '#000';
-ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
 
-// 🎯 渐变区域中心位置
-const centerY = 310;
-const gradientHeight = 38; // 每边渐变 60 像素
 
-// ✅ 上半段渐变（从中心往上）
-const gradTop = ctxRef.createLinearGradient(0, centerY - gradientHeight, 0, centerY);
-gradTop.addColorStop(0.0, '#0a0018');   // 最顶部：深蓝紫
-gradTop.addColorStop(1.0, '#221133');   // 中间亮一些
-ctxRef.fillStyle = gradTop;
-ctxRef.fillRect(0, centerY - gradientHeight, canvasRef.width, gradientHeight);
+  ctxRef.setTransform(1, 0, 0, 1, 0, 0);
+  ctxRef.clearRect(0, 0, canvasRef.width, canvasRef.height); // 只负责清屏
 
-// ✅ 下半段渐变（从中心往下）
-const gradBottom = ctxRef.createLinearGradient(0, centerY, 0, centerY + gradientHeight);
-gradBottom.addColorStop(0.0, '#221133'); // 中间亮一些
-gradBottom.addColorStop(1.0, '#0a0018'); // 底部再暗下去
-ctxRef.fillStyle = gradBottom;
-ctxRef.fillRect(0, centerY, canvasRef.width, gradientHeight);
+
 
 
   const maxWidth = canvasRef.width * 0.9;
@@ -365,9 +365,6 @@ globalThis.__gridStartY = boardY;
 
   // 在单独的绘制层绘制UI元素
   drawUI();
-    // 👇 胜利弹窗绘制逻辑
-// === 胜利弹窗绘制逻辑（保留原插图及时间逻辑，仅按需求增减）===
-// === 胜利弹窗绘制逻辑 ===
 // === 胜利弹窗绘制逻辑（纵向“升级！”版本） ===
 if (showVictoryPopup) {
     const ctx = ctxRef;
@@ -375,7 +372,7 @@ if (showVictoryPopup) {
     const H = canvasRef.height;
   
     /* 1. 背景遮罩 */
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
     ctx.fillRect(0, 0, W, H);
   
     /* 2. 标题 */
@@ -433,7 +430,7 @@ if (showVictoryPopup) {
     const ups = globalThis.heroLevelUps || [];
     if (ups.length > 0) {
       const avatar = 64;                    // 头像尺寸
-      const rowGap = 8;                    // 行距
+      const rowGap = 4;                    // 行距
       const startX = W * 0.18;              // 左边距，与出战栏齐
       const startY = rewardStartY + rewards.length * 28 + 12;
   
@@ -553,7 +550,13 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
   
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
-    
+    /* —— 背景始终放在 UI 最底层 —— */
+ctxRef.save();
+ctxRef.globalCompositeOperation = 'destination-over'; // 后画但显示在最底
+drawBackground();                                     // 调用刚写的新函数
+ctxRef.restore();
+
+
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   const ctx = ctxRef;
   const canvas = canvasRef;
@@ -577,7 +580,7 @@ const boardY = __gridStartY - padding;
 const boardW = __blockSize * gridSize + padding * 2;
 const boardH = __blockSize * gridSize + padding * 2;
 
-ctxRef.strokeStyle = '#4f1437'; // 绿色
+ctxRef.strokeStyle = '#751b50'; // 绿色
 ctxRef.lineWidth = 4;
 drawRoundedRect(ctxRef, boardX, boardY, boardW, boardH, borderRadius, false, true);
 // ✅ 棋盘外围
@@ -798,7 +801,7 @@ for (let i = 0; i < heroes.length; i++) {
     // — 背板框（空位也画） —
     ctxRef.fillStyle = '#111';
     drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, true, false);
-    ctxRef.strokeStyle = '#a99bb7';
+    ctxRef.strokeStyle = '#55557a';
     ctxRef.lineWidth = 2;
     drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, false, true);
   
@@ -819,9 +822,9 @@ for (let i = 0; i < heroes.length; i++) {
       ctxRef.strokeRect(sx - 4, sy - 4, size + 8, size + 8);
     }
   
-    ctxRef.fillStyle = '#00BFFF';
+    ctxRef.fillStyle = '#38263d';
     ctxRef.fillRect(barX, barY, barW * (percent / 100), barH);
-    ctxRef.strokeStyle = '#888';
+    ctxRef.strokeStyle = '#4250b6';
     ctxRef.lineWidth = 1;
     drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, false, true);
 
@@ -937,8 +940,7 @@ function animateSwap(src, dst, callback, rollback = false) {
     globalThis.layoutRects = [];  // ✅ 补这一句！每帧动画中也要清空 layoutRects
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);
     // 只绘制当前正在移动的方块
-    ctxRef.fillStyle = '#001';
-    ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+    ctxRef.clearRect(0, 0, canvasRef.width, canvasRef.height); // 留空给 UI 层
 
 
 

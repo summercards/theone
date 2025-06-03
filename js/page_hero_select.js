@@ -427,8 +427,22 @@ function render() {
   const selectedY = topOffset + ICON + 20;                    // 出战槽区域位置下调一点
 
 
-  ctx.fillStyle = '#2E003E';
-  drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, 8, true, false);
+// 使用稍微亮一点但不过分艳的紫色
+const richPurple = '#2E003E';  // 比 #2E003E 明亮一点，但不刺眼
+
+// 渐变区域：从黑色 ➝ 紫色，从 0% 到 60%
+const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.9);
+gradient.addColorStop(0, '#000000');      // 顶部黑色
+gradient.addColorStop(1, richPurple);     // 渐变到底部为紫色
+
+// 上方黑色 ➝ 紫色渐变
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, canvas.width, canvas.height * 0.9);
+
+// 下方 40% 固定为纯紫色
+ctx.fillStyle = richPurple;
+ctx.fillRect(0, canvas.height * 0.9, canvas.width, canvas.height * 0.1);
+
 
 // ✅ 英雄选择界面顶部“酒吧背景图”
 const barImage = globalThis.imageCache['hero_window'];
