@@ -66,6 +66,12 @@ import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导�
 import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
+/* ======== 英雄连招节流用状态 ======== */
+let pendingHeroBurst   = false;   // 是否排队等待播放
+let skillsActive = 0;   // 当前还在播放的英雄技能数量
+let pendingBurstDamage = 0;       // 这一轮累积伤害
+let heroBurstRunning   = false;   // 正在播放英雄连招
+let clearingRunning    = false;   // 棋盘仍在连消 / 掉落动画
 let gaugeCount = 0;   // ← 放到文件顶部 (全局)
 let attackDisplayDamage = 0;    // 用于滚动显示的数字
 let damagePopTime       = 0;    // 最近一次数值变化时刻（ms）
@@ -1319,6 +1325,7 @@ function checkHasMatchAt(row, col) {
 }
 
 function processClearAndDrop() {
+    clearingRunning = true;   // ⬅️ 开始连消
   const loop = () => {
     setTimeout(() => {
       dropBlocks();
@@ -1337,6 +1344,9 @@ function processClearAndDrop() {
               initGrid();
               drawGame();
             }, 500);
+                      } else {                         // ★ 所有方块已稳定，棋盘空闲
+                            clearingRunning = false;      //   标记“忙碌结束”
+                            tryStartHeroBurst();          //   轮到英雄连招
           }
         }, 300);
       }, 300);
@@ -1546,40 +1556,15 @@ function handleSwap(src, dst) {
           logBattle("棋盘扩展效果结束，恢复为 6x6");
         }
       }
+   
       if (gaugeCount >= 5) {
-        const dmgToDeal = attackGaugeDamage;
-        gaugeFlashTime = Date.now();
-        gaugeCount = 0;
-      
-        const heroes = getSelectedHeroes(); // 获取出战英雄（长度始终是 5）
-        const interval = 650;
-        const startDelay = 650;
-      
-        let currentIndex = 0;
-        const totalHeroes = heroes.filter(h => h).length; // 只统计有效英雄
-        const totalDuration = startDelay + totalHeroes * interval + 350;
-      
-        function releaseNextHero() {
-          if (currentIndex >= heroes.length) return;
-          if (heroes[currentIndex]) {
-            releaseHeroSkill(currentIndex);
-          }
-          currentIndex++;
-          if (currentIndex < heroes.length) {
-            setTimeout(releaseNextHero, interval);
-          }
-        }
-      
-        setTimeout(releaseNextHero, startDelay);
-      
-        // 粗暴写死整段释放 + 缓冲后再结算伤害
-        setTimeout(() => {
-            const finalDamage = attackGaugeDamage; // 释放完技能后才读取
-            startAttackEffect(finalDamage);     
-          drawGame();
-        }, totalDuration);
+        gaugeFlashTime     = Date.now();          // UI 闪烁
+        pendingHeroBurst   = true;                // 排队，不立即执行
+        pendingBurstDamage = attackGaugeDamage;   // 记录伤害
+        gaugeCount         = 0;                   // 计数归零
+        tryStartHeroBurst();                      // 如棋盘空闲可马上触发
       }
-      
+
       
       
       processClearAndDrop();
@@ -1617,7 +1602,54 @@ export { expandGridTo };  // ✅ 添加这行
     destroy: destroyGamePage
   };
 
+/**
+ * 依次播放 5 个英雄技能并在尾声结算伤害
+ * @param {number} dmg - 进入连招前累计的攻击槽伤害
+ */
+function startHeroBurst(dmg) {
+    heroBurstRunning = true;
+  
+    const heroes     = getSelectedHeroes();     // 长度固定 5
+    const interval   = 650;                     // 英雄间隔
+    const startDelay = 650;                     // 开场停顿
+    let   idx        = 0;
+  
+    /* 递归播放 */
+    function releaseNext() {
+      if (idx >= heroes.length) return;
+      heroes[idx] && releaseHeroSkill(idx);
+      idx++;
+      if (idx < heroes.length) setTimeout(releaseNext, interval);
+    }
+    setTimeout(releaseNext, startDelay);
+  
+    /* 总时长 = 起始停顿 + 有效英雄数 × 间隔 + 收尾缓冲 */
+    const liveCount = heroes.filter(h => h).length;
+    const totalTime = startDelay + liveCount * interval + 350;
+  
+    function waitSkillsThenFinish() {
+        if (skillsActive === 0) {
+          startAttackEffect(dmg);   // 所有技能视觉+逻辑都完毕 → 结算伤害
+          drawGame();
+          heroBurstRunning = false;
+          tryStartHeroBurst();      // 检查队列
+        } else {
+          // 50 ms 轮询一次，直到 skillsActive 归 0
+          setTimeout(waitSkillsThenFinish, 50);
+        }
+      }
+      
+      setTimeout(waitSkillsThenFinish, startDelay + liveCount * interval);
+  }
+  
+  function tryStartHeroBurst() {
+    if (pendingHeroBurst && !heroBurstRunning && !clearingRunning) {
+      pendingHeroBurst = false;
+      startHeroBurst(pendingBurstDamage);
+    }
+  }
   function releaseHeroSkill(slotIndex) {
+    skillsActive++;                 // 技能开始 → +1
     const hero = getSelectedHeroes()[slotIndex];
     if (!hero) return;
 
@@ -1662,6 +1694,13 @@ createChargeReleaseEffect(barX, barY, barW, barH);
 
     setCharge(slotIndex, 0);
     createExplosion(canvasRef.width / 2, canvasRef.height / 2);
+
+    const SKILL_END_MS = 1200;
+setTimeout(() => {
+  skillsActive--;
+}, SKILL_END_MS);
+
+
       // ✅ 技能表现：触发头像动画（默认样式）
       createAvatarFlash(slotIndex, 1.3, 500); 
 
