@@ -1322,6 +1322,28 @@ function onTouchend(e) {
 
   const x = touch.clientX;
   const y = touch.clientY;
+
+    // ✅ 胜利弹窗点击“下一关”
+    if (showVictoryPopup) {
+      const btn = globalThis.victoryBtnArea;
+      if (btn && x >= btn.x && x <= btn.x + btn.width &&
+                 y >= btn.y && y <= btn.y + btn.height) {
+        showVictoryPopup = false;
+    
+        currentLevel = getNextLevel();      // ✅ 更新当前关卡编号
+        levelJustCompleted = currentLevel;  // ✅ 更新胜利用变量
+        attackGaugeDamage = 0;
+        attackDisplayDamage = 0;
+        const monster = loadMonster(currentLevel); // ✅ 使用正确关卡加载怪物
+        turnsLeft = monster.skill.cooldown;
+    
+        initGrid();
+        drawGame();
+      }
+      return;
+    }
+
+    
   // ✅ 点击超级方块立即触发技能（提早处理）
   const col = Math.floor((x - __gridStartX) / __blockSize);
   const row = Math.floor((y - __gridStartY) / __blockSize);
@@ -1343,24 +1365,7 @@ function onTouchend(e) {
         return;
       }
     }
-  // ✅ 胜利弹窗点击“下一关”
-  if (showVictoryPopup) {
-    const btn = globalThis.victoryBtnArea;
-    if (btn && x >= btn.x && x <= btn.x + btn.width &&
-               y >= btn.y && y <= btn.y + btn.height) {
-      showVictoryPopup = false;
-  
-      currentLevel = getNextLevel();      // ✅ 更新当前关卡编号
-      levelJustCompleted = currentLevel;  // ✅ 更新胜利用变量
-      resetSessionState();                // ✅ ← 加上这行！
-      const monster = loadMonster(currentLevel); // ✅ 使用正确关卡加载怪物
-      turnsLeft = monster.skill.cooldown;
-  
-      initGrid();
-      drawGame();
-    }
-    return;
-  }
+
   
 
   // ✅ 失败弹窗点击“回到主页”

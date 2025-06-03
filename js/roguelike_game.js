@@ -1471,33 +1471,12 @@ function onTouchend(e) {
 
   const x = touch.clientX;
   const y = touch.clientY;
-  // ✅ 点击超级方块立即触发技能（提早处理）
-  const col = Math.floor((x - __gridStartX) / __blockSize);
-  const row = Math.floor((y - __gridStartY) / __blockSize);
 
-    // ✅ 点击超级方块触发技能
-    if (
-      row >= 0 && row < gridSize &&
-      col >= 0 && col < gridSize
-    ) {
-      const block = gridData[row][col];
-    
-      if (SuperBlockSystem.isSuper?.(block)) {
-        if (showVictoryPopup) return;  // ✅ 只有点击超级方块时才禁止触发
-    
-        SuperBlockSystem.trigger(row, col, ctxRef, gridData, gridSize);
-        gridData[row][col] = null;
-        drawGame();
-        setTimeout(() => processClearAndDrop(), 300);
-        return;
-      }
-    }
-    
-  // ✅ 胜利弹窗点击“下一关”
+  // ✅ 1. 胜利弹窗优先处理（英雄雇佣 / 道具 / 下一关）
   if (showVictoryPopup) {
     const px = x, py = y;
-  
-    // === 检查是否点击出战英雄栏
+
+    // --- 雇佣栏点击 ---
     for (let i = 0; i < heroSlotRects.length; i++) {
       const r = heroSlotRects[i];
       if (hit(px, py, r)) {
@@ -1508,81 +1487,64 @@ function onTouchend(e) {
         return;
       }
     }
-  
-    // === 检查是否点击英雄池头像
+
+    // --- 英雄池点击 ---
     for (const { rect, hero, prop } of heroIconRects) {
-        if (hit(px, py, rect)) {
-          const isHero = !!hero;   // 👉 统一判断
-      // ---------- 道具购买 ----------
-      if (prop) {
-        const cost = prop.price || 100;
-        if (purchasedPropIds.has(prop.id)) {
-          createFloatingText('已购买', px, py, '#AAAAAA');
-          return;
-        }
-      
-        // 钱不够
-        if (getSessionCoins() < cost) {
-          createFloatingText(`金币不足（${cost})`, px, py, '#FF4444');
-          return;
-        }
-      
-        // 付款 + 标记已购 + 功能生效
-        addCoins(-cost);
-        purchasedPropIds.add(prop.id);
-        const selectedHeroes = getSelectedHeroes();
-        const firstHero = selectedHeroes.find(h => h); // 默认第一个有英雄的槽位
-        
-        if (firstHero) {
-          applyProp(prop.id, {
-            logBattle,
-          }, {
-            hero: firstHero,
-            key: 'physical'  // 如果道具类型不同可调整为 'magical' 等
-          });
-        }
-        createFloatingText(`获得道具 -${cost}`, px, py, '#00FF00');
-      
-        drawGame();          // 立即刷新卡片状态
-        return;              // 别往下跑了
-      }
-      
-          // ✅ 若尚未雇佣，检查金币
-          if (isHero && !hiredHeroIds.has(hero.id)) {
-            const cost = hero.hireCost || 200;
-            if (getSessionCoins() < cost) {
-              createFloatingText(`金币不足（${cost}）`, px, py, '#FF4444');
-              return;
-            }
-      
-            addCoins(-cost);
-            hiredHeroIds.add(hero.id);
-            createFloatingText(`雇佣成功 -${cost}`, px, py, '#00FF00');
+      if (hit(px, py, rect)) {
+        const isHero = !!hero;
+
+        // 道具购买
+        if (prop) {
+          const cost = prop.price || 100;
+          if (purchasedPropIds.has(prop.id)) {
+            createFloatingText('已购买', px, py, '#AAAAAA');
+            return;
           }
-      
-          const heroes = getSelectedHeroes();
-          if (heroes.some(h => h?.id === hero.id)) return;
-      
-          const empty = heroes.findIndex(h => !h);
-          if (empty !== -1) {
-            const updated = Array(5).fill(null);
-            for (let i = 0; i < 5; i++) {
-              if (i === empty) {
-                updated[i] = hero.id;
-              } else {
-                const old = heroes[i];
-                updated[i] = old?.id || null;
-              }
-            }
-            setSelectedHeroes(updated);
-            drawGame();
+          if (getSessionCoins() < cost) {
+            createFloatingText(`金币不足（${cost})`, px, py, '#FF4444');
+            return;
           }
+          addCoins(-cost);
+          purchasedPropIds.add(prop.id);
+          const selectedHeroes = getSelectedHeroes();
+          const firstHero = selectedHeroes.find(h => h);
+          if (firstHero) {
+            applyProp(prop.id, { logBattle }, { hero: firstHero, key: 'physical' });
+          }
+          createFloatingText(`获得道具 -${cost}`, px, py, '#00FF00');
+          drawGame();
           return;
         }
+
+        // 英雄雇佣
+        if (isHero && !hiredHeroIds.has(hero.id)) {
+          const cost = hero.hireCost || 200;
+          if (getSessionCoins() < cost) {
+            createFloatingText(`金币不足（${cost})`, px, py, '#FF4444');
+            return;
+          }
+          addCoins(-cost);
+          hiredHeroIds.add(hero.id);
+          createFloatingText(`雇佣成功 -${cost}`, px, py, '#00FF00');
+        }
+
+        const heroes = getSelectedHeroes();
+        if (heroes.some(h => h?.id === hero.id)) return;
+
+        const empty = heroes.findIndex(h => !h);
+        if (empty !== -1) {
+          const updated = Array(5).fill(null);
+          for (let i = 0; i < 5; i++) {
+            updated[i] = (i === empty) ? hero.id : (heroes[i]?.id || null);
+          }
+          setSelectedHeroes(updated);
+          drawGame();
+        }
+        return;
       }
-      
-  
-    // === 翻页按钮点击
+    }
+
+    // --- 翻页按钮 ---
     if (hit(px, py, globalThis.heroPageLeftRect)) {
       if (heroPageIndex > 0) {
         heroPageIndex--;
@@ -1590,7 +1552,7 @@ function onTouchend(e) {
       }
       return;
     }
-  
+
     if (hit(px, py, globalThis.heroPageRightRect)) {
       const maxPage = Math.floor(HeroData.heroes.length / 10);
       if (heroPageIndex < maxPage) {
@@ -1599,95 +1561,97 @@ function onTouchend(e) {
       }
       return;
     }
-  
-    // === 点击“下一关”
+
+    // --- 下一关按钮 ---
     const btn = globalThis.victoryBtnArea;
     if (btn && px >= btn.x && px <= btn.x + btn.width &&
-      py >= btn.y && py <= btn.y + btn.height) {
+        py >= btn.y && py <= btn.y + btn.height) {
+      showVictoryPopup = false;
+      globalThis.victoryPopupStartTime = null;
+      currentLevel = getNextLevel();
+      levelJustCompleted = currentLevel;
 
-showVictoryPopup = false;
-globalThis.victoryPopupStartTime = null;
-currentLevel = getNextLevel();
-levelJustCompleted = currentLevel;
+      const sessionCtx = {
+        actionLimit: 5,
+        turnsLeft: 0,
+        goldMultiplier: 1,
+        autoRevive: false,
+        reroll: 0
+      };
+      applyNextBattleFlags(sessionCtx);
 
-// ✅ 1. 读取道具 flag
-const sessionCtx = {
- actionLimit: 5,
- turnsLeft: 0,
- goldMultiplier: 1,
- autoRevive: false,
- reroll: 0
-};
-applyNextBattleFlags(sessionCtx);
+      const monster = loadMonster(currentLevel);
+      turnsLeft = monster.skill.cooldown + (sessionCtx.turnsLeft || 0);
+      globalThis.goldMultiplier = sessionCtx.goldMultiplier || 1;
+      globalThis.actionLimit = sessionCtx.actionLimit || 5;
 
-// ✅ 2. 应用道具效果
-const monster = loadMonster(currentLevel);
-turnsLeft = monster.skill.cooldown + (sessionCtx.turnsLeft || 0);
-globalThis.goldMultiplier = sessionCtx.goldMultiplier || 1;
-globalThis.actionLimit = sessionCtx.actionLimit || 5;
-playerActionCounter = 0;
-initGrid();
-drawGame();
-return;
-}
+      attackGaugeDamage = 0;
+      attackDisplayDamage = 0;
+      playerActionCounter = 0;
 
+      initGrid();
+      drawGame();
+      return;
+    }
 
+    return; // ✅ 胜利弹窗期间，其他点击都不响应
   }
-  
-  
 
-  // ✅ 失败弹窗点击“回到主页”
+  // ✅ 2. 超级方块点击（仅无弹窗时）
+  const col = Math.floor((x - __gridStartX) / __blockSize);
+  const row = Math.floor((y - __gridStartY) / __blockSize);
+  if (
+    row >= 0 && row < gridSize &&
+    col >= 0 && col < gridSize
+  ) {
+    const block = gridData[row][col];
+    if (SuperBlockSystem.isSuper?.(block)) {
+      SuperBlockSystem.trigger(row, col, ctxRef, gridData, gridSize);
+      gridData[row][col] = null;
+      drawGame();
+      setTimeout(() => processClearAndDrop(), 300);
+      return;
+    }
+  }
+
+  // ✅ 3. 失败弹窗点击“回到主页”
   if (showGameOver) {
-    const boxW = 260;
-    const boxH = 160;
+    const boxW = 260, boxH = 160;
     const boxX = (canvasRef.width - boxW) / 2;
     const boxY = (canvasRef.height - boxH) / 2;
     const btnX = boxX + 60;
     const btnY = boxY + 100;
     const btnW = 140;
     const btnH = 40;
-
-    const inGameOverBtn =
+    const inGameOverBtn = (
       x >= btnX && x <= btnX + btnW &&
-      y >= btnY && y <= btnY + btnH;
-
-      if (inGameOverBtn) {
-        switchPageFn?.('home', () => {
-          destroyGamePage();
-        });
-      }
-      
-
-    return; // ❗ 禁止继续滑动行为
+      y >= btnY && y <= btnY + btnH
+    );
+    if (inGameOverBtn) {
+      switchPageFn?.('home', () => destroyGamePage());
+    }
+    return;
   }
 
-  // ✅ 检测是否点击了左上角“返回”按钮
-const btn = globalThis.backToHomeBtn;
-if (btn &&
-    x >= btn.x && x <= btn.x + btn.width &&
-    y >= btn.y && y <= btn.y + btn.height) {
-  switchPageFn?.('home', () => {
-    destroyGamePage(); // 清理资源
-  });
-  return; // ✅ 不再继续处理滑动
-}
+  // ✅ 4. 左上角“返回按钮”
+  const btnBack = globalThis.backToHomeBtn;
+  if (btnBack &&
+      x >= btnBack.x && x <= btnBack.x + btnBack.width &&
+      y >= btnBack.y && y <= btnBack.y + btnBack.height) {
+    switchPageFn?.('home', () => destroyGamePage());
+    return;
+  }
 
-
-
-
+  // ✅ 5. 滑动交换格子
   if (!touchStart) return;
-
-  // ✅ 滑动处理逻辑保持不变
   const endX = touch.clientX;
   const endY = touch.clientY;
   const dx = endX - dragStartX;
   const dy = endY - dragStartY;
-
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
 
   let target = null;
-
   if (absX > absY) {
     if (dx > 20 && touchStart.col < gridSize - 1) {
       target = { row: touchStart.row, col: touchStart.col + 1 };
@@ -1721,6 +1685,7 @@ if (btn &&
 
   touchStart = null;
 }
+
 
 
 
