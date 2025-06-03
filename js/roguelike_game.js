@@ -1962,7 +1962,7 @@ showDamageText(pendingDamage, endX, endY + 50);
             });
           
             // ✅ 保存继续关卡
-            wx.setStorageSync('lastLevel', currentLevel.toString());
+            //wx.setStorageSync('lastLevel', currentLevel.toString());
           
             drawGame();
           }, 600);

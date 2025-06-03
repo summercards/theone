@@ -1072,7 +1072,6 @@ function checkAndClearMatches () {
         }
         count = 1;
         if (superBlockSpots.length > 0) {
-          console.log('生成超级块:', superBlockSpots);
         }
       }
     }
