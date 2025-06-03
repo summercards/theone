@@ -190,8 +190,6 @@ export function initGamePage(ctx, switchPage, canvas, options = {}) {
   globalThis.canvasRef = canvas;
   globalThis.ctxRef = ctx;
   globalThis.__gridStartY = canvas.height * 0.38;  // 头像显示行顶部的 Y 坐标（你可微调）
-
-  const { getSelectedHeroes } = require('./data/hero_state.js');
 const { createHeroLevelUpEffect } = require('./effects_engine.js');
 
 // ✅ 为每个出战英雄绑定升级特效回调
@@ -311,11 +309,6 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
   __gridStartY = boardY;
   globalThis.__gridStartY = boardY;
   
-
-
-  __blockSize   = actualBlockSize;
-  __gridStartX  = boardX;
-  __gridStartY  = boardY;
 
   globalThis.__blockSize = actualBlockSize;
 globalThis.__gridStartX = boardX;
@@ -1625,7 +1618,7 @@ function startHeroBurst(dmg) {
   
     /* 总时长 = 起始停顿 + 有效英雄数 × 间隔 + 收尾缓冲 */
     const liveCount = heroes.filter(h => h).length;
-    const totalTime = startDelay + liveCount * interval + 350;
+ 
   
     function waitSkillsThenFinish() {
         if (skillsActive === 0) {
