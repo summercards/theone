@@ -82,11 +82,11 @@ if (prop.id === 'super_block') {
 
   /* —— 4. 未购买时加锁遮罩 —— */
   if (!purchased) {
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(x, y, size, size);
+    //ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    //ctx.fillRect(x, y, size, size);
 
-    ctx.fillStyle = '#FFD700';
-    ctx.font      = `bold ${size * 0.38}px sans-serif`;
-    ctx.fillText('💰', x + size / 2, y + size / 2);
+    //ctx.fillStyle = '#FFD700';
+    //ctx.font      = `bold ${size * 0.38}px sans-serif`;
+    //ctx.fillText('💰', x + size / 2, y + size / 2);
   }
 }

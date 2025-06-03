@@ -700,15 +700,15 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
     // === 💰 未雇佣时绘制金币锁 ===
 if (typeof hiredHeroIds !== 'undefined' && !hiredHeroIds.has(hero.id)) {
     // 黑色半透明遮罩
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(x, y, size, size);
+    //ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    //ctx.fillRect(x, y, size, size);
   
     // 金币图标提示
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('💰', x + size / 2, y + size / 2);
+    //ctx.fillStyle = '#FFD700';
+    //ctx.font = 'bold 16px sans-serif';
+    //ctx.textAlign = 'center';
+    //ctx.textBaseline = 'middle';
+    //ctx.fillText('💰', x + size / 2, y + size / 2);
   }
   
   }
