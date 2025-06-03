@@ -470,8 +470,31 @@ const HeroData = {
         },
         cooldown: 3
       }
+    },
+    {
+      id: 'hero019',
+      name: '国王',
+      icon: 'icon_king.png',  // 图标可自定义
+      role: '坦克',
+      rarity: 'SSR',
+      level: 1,
+      exp: 0,
+      locked: true,
+      attributes: {
+        physical: 100,
+        magical: 50,
+        healing: 0,
+      },
+      skill: {
+        name: '王之领域',
+        cooldown: 3,
+        effect: {
+          type: 'expandGrid',
+          size: 8,          // ✅ 与呆伦不同之处
+          duration: 2
+        }
+      }
     }
-    
     
   ],
 
