@@ -1481,15 +1481,18 @@ function onTouchend(e) {
       col >= 0 && col < gridSize
     ) {
       const block = gridData[row][col];
+    
       if (SuperBlockSystem.isSuper?.(block)) {
+        if (showVictoryPopup) return;  // ✅ 只有点击超级方块时才禁止触发
+    
         SuperBlockSystem.trigger(row, col, ctxRef, gridData, gridSize);
-
         gridData[row][col] = null;
         drawGame();
         setTimeout(() => processClearAndDrop(), 300);
         return;
       }
     }
+    
   // ✅ 胜利弹窗点击“下一关”
   if (showVictoryPopup) {
     const px = x, py = y;
@@ -1606,7 +1609,7 @@ showVictoryPopup = false;
 globalThis.victoryPopupStartTime = null;
 currentLevel = getNextLevel();
 levelJustCompleted = currentLevel;
-
+resetSessionState();                // ✅ ← 加上这行！
 // ✅ 1. 读取道具 flag
 const sessionCtx = {
  actionLimit: 5,

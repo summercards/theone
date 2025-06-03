@@ -355,7 +355,7 @@ if (showVictoryPopup) {
     const H = canvasRef.height;
   
     /* 1. 背景遮罩 */
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.fillRect(0, 0, W, H);
   
     /* 2. 标题 */
@@ -1332,9 +1332,11 @@ function onTouchend(e) {
       col >= 0 && col < gridSize
     ) {
       const block = gridData[row][col];
+    
       if (SuperBlockSystem.isSuper?.(block)) {
+        if (showVictoryPopup) return;  // ✅ 只有点击超级方块时才禁止触发
+    
         SuperBlockSystem.trigger(row, col, ctxRef, gridData, gridSize);
-
         gridData[row][col] = null;
         drawGame();
         setTimeout(() => processClearAndDrop(), 300);
@@ -1350,7 +1352,7 @@ function onTouchend(e) {
   
       currentLevel = getNextLevel();      // ✅ 更新当前关卡编号
       levelJustCompleted = currentLevel;  // ✅ 更新胜利用变量
-  
+      resetSessionState();                // ✅ ← 加上这行！
       const monster = loadMonster(currentLevel); // ✅ 使用正确关卡加载怪物
       turnsLeft = monster.skill.cooldown;
   
