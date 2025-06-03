@@ -131,7 +131,7 @@ const HeroData = {
       role: "辅助",
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
-      locked: false,
+      locked: true,
       unlockCost: 0,
       attributes: { magical: 7, healing: 10 },
       level: 1,
@@ -480,13 +480,14 @@ const HeroData = {
       level: 1,
       exp: 0,
       locked: true,
+      hireCost: 20,         // ✅ 新增字段
+      unlockCost: 600,
       attributes: {
-        physical: 100,
-        magical: 50,
-        healing: 0,
+        physical: 50,
       },
       skill: {
         name: '王之领域',
+        description: "扩展棋盘为 8x8，持续 3 回合",
         cooldown: 3,
         effect: {
           type: 'expandGrid',
