@@ -1609,7 +1609,7 @@ showVictoryPopup = false;
 globalThis.victoryPopupStartTime = null;
 currentLevel = getNextLevel();
 levelJustCompleted = currentLevel;
-resetSessionState();                // ✅ ← 加上这行！
+
 // ✅ 1. 读取道具 flag
 const sessionCtx = {
  actionLimit: 5,
