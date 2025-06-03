@@ -731,6 +731,20 @@ function drawUI() {
     height: __blockSize * gridSize
   });
 
+// ✅ 棋盘外围
+const padding = 9;       // 调整距离
+const borderRadius = 12; // 调整圆角
+
+const boardX = __gridStartX - padding;
+const boardY = __gridStartY - padding;
+const boardW = __blockSize * gridSize + padding * 2;
+const boardH = __blockSize * gridSize + padding * 2;
+
+ctxRef.strokeStyle = '#2e144f'; 
+ctxRef.lineWidth = 4;
+drawRoundedRect(ctxRef, boardX, boardY, boardW, boardH, borderRadius, false, true);
+// ✅ 棋盘外围
+
 
 drawMonsterSprite(ctxRef, canvasRef); 
 

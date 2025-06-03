@@ -245,8 +245,28 @@ export function drawGame() {
   globalThis.layoutRects = [];
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   // 创建背景层并清空画布
-  ctxRef.fillStyle = '#001';
-  ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+// === 画布底层
+ctxRef.fillStyle = '#000';
+ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+
+// 🎯 渐变区域中心位置
+const centerY = 310;
+const gradientHeight = 38; // 每边渐变 60 像素
+
+// ✅ 上半段渐变（从中心往上）
+const gradTop = ctxRef.createLinearGradient(0, centerY - gradientHeight, 0, centerY);
+gradTop.addColorStop(0.0, '#0a0018');   // 最顶部：深蓝紫
+gradTop.addColorStop(1.0, '#221133');   // 中间亮一些
+ctxRef.fillStyle = gradTop;
+ctxRef.fillRect(0, centerY - gradientHeight, canvasRef.width, gradientHeight);
+
+// ✅ 下半段渐变（从中心往下）
+const gradBottom = ctxRef.createLinearGradient(0, centerY, 0, centerY + gradientHeight);
+gradBottom.addColorStop(0.0, '#221133'); // 中间亮一些
+gradBottom.addColorStop(1.0, '#0a0018'); // 底部再暗下去
+ctxRef.fillStyle = gradBottom;
+ctxRef.fillRect(0, centerY, canvasRef.width, gradientHeight);
+
 
   const maxWidth = canvasRef.width * 0.9;
   const maxHeight = canvasRef.height - 420;
@@ -548,6 +568,19 @@ function drawUI() {
     height: __blockSize * gridSize
   });
 
+// ✅ 棋盘外围
+const padding = 9;       // 调整距离
+const borderRadius = 12; // 调整圆角
+
+const boardX = __gridStartX - padding;
+const boardY = __gridStartY - padding;
+const boardW = __blockSize * gridSize + padding * 2;
+const boardH = __blockSize * gridSize + padding * 2;
+
+ctxRef.strokeStyle = '#4f1437'; // 绿色
+ctxRef.lineWidth = 4;
+drawRoundedRect(ctxRef, boardX, boardY, boardW, boardH, borderRadius, false, true);
+// ✅ 棋盘外围
 
 drawMonsterSprite(ctxRef, canvasRef); 
 
