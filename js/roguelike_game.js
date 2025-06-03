@@ -562,7 +562,7 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
       const x = startX;
       const y = currentY;
     
-      if (isHero && hero) hero.locked = false;
+      const isUnlocked = isHero && hiredHeroIds.has(hero?.id); // ✅ 本局是否雇佣
     
       heroIconRects.push({
         rect: { x, y, width: CARD_W, height: CARD_H },
@@ -599,8 +599,8 @@ function drawHeroSelectionUIInPopup(ctx, canvas) {
           ? (hiredHeroIds.has(hero.id) ? '已雇佣' : `雇佣：${cost}金币`)
           : (purchasedPropIds.has(prop.id) ? '已购买' : `购买：${cost}金币`);
     
-        ctx.fillStyle = (isHero && hiredHeroIds.has(hero.id)) || (prop && purchasedPropIds.has(prop.id))
-          ? '#0F0' : '#FFD700';
+          ctx.fillStyle = (isUnlocked || purchased) ? '#0F0' : '#FFD700';
+
     
         ctx.font = `bold ${14 * scale}px sans-serif`;
         ctx.textAlign = 'left';
