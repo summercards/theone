@@ -36,11 +36,23 @@ const SuperBlockSystem = {
     ctx.translate(-centerX, -centerY);
     ctx.globalAlpha = flicker;
 
-    let startColor = '#FFD700', endColor = '#FF4A6A';
+    let startColor = '#FF0066', endColor = '#FF3366';  // 默认红粉
+
     switch (type) {
-      case 'S1': startColor = '#FF9A9A'; endColor = '#D84444'; break;
-      case 'S2': startColor = '#8DDCFF'; endColor = '#3CA7E0'; break;
-      case 'S3': startColor = '#D1B3FF'; endColor = '#8F6AE2'; break;
+      case 'S1': // 火红系
+        startColor = '#FF0033'; // 更亮的红
+        endColor   = '#FF3344'; // 稍微暗一点
+        break;
+    
+      case 'S2': // 电蓝系
+        startColor = '#0099FF'; // 明亮蓝
+        endColor   = '#33BBFF'; // 稍浅蓝
+        break;
+    
+        case 'S3':
+          startColor = '#A071FF'; // 更柔和、截图风格的紫
+          endColor   = '#7B4CE8';
+          break;
     }
 
     const gradient = ctx.createRadialGradient(centerX, centerY, width * 0.2, centerX, centerY, width / 1.5);
