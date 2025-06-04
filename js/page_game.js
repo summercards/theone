@@ -1632,7 +1632,7 @@ function startHeroBurst(dmg) {
   
     function waitSkillsThenFinish() {
         if (skillsActive === 0) {
-          startAttackEffect(dmg);   // 所有技能视觉+逻辑都完毕 → 结算伤害
+          startAttackEffect(attackGaugeDamage); // ✅ 使用最新伤害巢值
           drawGame();
           heroBurstRunning = false;
           tryStartHeroBurst();      // 检查队列
@@ -1648,7 +1648,27 @@ function startHeroBurst(dmg) {
   function tryStartHeroBurst() {
     if (pendingHeroBurst && !heroBurstRunning && !clearingRunning) {
       pendingHeroBurst = false;
-      startHeroBurst(pendingBurstDamage);
+      const heroes = getSelectedHeroes();
+const interval = 600;            // 每个英雄动画的间隔
+const startDelay = 600;          // 首次释放前延迟
+const totalHeroes = heroes.filter(h => h).length;
+const totalDuration = startDelay + totalHeroes * interval + 300;
+
+let i = 0;
+function releaseNext() {
+  if (i >= heroes.length) return;
+  if (heroes[i]) releaseHeroSkill(i);
+  i++;
+  setTimeout(releaseNext, interval);
+}
+
+setTimeout(releaseNext, startDelay);
+
+// 💥 等所有技能释放后再结算攻击
+setTimeout(() => {
+  const finalDamage = attackGaugeDamage; // ✅ 现在已包含技能加伤
+  startAttackEffect(finalDamage);
+}, totalDuration);
     }
   }
   function releaseHeroSkill(slotIndex) {
@@ -1667,15 +1687,17 @@ function startHeroBurst(dmg) {
     const context = {
       dealDamage,
       log: logBattle,
-      canvas: canvasRef,   // ✅ 加上这行！
+      canvas: canvasRef,
       addGauge: (value) => {
-        attackGaugeDamage += Math.round(value);
+        const delta = Math.round(value);
+        attackGaugeDamage += delta;
+        pendingBurstDamage += delta;
         damagePopTime = Date.now();
       },
       mulGauge: (factor) => {
         attackGaugeDamage = Math.round(attackGaugeDamage * factor);
+        pendingBurstDamage = attackGaugeDamage;
         damagePopTime = Date.now();
- 
       }
     };
     
