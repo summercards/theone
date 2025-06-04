@@ -137,10 +137,9 @@ export function applySkillEffect(hero, effect, context) {
         delayStep = 300
       } = effect;
     
-      // 🚫 注销等级成长逻辑，固定使用 baseHits
-      // const level = hero.level ?? 1;
-      // const totalHits = baseHits + Math.floor((level - 1) / growthPerLevel);
-      const totalHits = baseHits;
+      const level = hero.level ?? 1;
+      const growthPerLevel = effect.growthPerLevel ?? 1;
+      const totalHits = baseHits + Math.floor((level - 1) / growthPerLevel);
     
       const canvas = context.canvas;
       const { createFloatingTextUp } = require('../effects_engine.js');
@@ -360,29 +359,24 @@ export function applySkillEffect(hero, effect, context) {
           }
         }
       
-        const count = effect.count ?? 3;
+        const baseCount = effect.baseCount ?? effect.count ?? 3;
+        const count = baseCount + (hero.level - 1);
         const shuffled = candidates.sort(() => Math.random() - 0.5);
         const selected = shuffled.slice(0, count);
       
-        selected.forEach(({ r, c }, i) => {
-          const delay = i * 300;
-          setTimeout(() => {
-            grid[r][c] = 'C';
-            const x = startX + c * blockSize + blockSize / 2;
-            const y = startY + r * blockSize + blockSize / 2;
-            createPopEffect(x, y, blockSize, 'C');
-            createExplosion(x, y, '#FFD700');
+        for (const { r, c } of selected) {
+          grid[r][c] = 'D';
+          const x = startX + c * blockSize + blockSize / 2;
+          const y = startY + r * blockSize + blockSize / 2;
+          createPopEffect(x, y, blockSize, 'D');
+          createExplosion(x, y, '#FFD700');
+        }
+        
+        try {
+          (context.drawGame ?? pageGame.drawGame)?.();
+        } catch {}
       
-            if (i === selected.length - 1) {
-              try {
-                (context.drawGame ?? pageGame.drawGame)?.();
-
-              } catch {}
-            }
-          }, delay);
-        });
-      
-        context.log(`${hero.name} 将 ${selected.length} 个方块变成了魔法方块（C）`);
+        context.log(`${hero.name} 将 ${selected.length} 个方块变成了魔法方块（D）`);
         break;
       }
       

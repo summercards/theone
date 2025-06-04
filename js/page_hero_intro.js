@@ -13,7 +13,7 @@ let pageIndex = 0;
 let btnPrevRect = null, btnNextRect = null, btnBackRect = null;
 let heroRects = [];
 let popupHero = null;
-const HEROES_PER_PAGE = 7;
+const HEROES_PER_PAGE = 5;
 
 function init(ctx, switchPage, canvas) {
   ctxRef = ctx;
@@ -99,9 +99,28 @@ function getSkillDescription(hero) {
       break;
     }
 
+    case "convertToDBlocks": {
+      const baseCount = effect.baseCount ?? effect.count ?? 3;
+      const count = baseCount + (level - 1);
+      text = `随机将<highlight>${count}</highlight>个非金币方块转为金币方块（D）`;
+      break;
+    }
+
     case "boostAllGauge": {
       const percent = 10 + level;
       text = `所有英雄技能条充能<highlight>+${percent}%</highlight>`;
+      break;
+    }
+
+    case "multiHitPhysical": {
+      const baseHits = effect.baseHits ?? 2;
+      const growthPerLevel = effect.growthPerLevel ?? 1;
+      const scaleStep = effect.scaleStep ?? 0.1;
+      const totalHits = baseHits + Math.floor((level - 1) / growthPerLevel);
+      const scales = Array.from({ length: totalHits }, (_, i) =>
+        (1 + i * scaleStep).toFixed(1)
+      );
+      text = `连续斩击<highlight>${totalHits}</highlight>次，倍率依次为：<highlight>${scales.join(' / ')}</highlight>`;
       break;
     }
 
@@ -111,6 +130,7 @@ function getSkillDescription(hero) {
 
   return text;
 }
+
 
 
 function render() {
@@ -125,7 +145,7 @@ function render() {
   const cardH = 90;
   const gap = 14;
   const startX = margin;
-  const startY = 60;
+  const startY = 100;
 
   const startIdx = pageIndex * HEROES_PER_PAGE;
   const endIdx = startIdx + HEROES_PER_PAGE;
@@ -138,38 +158,45 @@ function render() {
 
     const rect = { x, y, width: cardW, height: cardH };
     ctx.fillStyle = '#3e205c';
-    drawRoundedRect(ctx, x, y, cardW, cardH, 8, true, false);
+    drawRoundedRect(ctx, x, y, cardW, cardH, 10, true, false);
 
+    const imgSize = 54;
     const imgX = x + 12;
-    const imgY = y + 18;
+    const imgY = y + (cardH - imgSize) / 2;
     const img = globalThis.imageCache[hero.icon];
     if (img) {
-      ctx.drawImage(img, imgX, imgY, 54, 54);
-    
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(imgX + 8, imgY);
+      ctx.arcTo(imgX + imgSize, imgY, imgX + imgSize, imgY + imgSize, 8);
+      ctx.arcTo(imgX + imgSize, imgY + imgSize, imgX, imgY + imgSize, 8);
+      ctx.arcTo(imgX, imgY + imgSize, imgX, imgY, 8);
+      ctx.arcTo(imgX, imgY, imgX + imgSize, imgY, 8);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+      ctx.restore();
+
       if (hero.locked) {
         ctx.save();
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = '#000';
-        drawRoundedRect(ctx, imgX, imgY, 54, 54, 6, true, false);
+        drawRoundedRect(ctx, imgX, imgY, imgSize, imgSize, 8, true, false);
         ctx.globalAlpha = 1;
-    
+
         const lockImg = globalThis.imageCache?.['lock'];
         if (lockImg && lockImg.complete) {
           ctx.drawImage(lockImg, imgX + 10, imgY + 10, 32, 32);
         } else {
-          drawStyledText(ctx, '🔒', imgX + 27, imgY + 27, {
-            font: '16px sans-serif',
-            fill: '#FFF',
-            align: 'center',
-            baseline: 'middle'
+          drawStyledText(ctx, '🔒', imgX + imgSize / 2, imgY + imgSize / 2, {
+            font: '16px sans-serif', fill: '#FFF', align: 'center', baseline: 'middle'
           });
         }
         ctx.restore();
       }
     }
-    
 
-    const textX = imgX + 54 + 10;
+    const textX = imgX + imgSize + 12;
     let textY = imgY;
 
     drawStyledText(ctx, hero.name, textX, textY, {
@@ -178,17 +205,14 @@ function render() {
     textY += 20;
 
     drawStyledText(ctx, `职业：${hero.role}`, textX, textY, {
-      font: '13px IndieFlower', fill: '#fefae0', align: 'left', baseline: 'top'
+      font: 'bold 13px IndieFlower', fill: '#fefae0', align: 'left', baseline: 'top'
     });
     textY += 20;
 
     const attrs = hero.attributes;
-    const attrText = Object.entries(attrs)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('  ');
-
+    const attrText = Object.entries(attrs).map(([k, v]) => `${k}: ${v}`).join('  ');
     drawStyledText(ctx, attrText, textX, textY, {
-      font: '12px IndieFlower', fill: '#90e0ef', align: 'left', baseline: 'top'
+      font: 'bold 12px IndieFlower', fill: '#90e0ef', align: 'left', baseline: 'top'
     });
 
     drawStyledText(ctx, `Lv.${hero.level}`, x + cardW - 12, y + 16, {
@@ -209,72 +233,87 @@ function render() {
   drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 6, true, false);
   drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRect.height, 6, true, false);
 
-  drawStyledText(ctx, '< 上一页', btnPrevRect.x + btnW / 2, btnPrevRect.y + btnH / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
-  drawStyledText(ctx, '下一页 >', btnNextRect.x + btnW / 2, btnNextRect.y + btnH / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
-  drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, { font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
-
-
-  
+  drawStyledText(ctx, '< 上一页', btnPrevRect.x + btnW / 2, btnPrevRect.y + btnH / 2, { font: 'bold 14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
+  drawStyledText(ctx, '下一页 >', btnNextRect.x + btnW / 2, btnNextRect.y + btnH / 2, { font: 'bold 14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
+  drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, { font: 'bold 14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
 
   if (popupHero) drawPopup(ctx, canvas, popupHero);
 }
 
 function drawPopup(ctx, canvas, hero) {
-  const W = canvas.width * 0.85;
-  const H = 200;
+  const maxWidth = canvas.width * 0.85;
+  const padding = 20;
+  const lineHeight = 24;
+  const innerWidth = maxWidth - padding * 2;
+
+  const desc = getSkillDescription(hero);
+  const rawSegments = desc.split(/<highlight>|<\/highlight>/);
+  const wrappedLines = [];
+  const highlightFlags = [];
+
+  const font = 'bold 13px IndieFlower';
+  ctx.font = font;
+
+  rawSegments.forEach((segment, idx) => {
+    if (!segment.trim()) return;
+    const isHighlight = idx % 2 === 1;
+    let line = '';
+    for (const ch of segment) {
+      const testLine = line + ch;
+      if (ctx.measureText(testLine).width > innerWidth) {
+        wrappedLines.push(line);
+        highlightFlags.push(isHighlight);
+        line = ch;
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) {
+      wrappedLines.push(line);
+      highlightFlags.push(isHighlight);
+    }
+  });
+
+  const dynamicHeight = padding * 2 + (wrappedLines.length + 3) * lineHeight;
+  const W = maxWidth;
+  const H = dynamicHeight;
   const x = (canvas.width - W) / 2;
   const y = (canvas.height - H) / 2;
 
   ctx.fillStyle = '#222';
   drawRoundedRect(ctx, x, y, W, H, 10, true, false);
 
-  const lineHeight = 24;
-  let cy = y + 24;
+  let cy = y + padding;
 
-  // 🔹 标题 + 等级信息
-  drawStyledText(ctx, `${hero.name}（等级 ${hero.level}）`, x + 20, cy, {
+  drawStyledText(ctx, `${hero.name}（等级 ${hero.level}）`, x + padding, cy, {
     font: 'bold 16px IndieFlower', fill: '#FFD700', align: 'left', baseline: 'top'
   });
   cy += lineHeight;
 
-  drawStyledText(ctx, `职业：${hero.role}`, x + 20, cy, {
-    font: '14px IndieFlower', fill: '#FFF', align: 'left', baseline: 'top'
+  drawStyledText(ctx, `职业：${hero.role}`, x + padding, cy, {
+    font: 'bold 14px IndieFlower', fill: '#FFF', align: 'left', baseline: 'top'
   });
   cy += lineHeight;
 
-  // 🔹 技能名称
-  drawStyledText(ctx, `技能：${hero.skill.name}`, x + 20, cy, {
+  drawStyledText(ctx, `技能：${hero.skill.name}`, x + padding, cy, {
     font: 'bold 14px IndieFlower', fill: '#66CCFF', align: 'left', baseline: 'top'
   });
   cy += lineHeight;
 
-  // 🔹 技能描述（支持高亮）
-  const desc = getSkillDescription(hero);
-  const lines = desc.split(/<highlight>|<\/highlight>/);
-  let useHighlight = false;
-
-  for (const part of lines) {
-    if (part.trim() === "") continue;
-
-    drawStyledText(ctx, part, x + 20, cy, {
-      font: '13px IndieFlower',
-      fill: useHighlight ? '#FFD700' : '#EEE',
+  wrappedLines.forEach((line, i) => {
+    drawStyledText(ctx, line, x + padding, cy, {
+      font,
+      fill: highlightFlags[i] ? '#FFD700' : '#EEE',
       align: 'left',
       baseline: 'top'
     });
+    cy += lineHeight;
+  });
 
-    const metrics = ctx.measureText(part);
-    cy += metrics.actualBoundingBoxAscent + 4;
-
-    useHighlight = !useHighlight;
-  }
-
-  // 🔹 关闭提示
-  drawStyledText(ctx, '点击任意处关闭', x + W / 2, y + H - 24, {
-    font: '12px IndieFlower', fill: '#AAA', align: 'center', baseline: 'top'
+  drawStyledText(ctx, '点击任意处关闭', x + W / 2, y + H - padding, {
+    font: 'bold 12px IndieFlower', fill: '#AAA', align: 'center', baseline: 'top'
   });
 }
-
 
 export default {
   init,

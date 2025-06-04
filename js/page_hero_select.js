@@ -529,7 +529,8 @@ for (let i = 0; i < 5; i++) {
   const heroId = selectedHeroes[i];
   if (heroId) {
     const heroObj = new HeroState(heroId);
-    drawIcon(ctx, heroObj, sx, sy, ICON);  // ✅ 新写法
+    drawIcon(ctx, heroObj, sx, sy, ICON, false);  // ❌ 出战栏不显示按钮
+
 
   }
 }
@@ -559,7 +560,8 @@ for (let i = 0; i < 5; i++) {
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, scaled.x, scaled.y, scaled.width, scaled.height, 8, false, true);
     
-    if (hero) drawIcon(ctx, hero, scaled.x, scaled.y, scaled.width);
+    if (hero) drawIcon(ctx, hero, scaled.x, scaled.y, scaled.width, true);  // ✅ 表明是英雄池
+
 
 
     else {
@@ -750,7 +752,7 @@ function drawUnlockDialog(ctx, canvas) {
 }
 
 
-function drawIcon(ctx, hero, x, y, size = ICON) {
+function drawIcon(ctx, hero, x, y, size = ICON, isFromPool = false) {
     const roleToBlockLetter = {
         '战士': 'A',
         '游侠': 'B',
@@ -852,9 +854,9 @@ const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${phys
 drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
   
     // ==== 升级按钮 ====
-    if (showUpgradeButtons && !hero.locked) {
+    if (isFromPool && showUpgradeButtons && !hero.locked) {
       const btnText = '升级';
-      ctx.font = '12px IndieFlower';
+      ctx.font = 'bold 12px IndieFlower';
       ctx.textBaseline = 'middle';
       const textWidth = ctx.measureText(btnText).width;
       const btnPadding = 8;
@@ -864,7 +866,7 @@ drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left',
 // ✅ 升级按钮：固定在头像下方，不做避让
 let btnRect = {
   x: x + size / 2 - btnW / 2,
-  y: y + size + 6, // 头像底部往下偏移 6 像素
+  y: y + size + 3, // 头像底部往下偏移 6 像素
   width: btnW,
   height: btnH
 };

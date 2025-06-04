@@ -168,13 +168,14 @@ const HeroData = {
       },
       skill: {
         name: "狂热连斩",
-        description: "连续斩击2次，每次造成自身物攻伤害，第二次提升10%。",
+        description: "连续斩击，初始2次，每级+1，每次造成自身物攻伤害，后续每击提升10%。",
         effect: {
           type: "multiHitPhysical",
           baseHits: 2,
           baseScale: 1.0,
           scaleStep: 0.1,
-          delayStep: 300
+          delayStep: 300,
+          growthPerLevel: 1   // ⬅️ 新增字段
         },
         cooldown: 3
       }
@@ -227,8 +228,8 @@ const HeroData = {
       },
       skill: {
         name: "嗷呜！",
-        description: "随机将棋盘上的3个非金币方块变成金币方块（D）",
-        effect: { type: "convertToDBlocks", count: 3 },
+        effect: { type: "convertToDBlocks", baseCount: 3 },
+        description: "随机将棋盘上的若干非金币方块变成金币方块（D），每级增加一个",
         cooldown: 3
       }
     },
