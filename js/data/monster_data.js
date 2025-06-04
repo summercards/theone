@@ -73,7 +73,7 @@ for (let i = 0; i < 9; i++) {
     id: lv,
     level: lv,
     name: foodMonsters[i],
-    maxHp: 2200 + i * 100,
+    maxHp: 200 + i * 100,
     sprite: `${foodSprites[i]}.png`,
     damage: 25 + i * 5,
     cooldown: 2,

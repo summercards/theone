@@ -1935,7 +1935,7 @@ function startAttackEffect(dmg) {
 
   createProjectile(startX, startY, endX, endY, 500, () => {
     // 飞弹到达 ⇒ 怪物掉血 & 受击闪
-    dealDamage(pendingDamage);
+    dealDamage(pendingDamage, { allowKill: true });
     createMonsterBounce(); // ✅ 添加弹性缩放动画
     createExplosion(endX, endY);                // 爆点可复用现有效果
     monsterHitFlashTime = Date.now();

@@ -21,11 +21,21 @@ export function getMonster() {
   return monster;
 }
 
-export function dealDamage(amount) {
+export function dealDamage(amount, { allowKill = false } = {}) {
   if (!monster) return 0;
-  monster.hp = Math.max(0, monster.hp - amount);
+
+  const nextHP = monster.hp - amount;
+
+  // 非终结伤害不能击杀
+  if (!allowKill && nextHP <= 0) {
+    monster.hp = 1;
+  } else {
+    monster.hp = Math.max(0, nextHP);
+  }
+
   return monster.hp;
 }
+
 
 export function isMonsterDead() {
   return !!monster && monster.hp <= 0;
