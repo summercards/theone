@@ -901,4 +901,21 @@ export function createHeroLevelUpEffect(slotIndex) {
       });
     }
   }
+  export function createGoldParticles(x0, y0, count = 3) {
+    const endX = 40 + Math.random() * 10;
+    const endY = 126 + Math.random() * 6;
+  
+    const now = Date.now();
+    for (let i = 0; i < count; i++) {
+      const offsetDelay = i * 60;
+      effects.push({
+        type: 'energy_particle',
+        x0, y0, x1: endX, y1: endY,
+        startTime: now + offsetDelay,
+        color: '#FFD700',
+        duration: 600 + Math.random() * 200,
+        radius: 6 + Math.random() * 2
+      });
+    }
+  }
   

@@ -73,6 +73,7 @@ import {
     createAvatarFlash, 
     createEnergyParticles,
     createShake, 
+    createGoldParticles,
     createChargeReleaseEffect , 
     createSkillDialog  , 
     createChargeGlowEffect
@@ -1276,23 +1277,31 @@ function checkAndClearMatches () {
       createPopEffect(centerX, centerY, __blockSize, letter); // ✅ 弹跳动画
       createExplosion(centerX, centerY, BlockConfig[letter]?.color || '#FFD700'); 
       
-      // 创建能量粒子飞向对应英雄职业能量槽
+ // 创建能量粒子飞向对应英雄职业能量槽
 const blockRole = BlockConfig[letter]?.role;
 const blockColor = BlockConfig[letter]?.color || '#FFD700';
 
 const heroes = getSelectedHeroes();
 const heroIndex = heroes.findIndex(h => h?.role === blockRole);
-if (heroIndex >= 0) {
-  const size = 48, spacing = 12;
-  const totalWidth = 5 * size + 4 * spacing;
-  const canvas = canvasRef;
-  const startX = (canvas.width - totalWidth) / 2;
-  const topMargin = __gridStartY - 80;
-  const endX = startX + heroIndex * (size + spacing) + size / 2;
-  const endY = topMargin + size + 8;
 
+// ✅ 始终先定义目标点，防止未定义错误
+const size = 48;
+const spacing = 12;
+const totalWidth = 5 * size + 4 * spacing;
+const canvas = canvasRef;
+const startX = (canvas.width - totalWidth) / 2;
+const topMargin = __gridStartY - 80;
+const endX = startX + heroIndex * (size + spacing) + size / 2;
+const endY = topMargin + size + 8;
+
+if (letter === 'D') {
+  // 💰 D 方块 → 金币飞向左上角
+  createGoldParticles(centerX, centerY);
+} else if (heroIndex >= 0) {
+  // 其他颜色方块 → 能量飞向对应职业头像
   createEnergyParticles(centerX, centerY, endX, endY, blockColor, 6);
 }
+
 
       // ✅ 彩色粒子效果
   
