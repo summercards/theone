@@ -1665,9 +1665,16 @@ function releaseNext() {
 setTimeout(releaseNext, startDelay);
 
 // 💥 等所有技能释放后再结算攻击
+// 延迟后开始轮询动画是否结束
 setTimeout(() => {
-  const finalDamage = attackGaugeDamage; // ✅ 现在已包含技能加伤
-  startAttackEffect(finalDamage);
+  function waitForAllSkills() {
+    if (skillsActive === 0) {
+      startAttackEffect(attackGaugeDamage);  // ✅ 动画播完 + 最新值
+    } else {
+      setTimeout(waitForAllSkills, 50);      // 继续等待
+    }
+  }
+  waitForAllSkills();
 }, totalDuration);
     }
   }
