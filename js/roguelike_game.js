@@ -188,6 +188,19 @@ let gridData = [];
 let selected = null;
 
 
+function drawBackground() {
+  ctxRef.setTransform(1, 0, 0, 1, 0, 0); // 复位矩阵
+  const darkPurple = '#20004c'; // 最底端色
+  const g = ctxRef.createLinearGradient(0, 0, 0, canvasRef.height * 0.9);
+  g.addColorStop(0, '#000'); // 顶部纯黑
+  g.addColorStop(1, darkPurple); // 90% 处过渡到暗紫
+  ctxRef.fillStyle = g;
+  ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height * 0.9);
+  ctxRef.fillStyle = darkPurple;
+  ctxRef.fillRect(0, canvasRef.height * 0.9, canvasRef.width, canvasRef.height * 0.1);
+}
+
+
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
        ctxRef = ctx;              // ① 把真实 2D 上下文保存
        resetSessionState();       // ② 清局面
@@ -282,8 +295,7 @@ export function drawGame() {
   globalThis.layoutRects = [];
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   // 创建背景层并清空画布
-  ctxRef.fillStyle = '#001';
-  ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+  ctxRef.clearRect(0, 0, canvasRef.width, canvasRef.height); // ✨ 清除但不涂黑
 
   const maxWidth = canvasRef.width * 0.9;
   const maxHeight = canvasRef.height - 420;
@@ -717,6 +729,12 @@ if (typeof hiredHeroIds !== 'undefined' && !hiredHeroIds.has(hero.id)) {
   
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
+
+  ctxRef.save();
+ctxRef.globalCompositeOperation = 'destination-over'; // 后画但置底
+drawBackground(); // 绘制底部渐变背景
+ctxRef.restore();
+
     
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   const ctx = ctxRef;
@@ -1083,9 +1101,7 @@ function animateSwap(src, dst, callback, rollback = false) {
   const drawWithOffset = (offsetX1, offsetY1, offsetX2, offsetY2) => {
     globalThis.layoutRects = [];  // ✅ 补这一句！每帧动画中也要清空 layoutRects
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);
-    // 只绘制当前正在移动的方块
-    ctxRef.fillStyle = '#001';
-    ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
+
 
 
 
