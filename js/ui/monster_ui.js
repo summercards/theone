@@ -38,13 +38,13 @@ export function drawMonsterSprite(ctx, canvas) {
   const layoutRects = globalThis.layoutRects || [];
   const bgImage = globalThis.imageCache['scene_bg01'];
 
-  const BG_W = 360;
-  const BG_H = 160;
+  const BG_W = 460;
+  const BG_H = 380;
 
   if (bgImage && bgImage.complete && bgImage.width) {
     let gridTop = globalThis.__gridStartY || (canvas.height * 0.8);
     let bgX = (canvas.width - BG_W) / 2;
-    let bgY = Math.max(32, gridTop - 340);
+    let bgY = Math.max(32, gridTop - 380);
     ctx.drawImage(bgImage, bgX, bgY, BG_W, BG_H);
   }
 
