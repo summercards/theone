@@ -67,14 +67,14 @@ function drawHomeUI() {
   ctxRef.fillStyle = '#b3134a';
   drawRoundedRect(ctxRef, offsetX, offsetYEnter, scaledEnterW, scaledEnterH, 20);
   ctxRef.fill();
-  drawStyledText(ctxRef, '进入酒吧', x + btnWidth / 2, yEnter + btnHeight / 2, {
+  drawStyledText(ctxRef, '魅魔酒吧', x + btnWidth / 2, yEnter + btnHeight / 2, {
     font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
   });
 
   ctxRef.fillStyle = '#4B3B74';
   drawRoundedRect(ctxRef, offsetX, yRoguelike, scaledRogueW, scaledRogueH, 20);
   ctxRef.fill();
-  drawStyledText(ctxRef, '肉鸽模式', x + btnWidth / 2, yRoguelike + btnHeight / 2, {
+  drawStyledText(ctxRef, '魔界森林', x + btnWidth / 2, yRoguelike + btnHeight / 2, {
     font: 'bold 22px IndieFlower', fill: '#CCEEFF', stroke: '#000'
   });
   roguelikeBtnArea = { x: offsetX, y: yRoguelike, width: scaledRogueW, height: scaledRogueH };

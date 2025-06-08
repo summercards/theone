@@ -24,7 +24,14 @@ blockLetters.forEach(letter => {
 preloadList.push({ key: 'lock.png', path: 'assets/ui/lock.png' });
 preloadList.push({ key: 'basketball', path: 'assets/effects/basketball.png' });
 preloadList.push({ key: 'bg', path: 'assets/bg.png' });
-preloadList.push({ key: 'scene_bg01', path: 'assets/scene/scene-bg01.png' });
+const bgCount = 7;  // 假设你最多用到 50 关
+for (let i = 1; i <= bgCount; i++) {
+  const indexStr = String(i).padStart(2, '0');  // 01, 02, ...
+  preloadList.push({
+    key: `scene_bg${indexStr}`,
+    path: `assets/scene/scene-bg${indexStr}.png`
+  });
+}
 preloadList.push({ key: 'hero_window', path: 'assets/ui/hero-window.png' });
 // preloadList.push({ key: 'fallback.png', path: 'assets/ui/fallback.png' }); // 可选占位图
 
