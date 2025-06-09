@@ -98,7 +98,13 @@ export function drawMonsterSprite(ctx, canvas) {
   const speed = 0.2;
   globalThis.monsterHpDraw += (monster.hp - globalThis.monsterHpDraw) * speed;
   const hpDraw = Math.round(globalThis.monsterHpDraw);
-  const hpRatio = Math.max(0, Math.min(1, hpDraw / monster.maxHp));
+
+  /* ---------- 新增防御逻辑 ---------- */
+  const rawRatio = hpDraw / monster.maxHp;
+  const hpRatio  = Number.isFinite(rawRatio)
+                 ? Math.max(0, Math.min(1, rawRatio))
+                 : 0;        // 出现 NaN / Infinity 时退回 0
+  /* ---------------------------------- */
 
   ctx.fillStyle = '#1e1121';
   drawRoundedRect(ctx, barX, barY, BAR_W, BAR_H, 8, true, false);

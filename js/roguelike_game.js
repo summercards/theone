@@ -243,6 +243,7 @@ wx.onTouchEnd(onTouchend);
 
   initGrid();
   const m = loadMonster(currentLevel);
+  globalThis.monsterHpDraw = m.hp;   // 🔑 同步初始血量
   turnsLeft = m.skill.cooldown;
   drawGame();
   registerGameHooks({
@@ -1620,6 +1621,7 @@ function onTouchend(e) {
       applyNextBattleFlags(sessionCtx);
 
       const monster = loadMonster(currentLevel);
+      globalThis.monsterHpDraw = monster.hp;  // 🔑 重置绘制缓冲
       turnsLeft = monster.skill.cooldown + (sessionCtx.turnsLeft || 0);
       globalThis.goldMultiplier = sessionCtx.goldMultiplier || 1;
       globalThis.actionLimit = sessionCtx.actionLimit || 5;
