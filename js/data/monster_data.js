@@ -98,11 +98,11 @@ monsters.push(createMonster({
 // 关卡 11~20：嫉妒怪物体系（手动定义）
 // ------------------------------------------------------------
 const envyMonsters = [
-  '镜妖', '窥视者', '变形鬼', '绿眼蛇', '暗影镜灵', '模仿猫', '羡慕鬼', '嫉光虫', '反射魔'
+  '她的玩偶', '窥视者', '变形鬼', '绿眼蛇', '纠结藤曼', '模仿猫', '羡慕鬼', '嫉光虫', '反射魔'
 ];
 const envySprites = [
-  'jingyao', 'kuishizhe', 'bianxinggui', 'lvyanshe', 'anyingjingling',
-  'mofangmao', 'xianmugui', 'jiguangchong', 'fanshemo'
+  'moster2-1', 'moster2-2', 'bianxinggui', 'lvyanshe', 'moster2-5',
+  'moster2-6', 'moster2-7', 'moster2-8', 'moster2-9'
 ];
 for (let i = 0; i < 9; i++) {
   const lv = i + 11;
@@ -135,11 +135,11 @@ monsters.push(createMonster({
 // 关卡 21~30：贪婪怪物体系（手动定义）
 // ------------------------------------------------------------
 const greedMonsters = [
-  '金鼠', '宝箱怪', '金币虫', '掠夺者', '金牙蛇', '偷心贼', '堆金魔', '铜甲兽', '贪财怪'
+  '黄金史莱姆', '黄金哥布林', '金币虫', '掠夺者', '夺金手', '偷心贼', '堆金魔', '铜甲兽', '贪财怪'
 ];
 const greedSprites = [
-  'jinshu', 'baoxiangguai', 'jinbichong', 'lueduozhe', 'jinyashe',
-  'touxinzei', 'duijinmo', 'tongjiashou', 'tancaiguai'
+  'moster3-1', 'moster3-2', 'moster3-3', 'moster3-4', 'moster3-5',
+  'moster3-6', 'moster3-7', 'moster3-8', 'moster3-9'
 ];
 for (let i = 0; i < 9; i++) {
   const lv = i + 21;
