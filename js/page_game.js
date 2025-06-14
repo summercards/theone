@@ -753,7 +753,8 @@ globalThis.backToHomeBtn = {
 
 /* --- 操作计数展示 --- */
 // === 操作计数展示（固定在棋盘上方） ===
-const countText = `${gaugeCount}/5`;
+const countDown = Math.max(0, 5 - gaugeCount);
+const countText = `操作次数: ${countDown}`;
 
 // 闪烁：触发后 600 ms 内黄白交替
 let color = '#FFF';
@@ -1561,11 +1562,18 @@ function handleSwap(src, dst) {
       }
    
       if (gaugeCount >= 5) {
-        gaugeFlashTime     = Date.now();          // UI 闪烁
-        pendingHeroBurst   = true;                // 排队，不立即执行
-        pendingBurstDamage = attackGaugeDamage;   // 记录伤害
-        gaugeCount         = 0;                   // 计数归零
-        tryStartHeroBurst();                      // 如棋盘空闲可马上触发
+        gaugeFlashTime = Date.now();
+        pendingHeroBurst = true;
+        pendingBurstDamage = attackGaugeDamage;
+      
+        // 防止多次触发
+        const currentCount = gaugeCount;
+        gaugeCount = 9999; // 临时设置一个非法大值，防止继续触发
+      
+        setTimeout(() => {
+          gaugeCount = 0; // 重置回 0
+          tryStartHeroBurst();
+        }, 2000); // 等待2秒再触发
       }
 
       
