@@ -1,6 +1,6 @@
 // js/page_hero_intro.js
 const HeroData = require('./data/hero_data.js');
-const { HeroState } = require('./data/hero_state.js');
+const { HeroState, getRequiredExpForLevel } = require('./data/hero_state.js');
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const lockIconImg = wx.createImage();
 lockIconImg.src = 'assets/ui/lock.png';
@@ -220,7 +220,7 @@ function render() {
     });
 // 新增：显示当前经验 / 升级所需经验
 const exp = hero.exp ?? 0;
-const expToNext = Math.floor(100 * Math.pow(1.2, hero.level - 1));
+const expToNext = getRequiredExpForLevel(hero.level); // ✅ 使用统一函数计算
 drawStyledText(ctx, `经验：${exp} / ${expToNext}`, x + cardW - 12, y + 36, {
   font: 'bold 12px IndieFlower',
   fill: '#90ee90',
