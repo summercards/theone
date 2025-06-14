@@ -855,39 +855,47 @@ drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left',
   
     // ==== 升级按钮 ====
     if (isFromPool && showUpgradeButtons && !hero.locked) {
-      const btnText = '升级';
-      ctx.font = 'bold 12px IndieFlower';
-      ctx.textBaseline = 'middle';
-      const textWidth = ctx.measureText(btnText).width;
-      const btnPadding = 8;
-      const btnW = textWidth + btnPadding * 4;
-      const btnH = 22;
-  
-// ✅ 升级按钮：固定在头像下方，不做避让
-let btnRect = {
-  x: x + size / 2 - btnW / 2,
-  y: y + size + 3, // 头像底部往下偏移 6 像素
-  width: btnW,
-  height: btnH
-};
-
-// 不调用 avoidOverlap，保持位置稳定
-ctx.fillStyle = '#FFD700';
-drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
-drawText(ctx, btnText, btnRect.x + btnW / 2, btnRect.y + btnH / 2,
-  '12px IndieFlower', '#000', 'center', 'middle');
-
-// 保存按钮点击区域（用于 onTouch 判断）
-hero.upgradeButtonRect = { x: btnRect.x, y: btnRect.y, width: btnW, height: btnH };
-
-  
-      ctx.fillStyle = '#FFD700';
-      drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
-      drawText(ctx, btnText, btnRect.x + btnW / 2, btnRect.y + btnH / 2,
-        '12px IndieFlower', '#000', 'center', 'middle');
-  
-      hero.upgradeButtonRect = { x: btnRect.x, y: btnRect.y, width: btnW, height: btnH };
-    } else {
+        // 获取当前等级（来自缓存或初始）
+        const saved = wx.getStorageSync('heroProgress')?.[hero.id];
+        const level = saved?.level ?? hero.level ?? 1;
+        const maxLevel = 15;
+        const isMax = level >= maxLevel;
+      
+        // 设置按钮文字和颜色
+        const displayText = isMax ? '满级' : `${level * 100}金`;
+        const bgColor = isMax ? '#9B59B6' : '#FFD700';
+        const textColor = '#FFF';
+      
+        ctx.font = 'bold 12px IndieFlower';
+        ctx.textBaseline = 'middle';
+      
+        const textWidth = ctx.measureText(displayText).width;
+        const btnPadding = 8;
+        const btnW = textWidth + btnPadding * 4;
+        const btnH = 22;
+      
+        const btnRect = {
+          x: x + size / 2 - btnW / 2,
+          y: y + size + 3,
+          width: btnW,
+          height: btnH
+        };
+      
+        // 绘制按钮背景
+        ctx.fillStyle = bgColor;
+        drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
+      
+        // 绘制按钮文字
+        drawText(ctx, displayText, btnRect.x + btnW / 2, btnRect.y + btnH / 2,
+          '12px IndieFlower', textColor, 'center', 'middle');
+      
+        // 注册点击区域（仅非满级才响应）
+        hero.upgradeButtonRect = isMax
+          ? null
+          : { x: btnRect.x, y: btnRect.y, width: btnW, height: btnH };
+      }
+      
+       else {
       hero.upgradeButtonRect = null;
     }
   

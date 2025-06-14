@@ -65,10 +65,13 @@ class HeroState {
   /** 获得经验（含自动升级 & 存档） */
   gainExp(amount) {
     this.exp += amount;
-    while (this.exp >= this.expToNextLevel) {
-      this.exp -= this.expToNextLevel;
-      this.levelUp();
-    }
+    while (this.exp >= this.expToNextLevel && this.level < 15) {
+        this.exp -= this.expToNextLevel;
+        this.levelUp();
+      }
+      if (this.level >= 15) {
+        this.exp = 0; // 清空经验，不能再升级
+      }
     saveHeroProgress(this);
   }
 

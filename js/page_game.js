@@ -185,6 +185,7 @@ function drawBackground() {
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
+    globalThis.expGainedThisRound = 0;
   ctxRef = ctx;
   switchPageFn = switchPage;
   canvasRef = canvas;
@@ -415,7 +416,15 @@ if (showVictoryPopup) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(popupGoldText, W / 2, goldY);
-      
+      // ✅ 显示经验奖励
+const expY = goldY + 30;
+console.log('[弹窗] 当前经验显示值：', globalThis.expGainedThisRound);
+
+const expGained = globalThis.expGainedThisRound || 0;
+const popupExpText = `获得经验：+${expGained}`;
+ctx.fillStyle = '#7CF2FF';
+ctx.font = 'bold 20px sans-serif';
+ctx.fillText(popupExpText, W / 2, expY);
   
     /* 5. 其他奖励文本 */
     const rewards = globalThis.levelRewards || [];
@@ -1232,7 +1241,7 @@ if (letter === 'D') {
         displayedGold = getSessionCoins(); // 让动画从当前金币值开始
         levelJustCompleted = getNextLevel() - 1;
     
-        rewardExpToHeroes(50);             // ★ 先统计升级
+
         showVictoryPopup = true;           // ★ 再弹窗
         goldPopTime = Date.now(); // ✨ 胜利弹窗金币弹跳
     return;                                // 暂停，等待点击继续
@@ -1800,26 +1809,35 @@ showDamageText(pendingDamage, endX, endY + 50);
         setTimeout(() => {
             earnedGold = getMonsterGold();
             addCoins(earnedGold);
-            goldPopTime = Date.now();              // ← 加这一行
-            displayedGold = getSessionCoins(); // 让动画从当前金币值开始
-            levelJustCompleted = currentLevel;  // ✅ 不再用 getNextLevel()
-            showVictoryPopup = true;
-            popupGoldDisplayed = 0; // ✨ 初始化为 0，开始滚动动画
-            popupGoldStartTime = Date.now(); // ⏱ 标记开始时间
-            rewardExpToHeroes(50);
+            goldPopTime = Date.now();
+            displayedGold = getSessionCoins();
+            levelJustCompleted = currentLevel;
           
-            // ✅ 保存最高记录
+            // ✅ 经验逻辑（统一写在这里）
+            const monster = loadMonster(currentLevel);  // 或 getMonster()
+            const level = monster?.level ?? 1;
+            const isBoss = monster?.isBoss ?? false;
+            const exp = Math.floor(level * 5 + 10 + (isBoss ? 50 : 0));
+          
+            globalThis.expGainedThisRound = exp;       // ✅ 设置给弹窗读取
+            rewardExpToHeroes(exp);                    // 分发经验
+          
+            // ✅ 胜利弹窗
+            showVictoryPopup = true;
+            popupGoldDisplayed = 0;
+            popupGoldStartTime = Date.now();
+          
             updatePlayerStats({
-                stage: currentLevel,              // ✅ 用 currentLevel 作为最远关卡
+              stage: currentLevel,
               damage: dmg,
               gold: getSessionCoins()
             });
           
-            // ✅ 保存继续关卡
             wx.setStorageSync('lastLevel', currentLevel.toString());
           
-            drawGame();
+            drawGame(); // ✅ 一定要放在最后触发弹窗绘制
           }, 600);
+          
           
     
       return; // ❗很重要：停止继续 loadMonster
@@ -1860,7 +1878,10 @@ function expandGridTo({ size = 7, steps = 3, hero }) {
  * 给上阵英雄分配经验，并收集“谁升了级”
  * @param {number} expAmount - 要分配的经验值
  */
+
+
 function rewardExpToHeroes(expAmount) {
+    console.log('📘📘📘【经验分发】英雄获得经验 +%d', expAmount);
     heroLevelUps = [];                           // 先清空上一关的数据
   
     const heroes = getSelectedHeroes();          // 你自己已有的函数，返回本关参战英雄数组

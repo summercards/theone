@@ -218,7 +218,15 @@ function render() {
     drawStyledText(ctx, `Lv.${hero.level}`, x + cardW - 12, y + 16, {
       font: 'bold 12px IndieFlower', fill: '#00FFFF', align: 'right', baseline: 'top'
     });
-
+// 新增：显示当前经验 / 升级所需经验
+const exp = hero.exp ?? 0;
+const expToNext = Math.floor(100 * Math.pow(1.2, hero.level - 1));
+drawStyledText(ctx, `经验：${exp} / ${expToNext}`, x + cardW - 12, y + 36, {
+  font: 'bold 12px IndieFlower',
+  fill: '#90ee90',
+  align: 'right',
+  baseline: 'top'
+});
     heroRects.push({ rect, hero });
   });
 
