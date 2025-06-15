@@ -77,7 +77,11 @@ export function drawMonsterSprite(ctx, canvas) {
   const imgReady = img && img.width && img.complete;
   if (imgReady) {
     const flash = Date.now() - monsterHitFlashTime < 200;
-    const scale = globalThis.monsterScale || monster.spriteScale || 1; // ✅ 改用每个怪物自己的缩放比例
+    const scale =
+    (typeof globalThis.monsterScale === 'number')
+      ? globalThis.monsterScale
+      : (monster.spriteScale ?? 1.0);
+  
     const cx = x + SPR_W / 2;
     const cy = y + SPR_H / 2;
     ctx.save();

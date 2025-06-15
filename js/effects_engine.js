@@ -1,5 +1,5 @@
 import { drawRoundedRect } from './utils/canvas_utils.js'; // ✅ 添加这一行
-
+import { getMonster } from './data/monster_state.js';
 // effects_engine.js  ★★★ 完整可用基线 ★★★
 const effects = [];
 let frameCount = 0;
@@ -126,15 +126,17 @@ export function drawAllEffects(ctx, canvas) {
     
     else if (e.type === 'monster_bounce') {
       const t = now - e.startTime;
+      const baseScale = (getMonster()?.spriteScale ?? 1.0); // ✅ 获取怪物原始缩放
       if (t > e.duration) {
-        globalThis.monsterScale = 1;
+        globalThis.monsterScale = undefined; // ✅ 恢复为 undefined，让绘图函数重新读取 spriteScale
         remove.push(i);
         return;
       }
       const p = t / e.duration;
-      const scale = 1 + 0.2 * Math.sin(p * Math.PI);
-      globalThis.monsterScale = scale;
+      const bounce = 1 + 0.2 * Math.sin(p * Math.PI); // 弹性缩放因子
+      globalThis.monsterScale = bounce * baseScale;  // ✅ 动态缩放基于原始倍数
     }
+    
 
 /* ==== 旧的 6px 黄色点 → 新的火球 ==== */
 /* ==== 火球（大小随 power 变化） ==== */
