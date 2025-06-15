@@ -67,6 +67,7 @@ import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导�
 import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
+import { getMonster, markBossDefeated } from './data/monster_state.js';
 /* ======== 英雄连招节流用状态 ======== */
 let pendingHeroBurst   = false;   // 是否排队等待播放
 let skillsActive = 0;   // 当前还在播放的英雄技能数量
@@ -1806,6 +1807,10 @@ showDamageText(pendingDamage, endX, endY + 50);
     pendingDamage = 0;
 
     if (isMonsterDead()) {
+        const monster = getMonster();
+        if (monster.isBoss) {
+          markBossDefeated(monster.level);
+        }
         setTimeout(() => {
             earnedGold = getMonsterGold();
             addCoins(earnedGold);

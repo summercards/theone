@@ -6,6 +6,7 @@ let monster = null;
 let turnCounter = 0;
 let defeatedBossLevel = 0; // 记录击败的最高 boss 等级
 
+
 export function markBossDefeated(level) {
     if (level > defeatedBossLevel) {
       defeatedBossLevel = level;
@@ -13,10 +14,10 @@ export function markBossDefeated(level) {
   }
   
   export function hasDefeatedBoss2() {
-    return defeatedBossLevel >= 6; // 假设 Boss2 是第6关
+    return defeatedBossLevel >= 20;
   }
 
-  
+
 export function loadMonster(level = 1) {
   currentLevel = level;
   const proto = monsters.find(m => m.level === level) || monsters.at(-1);

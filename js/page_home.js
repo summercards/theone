@@ -11,7 +11,7 @@ let frameCount = 0;
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { shareMyStats } = require('./utils/share_utils.js');
 import { drawAllEffects, updateAllEffects, createFireParticles, createFireGlow, createPersistentFireGlow, removeFireGlowEffect } from './effects_engine.js';
-
+import { hasDefeatedBoss2 } from './data/monster_state.js';
 let fireFrameCounter = 0;
 
 export function initHomePage(ctx, switchPage, canvas) {
@@ -71,13 +71,22 @@ function drawHomeUI() {
     font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
   });
 
+  const unlocked = hasDefeatedBoss2();
+  ctxRef.save();
+  ctxRef.globalAlpha = unlocked ? 1.0 : 0.3; // 变灰显示
   ctxRef.fillStyle = '#4B3B74';
   drawRoundedRect(ctxRef, offsetX, yRoguelike, scaledRogueW, scaledRogueH, 20);
   ctxRef.fill();
   drawStyledText(ctxRef, '魔界森林', x + btnWidth / 2, yRoguelike + btnHeight / 2, {
     font: 'bold 22px IndieFlower', fill: '#CCEEFF', stroke: '#000'
   });
-  roguelikeBtnArea = { x: offsetX, y: yRoguelike, width: scaledRogueW, height: scaledRogueH };
+  ctxRef.restore();
+  
+  // ✅ 只有解锁时才启用点击区域
+  roguelikeBtnArea = unlocked
+    ? { x: offsetX, y: yRoguelike, width: scaledRogueW, height: scaledRogueH }
+    : null;
+  
 
   const smallBtnWidth = 100;
   const smallBtnHeight = 40;
@@ -131,13 +140,19 @@ function onTouch(e) {
     return;
   }
 
-  if (roguelikeBtnArea &&
-      xTouch >= roguelikeBtnArea.x && xTouch <= roguelikeBtnArea.x + roguelikeBtnArea.width &&
-      yTouch >= roguelikeBtnArea.y && yTouch <= roguelikeBtnArea.y + roguelikeBtnArea.height) {
+  if (xTouch >= x && xTouch <= x + btnWidth &&
+    yTouch >= yRoguelike && yTouch <= yRoguelike + btnHeight) {
+  if (hasDefeatedBoss2()) {
     removeFireGlowEffect();
     setTimeout(() => switchPageFn('roguelike'), 150);
-    return;
+  } else {
+    wx.showToast?.({
+      title: '您还未探索到该地区',
+      icon: 'none'
+    });
   }
+  return;
+}
 
   if (rankingBtnArea &&
       xTouch >= rankingBtnArea.x && xTouch <= rankingBtnArea.x + rankingBtnArea.width &&
