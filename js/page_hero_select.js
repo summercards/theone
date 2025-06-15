@@ -829,11 +829,20 @@ function drawIcon(ctx, hero, x, y, size = ICON, isFromPool = false) {
         ctx.fillText(hero.name,   x + 4, y + size - 3);
       }
       
-
+    // ==== 等级角标 ====
+    const level = saved?.level ?? hero.level ?? 1;
+    ctx.font = 'bold 11px IndieFlower';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#FFD700';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.strokeText(`Lv.${level}`, x + size - 4, y + 4);
+    ctx.fillText(`Lv.${level}`,   x + size - 4, y + 4);
     // ==== 锁定遮罩 ====
     if (hero.locked) {
       ctx.save();
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.65;
       ctx.fillStyle = '#000';
       drawRoundedRect(ctx, x, y, size, size, 8, true, false);
       ctx.globalAlpha = 1;
@@ -899,16 +908,7 @@ drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left',
       hero.upgradeButtonRect = null;
     }
   
-    // ==== 等级角标 ====
-    const level = saved?.level ?? hero.level ?? 1;
-    ctx.font = 'bold 11px IndieFlower';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#FFD700';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.strokeText(`Lv.${level}`, x + size - 4, y + 4);
-    ctx.fillText(`Lv.${level}`,   x + size - 4, y + 4);
+
   }
   
 
