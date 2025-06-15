@@ -1,4 +1,6 @@
-
+let comboCounter = 0;
+let comboShowTime = 0;      // 🎥 记录当前动画的开始时间
+let lastComboUpdateTime = 0; // 🕒 实际触发新 combo 的时间
 let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
@@ -910,7 +912,51 @@ if (DEBUG) {
     ctxRef.fillText(logs[i], 12, canvasRef.height - 100 + i * 14);
   }
 }
-
+// === Combo 显示（仅当 combo ≥ 2 且 1 秒内） ===
+if (comboCounter >= 1 && Date.now() - lastComboUpdateTime < 2500) {
+    const elapsed = Date.now() - comboShowTime;
+    const progress = Math.min(1, elapsed / 350); // 动画周期
+    const jump = 1 + 0.4 * progress; // 只放大，不缩小
+  
+    // 缩放比例逻辑
+    let baseScale = 0.3;
+    if (comboCounter <= 10) {
+      baseScale = 0.3;
+    } else if (comboCounter <= 20) {
+      baseScale = 0.5;
+    } else {
+      baseScale = Math.min(0.5 + (comboCounter - 20) * 0.05, 1.0);
+    }
+  
+    const finalScale = baseScale * jump;
+  
+    const ctx = ctxRef;
+    const x = canvasRef.width / 2 - 50;
+    const y = __gridStartY - 180;
+  
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((-20 * Math.PI) / 180);
+    ctx.scale(finalScale, finalScale);
+    ctx.font = `bold 80px Impact, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+  
+    const grad = ctx.createLinearGradient(-100, 0, 100, 0);
+    grad.addColorStop(0, '#FFF566');
+    grad.addColorStop(1, '#FF8C00');
+  
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(`Combo ×${comboCounter}!`, 0, 0);
+    ctx.fillStyle = grad;
+    ctx.fillText(`Combo ×${comboCounter}!`, 0, 0);
+  
+    ctx.restore();
+  }
+  
+  
+  
 
 if (showGameOver) {
   const boxW = 260, boxH = 160;
@@ -1340,36 +1386,74 @@ function checkHasMatchAt(row, col) {
 }
 
 function processClearAndDrop() {
-    clearingRunning = true;   // ⬅️ 开始连消
-  const loop = () => {
-    setTimeout(() => {
-      dropBlocks();
-      drawGame();
-
+    clearingRunning = true;
+  
+    const loop = () => {
+      // ✅ 新增：预留给爆炸/粒子/超级方块表现 200ms
       setTimeout(() => {
-        fillNewBlocks();
+        dropBlocks();
         drawGame();
-
+  
         setTimeout(() => {
-          if (checkAndClearMatches()) {
-
-            loop();
-          } else if (!hasPossibleMatches()) {
-            setTimeout(() => {
-              initGrid();
-              drawGame();
-            }, 500);
-                      } else {                         // ★ 所有方块已稳定，棋盘空闲
-                            clearingRunning = false;      //   标记“忙碌结束”
-                            tryStartHeroBurst();          //   轮到英雄连招
-          }
-        }, 300);
-      }, 300);
-    }, 200);
-  };
-
-  loop();
-}
+          fillNewBlocks();
+          drawGame();
+  
+          setTimeout(() => {
+            const matched = checkAndClearMatches();
+            const stillEmpty = hasEmptyTiles();
+  
+            if (matched || stillEmpty) {
+              comboCounter++;
+  
+              const now = Date.now();
+              const minComboDisplay = 300;
+  
+              if (now - comboShowTime < minComboDisplay) {
+                setTimeout(() => {
+                  comboShowTime = Date.now();
+                }, minComboDisplay - (now - comboShowTime));
+              } else {
+                comboShowTime = now;
+              }
+  
+              lastComboUpdateTime = now;
+  
+              // ✅ 下一轮
+              loop();
+            } else {
+              if (!hasPossibleMatches()) {
+                setTimeout(() => {
+                  initGrid();
+                  drawGame();
+                }, 500);
+              } else {
+                setTimeout(() => {
+                    comboCounter = 0;
+                    drawGame(); // 再触发一次绘制，清除文字
+                  }, 2000); // 保留 Combo 显示 1.5 秒
+                  
+                  clearingRunning = false;
+                tryStartHeroBurst();
+              }
+            }
+          }, 300); // ← 填完后节奏停顿（保留）
+        }, 300);   // ← 填新块前保留
+      }, 200);     // ✅ 新增：给粒子/爆炸一些喘息空间
+    };
+  
+    loop();
+  }
+  
+  
+  function hasEmptyTiles() {
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        if (!gridData[r][c]) return true;
+      }
+    }
+    return false;
+  }
+  
 
 export function updateGamePage() {
   updateAllEffects();
