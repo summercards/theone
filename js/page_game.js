@@ -931,7 +931,7 @@ if (comboCounter >= 1 && Date.now() - lastComboUpdateTime < 2500) {
     const finalScale = baseScale * jump;
   
     const ctx = ctxRef;
-    const x = canvasRef.width / 2 - 50;
+    const x = canvasRef.width / 2 - 90;
     const y = __gridStartY - 180;
   
     ctx.save();
