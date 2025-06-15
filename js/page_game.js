@@ -1109,7 +1109,7 @@ function onTouch(e) {
 // 其他函数保持不变
 
 
-function checkAndClearMatches () {
+function checkAndClearMatches (returnColors = false) {
   
   const superBlockSpots = [];
   let clearedCount   = 0;
@@ -1294,13 +1294,17 @@ if (letter === 'D') {
         goldPopTime = Date.now(); // ✨ 胜利弹窗金币弹跳
     return;                                // 暂停，等待点击继续
   }
-   else {
+  else {
     // 敌人仍存活：怪物回合已由其他逻辑处理（如 turnsLeft）
   }
-
-  return clearedCount > 0;
-}
-
+  
+  // ✅ 在此处根据参数返回
+  if (returnColors) {
+    return Object.keys(colorCounter);
+  } else {
+    return clearedCount > 0;
+  }
+  }
 
 
 
@@ -1387,9 +1391,25 @@ function checkHasMatchAt(row, col) {
 
 function processClearAndDrop() {
     clearingRunning = true;
+    const comboQueue = [];
+    let comboTimerActive = false;
+  
+    const triggerComboTick = () => {
+      if (comboQueue.length === 0) return;
+  
+      comboCounter++;
+      comboShowTime = Date.now();
+      lastComboUpdateTime = comboShowTime;
+      comboQueue.shift();
+  
+      if (comboQueue.length > 0) {
+        setTimeout(triggerComboTick, 180);
+      } else {
+        comboTimerActive = false;
+      }
+    };
   
     const loop = () => {
-      // ✅ 新增：预留给爆炸/粒子/超级方块表现 200ms
       setTimeout(() => {
         dropBlocks();
         drawGame();
@@ -1399,26 +1419,28 @@ function processClearAndDrop() {
           drawGame();
   
           setTimeout(() => {
-            const matched = checkAndClearMatches();
+            let hasNewCombo = false;
+  
+            // 🚀 返回消除的颜色种类（每个触发一次 combo）
+            const colorMatches = checkAndClearMatches(true);
+            hasNewCombo = colorMatches.length > 0;
+            comboQueue.push(...colorMatches.map(() => Date.now()));
+  
+            // ✅ 调试输出（高亮）
+            if (hasNewCombo) {
+              console.log('🔶🔥🔥🔥【Combo 匹配颜色种类】:', colorMatches);
+              console.log('🔷📈📈📈【Combo 队列状态】:', comboQueue);
+            }
+  
             const stillEmpty = hasEmptyTiles();
   
-            if (matched || stillEmpty) {
-              comboCounter++;
-  
-              const now = Date.now();
-              const minComboDisplay = 300;
-  
-              if (now - comboShowTime < minComboDisplay) {
-                setTimeout(() => {
-                  comboShowTime = Date.now();
-                }, minComboDisplay - (now - comboShowTime));
-              } else {
-                comboShowTime = now;
+            if (hasNewCombo || stillEmpty) {
+              if (!comboTimerActive && comboQueue.length > 0) {
+                comboTimerActive = true;
+                // ❌ 不再重置 comboCounter
+                triggerComboTick();
               }
   
-              lastComboUpdateTime = now;
-  
-              // ✅ 下一轮
               loop();
             } else {
               if (!hasPossibleMatches()) {
@@ -1428,21 +1450,25 @@ function processClearAndDrop() {
                 }, 500);
               } else {
                 setTimeout(() => {
-                    comboCounter = 0;
-                    drawGame(); // 再触发一次绘制，清除文字
-                  }, 2000); // 保留 Combo 显示 1.5 秒
-                  
-                  clearingRunning = false;
+                  comboQueue.length = 0;
+                  comboCounter = 0; // ✅ 只在结算完再重置
+                  drawGame();
+                }, 2000);
+  
+                clearingRunning = false;
                 tryStartHeroBurst();
               }
             }
-          }, 300); // ← 填完后节奏停顿（保留）
-        }, 300);   // ← 填新块前保留
-      }, 200);     // ✅ 新增：给粒子/爆炸一些喘息空间
+          }, 300);
+        }, 300);
+      }, 200);
     };
   
     loop();
   }
+  
+  
+  
   
   
   function hasEmptyTiles() {
