@@ -58,8 +58,10 @@ export function drawMonsterSprite(ctx, canvas) {
   }
 
   const img = monsterImageCache[monster.id];
-  const SPR_W = monster.spriteSize || (monster.isBoss ? 300 : 120);
-  const SPR_H = monster.spriteSize || (monster.isBoss ? 120 : 120);
+  const BASE_SIZE = monster.spriteSize || 120;         // 所有怪物默认 120
+  const scale = monster.spriteScale || 1.0;            // 所有怪物使用缩放
+  const SPR_W = BASE_SIZE;
+  const SPR_H = BASE_SIZE;
   let x = (canvas.width - SPR_W) / 2;
   let gridTop = globalThis.__gridStartY || (canvas.height * 0.7);
   let y = Math.max(32, gridTop - 320);
@@ -75,13 +77,12 @@ export function drawMonsterSprite(ctx, canvas) {
   const imgReady = img && img.width && img.complete;
   if (imgReady) {
     const flash = Date.now() - monsterHitFlashTime < 200;
-    const scale = globalThis.monsterScale || 1;
+    const scale = monster.spriteScale || 1;  // ✅ 改用每个怪物自己的缩放比例
     const cx = x + SPR_W / 2;
     const cy = y + SPR_H / 2;
-
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
+    ctx.scale(scale, scale); // ✅ 原来这里是 globalThis.monsterScale，现在用怪物自身的 spriteScale
     ctx.translate(-SPR_W / 2, -SPR_H / 2);
     ctx.filter = flash ? 'brightness(2)' : 'none';
     ctx.drawImage(img, 0, 0, SPR_W, SPR_H);

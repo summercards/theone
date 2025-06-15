@@ -4,7 +4,19 @@ import { monsters } from './monster_data.js';
 let currentLevel = 1;
 let monster = null;
 let turnCounter = 0;
+let defeatedBossLevel = 0; // 记录击败的最高 boss 等级
 
+export function markBossDefeated(level) {
+    if (level > defeatedBossLevel) {
+      defeatedBossLevel = level;
+    }
+  }
+  
+  export function hasDefeatedBoss2() {
+    return defeatedBossLevel >= 6; // 假设 Boss2 是第6关
+  }
+
+  
 export function loadMonster(level = 1) {
   currentLevel = level;
   const proto = monsters.find(m => m.level === level) || monsters.at(-1);
