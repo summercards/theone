@@ -186,6 +186,7 @@ function drawBackground() {
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
+    wx.setStorageSync('lastLevel', currentLevel.toString());
     globalThis.expGainedThisRound = 0;
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -1456,6 +1457,10 @@ const btn = globalThis.backToHomeBtn;
 if (btn &&
     x >= btn.x && x <= btn.x + btn.width &&
     y >= btn.y && y <= btn.y + btn.height) {
+
+        wx.setStorageSync('lastLevel', currentLevel.toString());
+
+        
   switchPageFn?.('home', () => {
     destroyGamePage(); // 清理资源
   });
