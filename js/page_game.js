@@ -1133,7 +1133,7 @@ function checkAndClearMatches (returnColors = false) {
             toClear[row][start + k] = true;
           }
   
-          if (count >= 4) {
+          if (count >= 4 && SuperBlockSystem.unlockedSuperTypes(currentLevel).length) {
             const choice = matches[Math.floor(Math.random() * matches.length)];
             superBlockSpots.push({ ...choice, type: gridData[choice.row][choice.col] });
           }
@@ -1158,7 +1158,7 @@ function checkAndClearMatches (returnColors = false) {
             toClear[start + k][col] = true;
           }
   
-          if (count >= 4) {
+          if (count >= 4 && SuperBlockSystem.unlockedSuperTypes(currentLevel).length) {
             const choice = matches[Math.floor(Math.random() * matches.length)];
             superBlockSpots.push({ ...choice, type: gridData[choice.row][choice.col] });
           }
@@ -1176,7 +1176,8 @@ function checkAndClearMatches (returnColors = false) {
 
   superBlockSpots.forEach(({ row, col }) => {
     toClear[row][col] = false;
-    gridData[row][col] = SuperBlockSystem.randomType(); // 随机 S1/S2/S3
+    const sType = SuperBlockSystem.randomType(currentLevel); // 按关卡随机
+if (sType) gridData[row][col] = sType;                   // 未解锁时保持原块
   });
 
   for (let r = 0; r < gridSize; r++) {

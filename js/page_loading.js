@@ -18,7 +18,14 @@ blockLetters.forEach(letter => {
     path: `assets/blocks/${letter}.png`
   });
 });
-
+// ✅ 预加载超级方块贴图（S1 / S2 / S3）
+['S1', 'S2', 'S3'].forEach(type => {
+    preloadList.push({
+      key: `super_${type}`,                    // 存到缓存里的索引
+      path: `assets/superblocks/${type.toLowerCase()}.png` // s1.png / s2.png / s3.png
+    });
+  });
+  
 
 // ② 添加 UI 图标（如锁图标、备用图等）
 preloadList.push({ key: 'lock.png', path: 'assets/ui/lock.png' });
