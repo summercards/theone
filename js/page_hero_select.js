@@ -442,12 +442,23 @@ for (const { hero } of iconRects) {
     width: 160, height: 50
   };
   if (hit(x, y, confirmRect)) {
+    // 检查是否至少有一个出战英雄
+    const hasHero = selectedHeroes.some(id => id !== null);
+    if (!hasHero) {
+      wx.showToast({
+        title: '至少需要一名勇者',
+        icon: 'none'
+      });
+      return;
+    }
+  
     wx.setStorageSync('unlockedSlots', unlockedSlots);  // 保存解锁状态
     wx.setStorageSync('selectedHeroes', selectedHeroes);
     getLastLevel((level) => {
-        switchPageFn('game', { level });
-      });
+      switchPageFn('game', { level });
+    });
   }
+  
 }
 function tryUnlockSlot(index) {
   const level = wx.getStorageSync('lastLevel') || 1;
