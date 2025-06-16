@@ -1,4 +1,5 @@
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
+let unlockedSlots = [true, false, false, false, false]; // 第1个槽位默认解锁
 let lastAdTime = 0; // 上次点击时间戳
 const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
 let showUpgradeButtons = false;
@@ -113,6 +114,14 @@ let ctxRef, canvasRef, switchPageFn;
 
 
   function initHeroSelectPage(ctx, switchPage, canvas) {
+    try {
+      const saved = wx.getStorageSync('unlockedSlots');
+      if (Array.isArray(saved)) {
+        unlockedSlots = saved;
+      }
+    } catch (e) {
+      // 保持默认值
+    }
     ctxRef = ctx;
     canvasRef = canvas;
     switchPageFn = switchPage;
@@ -190,11 +199,43 @@ function onTouch(e) {
   /* ---------- 已选槽位：点击移除 ---------- */
   for (let i = 0; i < slotRects.length; i++) {
     if (hit(x, y, slotRects[i])) {
+      if (!unlockedSlots[i]) {
+        let conditionText = '';
+        switch (i) {
+          case 1:
+            conditionText = '通关第3关可解锁';
+            break;
+          case 2:
+            conditionText = '消耗1000金币解锁';
+            break;
+          case 3:
+            conditionText = '观看广告解锁';
+            break;
+          case 4:
+            conditionText = '敬请期待后续开放';
+            break;
+          default:
+            conditionText = '暂无解锁条件';
+        }
+        
+        wx.showModal({
+          title: `槽位 ${i + 1} 未解锁`,
+          content: `${conditionText}，是否现在尝试解锁？`,
+          success(res) {
+            if (res.confirm) {
+              tryUnlockSlot(i);
+            }
+          }
+        });
+        
+        return;
+      }
       selectedHeroes[i] = null;
       setSelectedHeroes(selectedHeroes);
       return render();
     }
   }
+  
 
   /* ---------- 翻页按钮 ---------- */
   if (hit(x, y, btnPrevRect) && pageIndex > 0) {
@@ -332,12 +373,17 @@ if (hero.locked) {
 }
 
       // === 已解锁：加入出战列表 ===
-      if (selectedHeroes.includes(hero.id)) return;      // 已选中
-      const empty = selectedHeroes.findIndex(h => h === null);
+      if (selectedHeroes.includes(hero.id)) return;  // 已在队列中
+
+      // ✅ 找第一个已解锁的空槽位
+      const empty = selectedHeroes.findIndex((h, idx) => h === null && unlockedSlots[idx]);
+      
       if (empty !== -1) {
         selectedHeroes[empty] = hero.id;
         setSelectedHeroes(selectedHeroes);
         return render();
+      } else {
+        wx.showToast({ title: '没有可用槽位', icon: 'none' });
       }
     }
   }
@@ -396,11 +442,40 @@ for (const { hero } of iconRects) {
     width: 160, height: 50
   };
   if (hit(x, y, confirmRect)) {
+    wx.setStorageSync('unlockedSlots', unlockedSlots);  // 保存解锁状态
     wx.setStorageSync('selectedHeroes', selectedHeroes);
     getLastLevel((level) => {
         switchPageFn('game', { level });
       });
   }
+}
+function tryUnlockSlot(index) {
+  const level = wx.getStorageSync('lastLevel') || 1;
+  const coins = getTotalCoins();
+
+  if (index === 1 && level >= 3) {
+    unlockedSlots[index] = true;
+  } else if (index === 2 && coins >= 1000) {
+    wx.setStorageSync('totalCoins', coins - 1000);
+    unlockedSlots[index] = true;
+  } else if (index === 3) {
+    const videoAd = wx.createRewardedVideoAd({ adUnitId: 'adunit-xxxx' });  // 替换为你的广告位ID
+    videoAd.onClose(res => {
+      if (res && res.isEnded) {
+        unlockedSlots[index] = true;
+        wx.showToast({ title: '已解锁', icon: 'success' });
+        render();
+      }
+    });
+    videoAd.load().then(() => videoAd.show());
+    return;
+  } else {
+    wx.showToast({ title: '条件未满足', icon: 'none' });
+    return;
+  }
+
+  wx.setStorageSync('unlockedSlots', unlockedSlots);
+  render();
 }
 
 function onTouchend(e) {
@@ -513,27 +588,37 @@ for (let i = 0; i < 5; i++) {
   const sx = PAD_X + i * (ICON + GAP);
   const sy = selectedY;
 
-  // ✅ 灰色背景填充
-  ctx.fillStyle = '#2E2E2E'; // 深灰色背景，可根据主题调成 #3A3A3A 或 #444
+  ctx.fillStyle = '#2E2E2E';
   drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, true, false);
 
-  // ✅ 紫色描边
   ctx.strokeStyle = '#A64AC9';
   ctx.lineWidth = 3;
   drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, false, true);
 
-  // ✅ 点击热区记录
   slotRects[i] = { x: sx, y: sy, width: ICON, height: ICON };
 
-  // ✅ 绘制英雄头像（如已选中）
+  if (!unlockedSlots[i]) {
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle = '#000';
+    drawRoundedRect(ctx, sx, sy, ICON, ICON, 8, true, false);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(lockIconImg,
+      sx + ICON / 4,
+      sy + ICON / 4,
+      ICON / 2,
+      ICON / 2);
+    ctx.restore();
+    continue;
+  }
+
   const heroId = selectedHeroes[i];
   if (heroId) {
     const heroObj = new HeroState(heroId);
-    drawIcon(ctx, heroObj, sx, sy, ICON, false);  // ❌ 出战栏不显示按钮
-
-
+    drawIcon(ctx, heroObj, sx, sy, ICON, false);
   }
 }
+
 
   // 英雄池标题
   const poolStartY = selectedY + ICON + 35;// 英雄池更贴出战区
