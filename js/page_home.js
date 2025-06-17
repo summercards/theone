@@ -67,7 +67,7 @@ function drawHomeUI() {
   ctxRef.fillStyle = '#b3134a';
   drawRoundedRect(ctxRef, offsetX, offsetYEnter, scaledEnterW, scaledEnterH, 20);
   ctxRef.fill();
-  drawStyledText(ctxRef, '魅魔酒吧', x + btnWidth / 2, yEnter + btnHeight / 2, {
+  drawStyledText(ctxRef, '魅影旅店', x + btnWidth / 2, yEnter + btnHeight / 2, {
     font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
   });
 

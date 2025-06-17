@@ -210,10 +210,14 @@ function render() {
     textY += 20;
 
     const attrs = hero.attributes;
-    const attrText = Object.entries(attrs).map(([k, v]) => `${k}: ${v}`).join('  ');
+    const attrMap = { physical: '物理', magical: '法术', healing: '治疗' };
+    const attrText = Object.entries(attrs)
+      .map(([k, v]) => `${attrMap[k] || k}: ${v}`)
+      .join('  ');
     drawStyledText(ctx, attrText, textX, textY, {
       font: 'bold 12px IndieFlower', fill: '#90e0ef', align: 'left', baseline: 'top'
     });
+    
 
     drawStyledText(ctx, `Lv.${hero.level}`, x + cardW - 12, y + 16, {
       font: 'bold 12px IndieFlower', fill: '#00FFFF', align: 'right', baseline: 'top'

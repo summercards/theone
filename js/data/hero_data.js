@@ -28,7 +28,7 @@ const HeroData = {
 
     {
       id: "hero002",
-      name: "MIO",
+      name: "阿紫",
       icon: "archer.png",
       role: "游侠",
       rarity: "R",
