@@ -890,9 +890,9 @@ for (let i = 0; i < heroes.length; i++) {
 const CHARGE_BAR_H = 6;
 const heroSectionBottom = maxHeroBottom + CHARGE_BAR_H + 6;
 /* === 玩家血条：固定在棋盘正上方 ================================= */
-const HP_BAR_W = 180, HP_BAR_H = 16;
+const HP_BAR_W = 260, HP_BAR_H = 20;
 const hpX = (canvasRef.width - HP_BAR_W) / 2;          // 水平居中
-const hpY = __gridStartY - HP_BAR_H - 14;              // 棋盘上方 14px
+const hpY = __gridStartY - HP_BAR_H - -5;              // 棋盘上方 14px
 
 drawPlayerHp(ctxRef, canvasRef, hpX, hpY);
 globalThis.hpBarPos = { x: hpX, y: hpY, width: HP_BAR_W, height: HP_BAR_H };

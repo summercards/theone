@@ -13,8 +13,8 @@ let smoothHp = null;      // 用于动画平滑
  * @param y        血条左上角 Y（默认 24）
  */
 export function drawPlayerHp(ctx, canvas, x = 24, y = 24) {
-  const BAR_W = 180;
-  const BAR_H = 16;
+  const BAR_W = 280;
+  const BAR_H = 11;
 
   const cur = getPlayerHp();
   const max = getPlayerMaxHp();
