@@ -12,7 +12,7 @@ let heroLevelUps = [];           // 本关升级信息，供弹窗读取
 let touchStart = null;     // 记录起始格子位置
 let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
-let turnsLeft; // ✅ 应加在顶部变量区，否则是隐式全局变量
+
 let showGameOver = false;     // 是否触发失败弹窗
 let victoryHeroLoaded = false;
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
@@ -60,7 +60,9 @@ import {
 import { getSelectedHeroes } from './data/hero_state.js';
 import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
-import { loadMonster, dealDamage, isMonsterDead, monsterTurn, getNextLevel, getMonsterGold } from './data/monster_state.js';
+import { loadMonster, dealDamage, isMonsterDead, getNextLevel, getMonsterGold } from './data/monster_state.js';
+import { initPlayer, takeDamage, isPlayerDead } from './data/player_state.js';
+import { drawPlayerHp } from './ui/player_ui.js';
 import { addCoins, getSessionCoins, commitSessionCoins } from './data/coin_state.js';
 import { drawMonsterSprite } from './ui/monster_ui.js';
 import HeroData   from './data/hero_data.js';
@@ -226,7 +228,7 @@ wx.onTouchEnd(onTouchend);
 
   initGrid();
   const m = loadMonster(currentLevel);
-  turnsLeft = m.skill.cooldown;
+  initPlayer(100);      // 本关玩家初始 HP，可改难度时传不同值
   drawGame();
   registerGameHooks({
     expand: expandGridTo,
@@ -723,19 +725,8 @@ ctxRef.fillStyle = '#FFD700';
 ctxRef.fillText(goldText, 26, 116);
 /* ============================================== */
 
-// === 回合 HUD（加粗 + 描边） ===
-ctxRef.font = 'bold 18px sans-serif';
-ctxRef.textAlign = 'right';
-ctxRef.textBaseline = 'top';
 
-// 描边
-ctxRef.lineWidth = 2;
-ctxRef.strokeStyle = '#000';
-ctxRef.strokeText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
 
-// 填充
-ctxRef.fillStyle = '#FFA';
-ctxRef.fillText(`回合: ${turnsLeft}`, canvasRef.width - 24, 116);
 
 
 // === 左上角返回按钮（暗灰底小圆角 + 白色箭头） ====================
@@ -799,105 +790,126 @@ ctxRef.fillText(countText, countX, countY);
 
 
 
+/* === 出战栏 ========================================================== */
+let maxHeroBottom = 0;                // ▼ 记录头像组的最底边
 
 for (let i = 0; i < heroes.length; i++) {
-    const x = startXHero + i * (iconSize + spacing);
-    const y = topMargin;
-  
-    const rawRect = { x, y, width: iconSize, height: iconSize };
-    const scaled = scaleToAvoidOverlap(rawRect, layoutRects, 0.5); // 允许最小缩放到 50%
-    layoutRects.push({ x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height });
-  
-    const sx = scaled.x;
-    const sy = scaled.y;
-    const size = scaled.width;
-  
-    // — 背板框（空位也画） —
-    ctxRef.fillStyle = '#111';
-    drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, true, false);
-    ctxRef.strokeStyle = '#55557a';
-    ctxRef.lineWidth = 2;
-    drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, false, true);
-  
-    // — 蓄力条 —
-    const charges = getCharges();
-    const percent = charges[i] || 0;
-    const barW = size;
-    const barH = 6;
-    const barX = sx;
-    const barY = sy + size + 6;
-  
-    ctxRef.fillStyle = '#333';
-    drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, true, false);
-  
-    if (percent >= 100) {
-      ctxRef.strokeStyle = (Date.now() % 500 < 250) ? '#FF0' : '#F00';
-      ctxRef.lineWidth = 4;
-      ctxRef.strokeRect(sx - 4, sy - 4, size + 8, size + 8);
-    }
-  
-    ctxRef.fillStyle = '#38263d';
-    ctxRef.fillRect(barX, barY, barW * (percent / 100), barH);
-    ctxRef.strokeStyle = '#4250b6';
-    ctxRef.lineWidth = 1;
-    drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, false, true);
+  const x = startXHero + i * (iconSize + spacing);
+  const y = topMargin;
 
-    // 🌟 追加视觉特效：渐变、光晕、能量脉冲
-if (percent > 0) {
+  const rawRect = { x, y, width: iconSize, height: iconSize };
+  const scaled  = scaleToAvoidOverlap(rawRect, layoutRects, 0.5);   // 允许最小缩放到 50%
+  layoutRects.push({ x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height });
+
+  const sx   = scaled.x;
+  const sy   = scaled.y;
+  const size = scaled.width;
+  maxHeroBottom = Math.max(maxHeroBottom, sy + size);               // ← 关键：不断更新底边 Y
+
+  /* — 背板框（空位也画） — */
+  ctxRef.fillStyle = '#111';
+  drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, true, false);
+  ctxRef.strokeStyle = '#55557a';
+  ctxRef.lineWidth   = 2;
+  drawRoundedRect(ctxRef, sx - 2, sy - 2, size + 4, size + 4, 6, false, true);
+
+  /* — 蓄力条 — */
+  const charges = getCharges();
+  const percent = charges[i] || 0;
+  const barW    = size;
+  const barH    = 6;
+  const barX    = sx;
+  const barY    = sy + size + 6;
+
+  ctxRef.fillStyle = '#333';
+  drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, true, false);
+
+  if (percent >= 100) {
+    ctxRef.strokeStyle = (Date.now() % 500 < 250) ? '#FF0' : '#F00';
+    ctxRef.lineWidth   = 4;
+    ctxRef.strokeRect(sx - 4, sy - 4, size + 8, size + 8);
+  }
+
+  ctxRef.fillStyle   = '#38263d';
+  ctxRef.fillRect(barX, barY, barW * (percent / 100), barH);
+  ctxRef.strokeStyle = '#4250b6';
+  ctxRef.lineWidth   = 1;
+  drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, false, true);
+
+  /* 🌟 动态蓄力特效 */
+  if (percent > 0) {
     const filledWidth = barW * (percent / 100);
-  
-    // 1. 渐变条替代蓝色
+
+    // 1. 渐变条
     const grad = ctxRef.createLinearGradient(barX, 0, barX + filledWidth, 0);
     grad.addColorStop(0, '#66DFFF');
     grad.addColorStop(1, '#0077CC');
-  
     ctxRef.fillStyle = grad;
     ctxRef.fillRect(barX, barY, filledWidth, barH);
-  
-    // 2. 顶部发光高亮（模拟光带）
+
+    // 2. 顶部高亮
     const glowGrad = ctxRef.createLinearGradient(barX, barY, barX, barY + barH);
     glowGrad.addColorStop(0, 'rgba(255,255,255,0.3)');
     glowGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
     ctxRef.fillStyle = glowGrad;
     ctxRef.fillRect(barX, barY, filledWidth, barH);
-  
-    // 3. 动态脉冲光线（横向能量波）
-    const pulseX = barX + (Date.now() % 1000) / 1000 * filledWidth;
-    const pulseWidth = 8;
-    const pulseGrad = ctxRef.createLinearGradient(pulseX, 0, pulseX + pulseWidth, 0);
+
+    // 3. 横向能量波
+    const pulseX      = barX + (Date.now() % 1000) / 1000 * filledWidth;
+    const pulseWidth  = 8;
+    const pulseGrad   = ctxRef.createLinearGradient(pulseX, 0, pulseX + pulseWidth, 0);
     pulseGrad.addColorStop(0, 'rgba(255,255,255,0)');
     pulseGrad.addColorStop(0.5, 'rgba(255,255,255,0.4)');
     pulseGrad.addColorStop(1, 'rgba(255,255,255,0)');
     ctxRef.fillStyle = pulseGrad;
     ctxRef.fillRect(barX, barY, filledWidth, barH);
   }
-  
-  
-    // — 已选英雄头像 —
-    const hero = heroes[i];
-    if (hero) {
-      const scaleBase = globalThis.avatarSlotScales?.[i] || 1;  // ← 保留技能动画放大值
-      const finalScale = scaleBase * 1.05;                         // ← 添加基础视觉放大
-      drawHeroIconFull(ctxRef, hero, sx, sy, size, finalScale);   // ✅ 替换原调用
-    
-      // 等级文本保持不变
-      const lvText = `Lv.${hero.level}`;
-      ctxRef.font = 'bold 11px IndieFlower, sans-serif';
-      ctxRef.textAlign = 'right';
-      ctxRef.textBaseline = 'top';
-      ctxRef.fillStyle = '#FFD700';
-      ctxRef.shadowColor = '#FFA500';
-      ctxRef.shadowBlur = 4;
-      ctxRef.strokeStyle = '#000';
-      ctxRef.lineWidth = 2;
-      ctxRef.strokeText(lvText, sx + size - 4, sy + 4);
-      ctxRef.fillText(lvText, sx + size - 4, sy + 4);
-      ctxRef.shadowColor = 'transparent';
-      ctxRef.shadowBlur = 0;
-    }
-    
+
+  /* — 已选英雄头像 — */
+  const hero = heroes[i];
+  if (hero) {
+    const scaleBase  = globalThis.avatarSlotScales?.[i] || 1;
+    const finalScale = scaleBase * 1.05;
+    drawHeroIconFull(ctxRef, hero, sx, sy, size, finalScale);
+
+    // 等级文本
+    const lvText = `Lv.${hero.level}`;
+    ctxRef.font           = 'bold 11px IndieFlower, sans-serif';
+    ctxRef.textAlign      = 'right';
+    ctxRef.textBaseline   = 'top';
+    ctxRef.fillStyle      = '#FFD700';
+    ctxRef.shadowColor    = '#FFA500';
+    ctxRef.shadowBlur     = 4;
+    ctxRef.strokeStyle    = '#000';
+    ctxRef.lineWidth      = 2;
+    ctxRef.strokeText(lvText, sx + size - 4, sy + 4);
+    ctxRef.fillText(lvText,  sx + size - 4, sy + 4);
+    ctxRef.shadowColor    = 'transparent';
+    ctxRef.shadowBlur     = 0;
   }
+}   // ← 头像 for-loop 结束
+
+/* —— 玩家血条贴在英雄栏下方 —————————————————————— */
+const HP_BAR_W = 180, HP_BAR_H = 16;
+const gap      = 10;                                        // 英雄栏与血条的间距
+const midX     = startXHero + (totalWidth - HP_BAR_W) / 2;  // 水平居中对齐头像组
+const wantRect = { x: midX, y: maxHeroBottom + gap,
+                   width: HP_BAR_W, height: HP_BAR_H };
+
+// 走同一套避让系统，避免压到其他 HUD
+const hpRect = avoidOverlap(wantRect, layoutRects);
+layoutRects.push(hpRect);
+
+// 真正绘制
+drawPlayerHp(ctxRef, canvasRef, hpRect.x, hpRect.y);
+
+// 记录位置，给怪物反击时即时刷新（可选）
+globalThis.hpBarPos = hpRect;
+
+/* —— 下面继续 drawUI() 其他 HUD 绘制 ——————————————— */
+
   
+
 /* =============================================================== */
 
 
@@ -1505,7 +1517,7 @@ function onTouchend(e) {
         attackGaugeDamage = 0;
         attackDisplayDamage = 0;
         const monster = loadMonster(currentLevel); // ✅ 使用正确关卡加载怪物
-        turnsLeft = monster.skill.cooldown;
+     
     
         initGrid();
         drawGame();
@@ -1963,13 +1975,7 @@ showDamageText(pendingDamage, endX, endY + 50);
     
       return; // ❗很重要：停止继续 loadMonster
     } else {
-      turnsLeft--;
-    
-      if (turnsLeft <= 0) {
-        showGameOver = true;
-      } else {
-        monsterTurn();
-      }
+      monsterRetaliate();
     }
     if ((globalThis.gridExpandTurns || 0) > 0) {
       globalThis.gridExpandTurns--;
@@ -1984,6 +1990,25 @@ showDamageText(pendingDamage, endX, endY + 50);
 }, pendingDamage);
 }
 
+function monsterRetaliate() {
+  const monster = getMonster();
+  if (!monster || monster.hp <= 0) return;
+
+  const dmg = monster.skill?.damage ?? 0;
+  if (dmg <= 0) return;
+
+  // 伤害飘字，颜色可按你喜好调
+  showDamageText(dmg, canvasRef.width / 2, 110);    // 怪物头上
+
+  takeDamage(dmg);                                  // 扣玩家血
+  createShake?.(300, 4);                            // 震屏
+  const pos = globalThis.hpBarPos || { x: 24, y: 24 };
+drawPlayerHp(ctxRef, canvasRef, pos.x, pos.y);
+
+  if (isPlayerDead()) {
+    showGameOver = true;
+  }
+}
 
 function expandGridTo({ size = 7, steps = 3, hero }) {
   globalThis.gridSize = size;
