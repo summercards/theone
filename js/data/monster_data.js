@@ -48,6 +48,7 @@ function createMonster({
     sprite,
     isBoss,
     gold,
+    atk: damage,           // 🆕 ① 在顶层存一份攻击力，后续 UI / 公式更直观
     spriteSize, // 👈 可选字段：用于贴图缩放
     spriteScale, // 👈 加入返回对象中
     turns: cooldown,
@@ -84,7 +85,7 @@ const foodMonsters = [
       id: lv,
       level: lv,
       name: foodMonsters[i],
-      maxHp: 200 + i * 100,
+      maxHp: 1200 + i * 100,
       sprite: `${foodSprites[i]}.png`,
       damage: 25 + i * 5,
       cooldown: 2,

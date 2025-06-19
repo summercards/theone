@@ -73,3 +73,7 @@ export function getNextLevel() {
 export function getMonsterGold() {
   return monster?.gold ?? 0;
 }
+
+export function getMonsterDamage() {
+  return monster?.atk ?? monster?.skill?.damage ?? 0;
+}

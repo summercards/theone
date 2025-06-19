@@ -71,7 +71,7 @@ import { getMonsterTimer } from './data/monster_state.js'; // ⬅️ 加入导�
 import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
-import { getMonster, markBossDefeated } from './data/monster_state.js';
+import { getMonster, getMonsterDamage, markBossDefeated } from './data/monster_state.js';
 /* ======== 英雄连招节流用状态 ======== */
 let pendingHeroBurst   = false;   // 是否排队等待播放
 let skillsActive = 0;   // 当前还在播放的英雄技能数量
@@ -1994,7 +1994,7 @@ function monsterRetaliate() {
   const monster = getMonster();
   if (!monster || monster.hp <= 0) return;
 
-  const dmg = monster.skill?.damage ?? 0;
+  const dmg = getMonsterDamage();
   if (dmg <= 0) return;
 
   // 伤害飘字，颜色可按你喜好调
