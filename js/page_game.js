@@ -756,9 +756,12 @@ globalThis.backToHomeBtn = {
 
 
 /* --- 操作计数展示 --- */
-// === 操作计数展示（固定在棋盘上方） ===
-const countDown = Math.max(0, 5 - gaugeCount);
+const countDown = Math.max(0, 5 - gaugeCount);   // 还剩几次操作
 const countText = `操作次数: ${countDown}`;
+// === 操作计数展示（固定在棋盘上方） ===
+const rightPad = 26;        // 距离右边缘
+const countX   = canvasRef.width - rightPad;
+const countY   = 116;       // 与“金币”文字同一行
 
 // 闪烁：触发后 600 ms 内黄白交替
 let color = '#FFF';
@@ -770,7 +773,7 @@ if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
 
 // 设置文字样式
 ctxRef.font = 'bold 16px sans-serif';
-ctxRef.textAlign = 'center';
+ctxRef.textAlign = 'right';
 ctxRef.textBaseline = 'middle';
 
 // 描边
@@ -780,12 +783,6 @@ ctxRef.strokeText(countText, countX, countY);
 
 // 填充
 ctxRef.fillStyle = color;
-ctxRef.fillText(countText, countX, countY);
-
-// ✅ 直接居中固定在棋盘上方 20px
-const countX = canvasRef.width / 2;
-const countY = __gridStartY - 10;
-
 ctxRef.fillText(countText, countX, countY);
 
 
@@ -889,22 +886,18 @@ for (let i = 0; i < heroes.length; i++) {
   }
 }   // ← 头像 for-loop 结束
 
-/* —— 玩家血条贴在英雄栏下方 —————————————————————— */
-/* —— 玩家血条贴在英雄栏下方 ——————————————————— */
+// 头像+蓄力条的最底边
+const CHARGE_BAR_H = 6;
+const heroSectionBottom = maxHeroBottom + CHARGE_BAR_H + 6;
+/* === 玩家血条：固定在棋盘正上方 ================================= */
 const HP_BAR_W = 180, HP_BAR_H = 16;
-const hpGap    = 50;                          // 英雄栏 ↔ 血条 间距
-const boardGap = 14;                          // 血条 ↔ 棋盘 间距
-
-const midX  = startXHero + (totalWidth - HP_BAR_W) / 2;  // 与头像组居中
-const yHero = maxHeroBottom + hpGap;                     // 英雄栏正下方
-const yBoard= __gridStartY - HP_BAR_H - boardGap;        // 棋盘正上方
-
-const hpX = midX;
-const hpY = Math.min(yHero, yBoard);          // 取两者较上方的位置
+const hpX = (canvasRef.width - HP_BAR_W) / 2;          // 水平居中
+const hpY = __gridStartY - HP_BAR_H - 14;              // 棋盘上方 14px
 
 drawPlayerHp(ctxRef, canvasRef, hpX, hpY);
 globalThis.hpBarPos = { x: hpX, y: hpY, width: HP_BAR_W, height: HP_BAR_H };
-/* ———————————————————————————————————————————————— */
+/* ================================================================= */
+
   
 
 /* =============================================================== */
