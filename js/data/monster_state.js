@@ -14,7 +14,8 @@ export function markBossDefeated(level) {
   }
   
   export function hasDefeatedBoss2() {
-    return defeatedBossLevel >= 20;
+    return true;
+    //return defeatedBossLevel >= 20;
   }
 
 

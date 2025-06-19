@@ -14,6 +14,7 @@ class HeroState {
     this.name   = base.name;
     this.icon   = base.icon;
     this.role   = base.role;
+    this.hp = saved?.hp ?? base.hp ?? 100; // 默认值为 100
     this.rarity = base.rarity;
     this.skill  = base.skill;
     this.levelUpConfig   = base.levelUpConfig || {};
@@ -129,7 +130,8 @@ function saveHeroProgress(hero) {
     level:      hero.level,
     exp:        hero.exp,
     attributes: hero.attributes,
-    locked:     hero.locked
+    locked:     hero.locked,
+    hp: hero.hp
   };
   wx.setStorageSync('heroProgress', data);
 }

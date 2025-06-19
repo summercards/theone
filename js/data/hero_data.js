@@ -10,6 +10,7 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
+      hp: 80, // ✅ 新增
       attributes: { physical: 5 },
       level: 1,
       exp: 0,
@@ -35,6 +36,7 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       locked: true,           // ← 现在锁定
       unlockCost: 3,        // ← 解锁需要 200 金币
+      hp: 80, // ✅ 新增
       attributes: { physical: 8, magical: 5 },
       level: 1,
       exp: 0,
@@ -58,6 +60,7 @@ const HeroData = {
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
       locked: true,
+      hp: 80, // ✅ 新增
       unlockBy: "ad",
       attributes: { physical: 2, magical: 10 },
       level: 1,

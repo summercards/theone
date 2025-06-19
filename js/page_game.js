@@ -228,7 +228,9 @@ wx.onTouchEnd(onTouchend);
 
   initGrid();
   const m = loadMonster(currentLevel);
-  initPlayer(100);      // 本关玩家初始 HP，可改难度时传不同值
+ 
+  const totalHp = heroes.reduce((sum, h) => sum + (h?.hp || 0), 0);
+  initPlayer(totalHp);
   drawGame();
   registerGameHooks({
     expand: expandGridTo,
@@ -1965,7 +1967,9 @@ showDamageText(pendingDamage, endX, endY + 50);
     
       return; // ❗很重要：停止继续 loadMonster
     } else {
-      monsterRetaliate();
+      setTimeout(() => {
+        monsterRetaliate();
+      }, 1000); // 延迟 1000ms 后再反击
     }
     if ((globalThis.gridExpandTurns || 0) > 0) {
       globalThis.gridExpandTurns--;
