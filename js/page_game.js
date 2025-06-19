@@ -890,24 +890,21 @@ for (let i = 0; i < heroes.length; i++) {
 }   // ← 头像 for-loop 结束
 
 /* —— 玩家血条贴在英雄栏下方 —————————————————————— */
+/* —— 玩家血条贴在英雄栏下方 ——————————————————— */
 const HP_BAR_W = 180, HP_BAR_H = 16;
-const gap      = 10;                                        // 英雄栏与血条的间距
-const midX     = startXHero + (totalWidth - HP_BAR_W) / 2;  // 水平居中对齐头像组
-const wantRect = { x: midX, y: maxHeroBottom + gap,
-                   width: HP_BAR_W, height: HP_BAR_H };
+const hpGap    = 50;                          // 英雄栏 ↔ 血条 间距
+const boardGap = 14;                          // 血条 ↔ 棋盘 间距
 
-// 走同一套避让系统，避免压到其他 HUD
-const hpRect = avoidOverlap(wantRect, layoutRects);
-layoutRects.push(hpRect);
+const midX  = startXHero + (totalWidth - HP_BAR_W) / 2;  // 与头像组居中
+const yHero = maxHeroBottom + hpGap;                     // 英雄栏正下方
+const yBoard= __gridStartY - HP_BAR_H - boardGap;        // 棋盘正上方
 
-// 真正绘制
-drawPlayerHp(ctxRef, canvasRef, hpRect.x, hpRect.y);
+const hpX = midX;
+const hpY = Math.min(yHero, yBoard);          // 取两者较上方的位置
 
-// 记录位置，给怪物反击时即时刷新（可选）
-globalThis.hpBarPos = hpRect;
-
-/* —— 下面继续 drawUI() 其他 HUD 绘制 ——————————————— */
-
+drawPlayerHp(ctxRef, canvasRef, hpX, hpY);
+globalThis.hpBarPos = { x: hpX, y: hpY, width: HP_BAR_W, height: HP_BAR_H };
+/* ———————————————————————————————————————————————— */
   
 
 /* =============================================================== */
