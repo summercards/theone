@@ -9,12 +9,12 @@ const { createHeroLevelUpEffect } = require('../effects_engine.js');
 class HeroState {
   constructor(id) {
     const base = HeroData.getHeroById(id);
+    const saved = wx.getStorageSync('heroProgress')?.[id];
 
     this.id     = base.id;
     this.name   = base.name;
     this.icon   = base.icon;
     this.role   = base.role;
-    this.hp = saved?.hp ?? base.hp ?? 100; // 默认值为 100
     this.rarity = base.rarity;
     this.skill  = base.skill;
     this.levelUpConfig   = base.levelUpConfig || {};
@@ -23,7 +23,9 @@ class HeroState {
     this.hireCost        = base.hireCost || 200;
     this.onLevelUp = null;
 
-    const saved = wx.getStorageSync('heroProgress')?.[id];
+    // ✅ 新增 HP（注意顺序必须在 saved 定义之后）
+    this.hp = saved?.hp ?? base.hp ?? 100;
+
     const rawAttrs = saved?.attributes ?? { ...base.attributes };
     const heroName = base.name ?? "未知英雄";
 
@@ -80,12 +82,21 @@ class HeroState {
 
   levelUp() {
     this.level++;
+
+    // ✅ 升级加属性
     const growth = this.levelUpConfig.attributeGrowth || {};
     for (const key in growth) {
       if (!this.attributes[key]) this.attributes[key] = 0;
       this.attributes[key] += growth[key];
     }
 
+    // ✅ 升级加 HP
+    const hpGrowth = this.levelUpConfig.hpGrowth ?? 0;
+    if (hpGrowth > 0) {
+      this.hp += hpGrowth;
+    }
+
+    // 特例处理
     if (this.id === 'hero002') {
       const skillEffect = this.skill.effect;
       if (skillEffect && skillEffect.type === "mulGauge") {
@@ -108,7 +119,6 @@ class HeroState {
       this.onLevelUp();
     }
 
-    // ⬇️ 动态升级经验公式
     this.expToNextLevel = 50 + this.level * this.level * 10;
     saveHeroProgress(this);
   }
@@ -131,7 +141,7 @@ function saveHeroProgress(hero) {
     exp:        hero.exp,
     attributes: hero.attributes,
     locked:     hero.locked,
-    hp: hero.hp
+    hp:         hero.hp   // ✅ 保存 HP
   };
   wx.setStorageSync('heroProgress', data);
 }
@@ -139,12 +149,14 @@ function saveHeroProgress(hero) {
 export function clearSelectedHeroes () {
   setSelectedHeroes(Array(5).fill(null));
 }
+
 function getRequiredExpForLevel(level) {
-    return 50 + level * level * 10;
-  }
+  return 50 + level * level * 10;
+}
+
 module.exports = {
   HeroState,
   setSelectedHeroes,
   getSelectedHeroes,
-  getRequiredExpForLevel  // ✅ 确保导出
+  getRequiredExpForLevel
 };

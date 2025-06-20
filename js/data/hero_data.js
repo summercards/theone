@@ -17,6 +17,7 @@ const HeroData = {
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 2 },
+        hpGrowth: 10, // ✅ 新增，每升一级增加 10 点 HP
         unlockSkills: {}
       },
       skill: {
