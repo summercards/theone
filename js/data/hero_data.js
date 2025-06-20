@@ -10,7 +10,7 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
-      hp: 80, // ✅ 新增
+      hp: 60, // ✅ 新增
       attributes: { physical: 5 },
       level: 1,
       exp: 0,
@@ -37,13 +37,14 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       locked: true,           // ← 现在锁定
       unlockCost: 3,        // ← 解锁需要 200 金币
-      hp: 80, // ✅ 新增
+      hp: 55, // ✅ 新增
       attributes: { physical: 8, magical: 5 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 2, magical: 1 },
+        hpGrowth: 6, // ✅ 新增，每升一级增加 10 点 HP
         unlockSkills: { 3: "piercingRain" }
       },
       skill: {
@@ -61,7 +62,7 @@ const HeroData = {
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
       locked: true,
-      hp: 80, // ✅ 新增
+      hp: 35, // ✅ 新增
       unlockBy: "ad",
       attributes: { physical: 2, magical: 10 },
       level: 1,
@@ -69,6 +70,7 @@ const HeroData = {
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { magical: 3 },
+        hpGrowth: 3, // ✅ 新增，每升一级增加 10 点 HP
         unlockSkills: { 4: "meteorStorm" }
       },
       skill: {
@@ -85,6 +87,7 @@ const HeroData = {
       role: "坦克",
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
+      hp: 90, // ✅ 新增
       locked: true,
       unlockCost: 300,
       attributes: { physical: 7, magical: 3 },
@@ -93,6 +96,7 @@ const HeroData = {
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 3, magical: 1 },
+        hpGrowth: 15, // ✅ 新增，每升一级增加 10 点 HP
         unlockSkills: {}
       },
       skill: {
@@ -110,6 +114,7 @@ const HeroData = {
       role: "刺客",
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
+      hp: 50, // ✅ 新增
       locked: true,
       unlockCost: 600,
       attributes: { physical: 10, magical: 2 },
@@ -118,6 +123,7 @@ const HeroData = {
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 4 },
+        hpGrowth: 8, // ✅ 新增，每升一级增加 10 点 HP
         unlockSkills: { 5: "shadowKill" }
       },
       skill: {
@@ -135,6 +141,7 @@ const HeroData = {
       role: "辅助",
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
+      hp: 20, // ✅ 新增
       locked: true,
       unlockCost: 0,
       attributes: { magical: 7, healing: 10 },
@@ -143,6 +150,7 @@ const HeroData = {
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { magical: 2, healing: 3 },
+        hpGrowth: 2, // ✅ 新增，每升一级增加 10 点 HP
         unlockSkills: { 3: "divineGrace" }
       },
       skill: {
@@ -161,6 +169,7 @@ const HeroData = {
       role: "战士",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 76, // ✅ 新增
       locked: true,
       unlockCost: 400,
       attributes: { physical: 12 },
@@ -168,7 +177,10 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 13, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 3 }
+        
+        
       },
       skill: {
         name: "狂热连斩",
@@ -196,6 +208,7 @@ const HeroData = {
       role: "游侠",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 54, // ✅ 新增
       locked: true,
       unlockCost: 300,
       attributes: { physical: 9, magical: 6 },
@@ -203,6 +216,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 10, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 2, magical: 1 }
       },
       skill: {
@@ -220,7 +234,7 @@ const HeroData = {
       role: "坦克",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
-
+      hp: 88, // ✅ 新增
       locked: true,
       unlockCost: 600,
       attributes: { magical: 12 },
@@ -228,6 +242,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 8, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { magical: 4 }
       },
       skill: {
@@ -245,7 +260,7 @@ const HeroData = {
       role: "法师",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
-
+      hp: 62, // ✅ 新增
       locked: true,
       unlockCost: 350,
       attributes: { physical: 10 },
@@ -253,6 +268,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 8, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 3 }
       },
       skill: {
@@ -270,7 +286,7 @@ const HeroData = {
       role: "刺客",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
-
+      hp: 72, // ✅ 新增
       locked: true,
       unlockCost: 600,
       attributes: { physical: 12 },
@@ -278,6 +294,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 4, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 4 }
       },
       skill: {
@@ -297,6 +314,7 @@ const HeroData = {
       role: "辅助",
       rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 33, // ✅ 新增
       locked: true,
       unlockCost: 200,
       attributes: { magical: 8, healing: 12 },
@@ -304,6 +322,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 5, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { magical: 2, healing: 3 }
       },
       skill: {
@@ -321,6 +340,7 @@ const HeroData = {
       role: "战士",
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 68, // ✅ 新增
       locked: true,
       unlockCost: 800,
       attributes: { physical: 15 },
@@ -328,6 +348,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 11, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 4 }
       },
       skill: {
@@ -344,6 +365,7 @@ const HeroData = {
       role: "游侠",
       rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 58, // ✅ 新增
       locked: true,
       unlockCost: 700,
       attributes: { physical: 11, magical: 7 },
@@ -351,6 +373,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 8, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 3, magical: 2 }
       },
       skill: {
@@ -372,6 +395,7 @@ const HeroData = {
       role: "法师",
       rarity: "UR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 47, // ✅ 新增
       locked: true,
       unlockCost: 900,
       attributes: { magical: 15 },
@@ -379,6 +403,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 12, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { magical: 5 }
       },
       skill: {
@@ -398,6 +423,7 @@ const HeroData = {
       role: "坦克",
       rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 180, // ✅ 新增
       locked: true,
       unlockCost: 700,
       attributes: { physical: 12 },
@@ -405,6 +431,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 13, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 4 }
       },
       skill: {
@@ -428,6 +455,7 @@ const HeroData = {
       role: "刺客",
       rarity: "UR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 30, // ✅ 新增
       locked: true,
       unlockCost: 1000,
       attributes: { physical: 14 },
@@ -435,6 +463,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 5, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { physical: 5 }
       },
       skill: {
@@ -456,6 +485,7 @@ const HeroData = {
       role: "辅助",
       rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
+      hp: 62, // ✅ 新增
       locked: true,
       unlockCost: 600,
       attributes: { magical: 10, healing: 14 },
@@ -463,6 +493,7 @@ const HeroData = {
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
+        hpGrowth: 2, // ✅ 新增，每升一级增加 10 点 HP
         attributeGrowth: { magical: 3, healing: 4 }
       },
       skill: {
@@ -486,7 +517,12 @@ const HeroData = {
       exp: 0,
       locked: true,
       hireCost: 20,         // ✅ 新增字段
+      hp: 220, // ✅ 新增
       unlockCost: 600,
+      levelUpConfig: {
+        hpGrowth: 30, // ✅ 新增，每升一级增加 10 点 HP
+        attributeGrowth: { magical: 3, healing: 4 }
+      },
       attributes: {
         physical: 50,
       },

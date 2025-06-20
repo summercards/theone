@@ -231,6 +231,12 @@ drawStyledText(ctx, `经验：${exp} / ${expToNext}`, x + cardW - 12, y + 36, {
   align: 'right',
   baseline: 'top'
 });
+drawStyledText(ctx, `HP：${hero.hp}`, x + cardW - 12, y + 56, {
+  font: 'bold 12px IndieFlower',
+  fill: '#ff6b6b',
+  align: 'right',
+  baseline: 'top'
+});
     heroRects.push({ rect, hero });
   });
 
