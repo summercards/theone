@@ -1214,10 +1214,15 @@ const endX = startX + heroIndex * (size + spacing) + size / 2;
 const endY = topMargin + size + 8;
 
 if (letter === 'D') {
-  // 💰 D 方块 → 金币飞向左上角
+  // 💰 D 方块 → 金币飞向金币栏
   createGoldParticles(centerX, centerY);
+} else if (letter === 'A') {
+  // ❤️ A 方块 → 粒子飞向攻击槽数值位置（在头像上方偏上）
+  const targetX = canvas.width / 2;
+  const targetY = __gridStartY - 125; // 攻击槽数字中心位置
+  createEnergyParticles(centerX, centerY, targetX, targetY, blockColor, 6);
 } else if (heroIndex >= 0) {
-  // 其他颜色方块 → 能量飞向对应职业头像
+  // 其他颜色 → 飞向职业头像
   createEnergyParticles(centerX, centerY, endX, endY, blockColor, 6);
 }
 
