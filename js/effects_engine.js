@@ -506,11 +506,11 @@ const radius = baseRadius * scale;
       
         // 粒子颜色变化（末尾渐变为蓝色）
         let fillColor = e.color;
-        if (p > shrinkThreshold) {
-          const blend = (p - shrinkThreshold) / (1 - shrinkThreshold); // 0 → 1
+        //if (p > shrinkThreshold) {
+         // const blend = (p - shrinkThreshold) / (1 - shrinkThreshold); // 0 → 1
           // 简单线性混合原始色与蓝色
-          fillColor = blendColors(e.color, '#00AAFF', blend);
-        }
+         // fillColor = blendColors(e.color, '#00AAFF', blend);
+        //}
       
         ctx.save();
         ctx.globalAlpha = 1.0; // 始终不透明

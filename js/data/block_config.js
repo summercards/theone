@@ -18,19 +18,19 @@ const BlockConfig = {
   B: {
     color: '#4CFF4C',
     role: '游侠',
-    damage: 25,
+    damage: 0,
     onEliminate: onEliminateGreenBlock  // ✅ 添加这行
   },
   C: {
     color: '#4C4CFF',
     role: '法师',
-    damage: 28,
+    damage: 0,
     onEliminate: onEliminateBlueBlock
   },
   D: {
     color: '#FFD700',
     role: '坦克',
-    damage: 15,
+    damage: 0,
     onEliminate: onEliminateYellowBlock
   },
   E: {
@@ -42,7 +42,7 @@ const BlockConfig = {
   F: {
     color: '#00FFFF',
     role: '辅助',
-    damage: 20,
+    damage: 0,
     onEliminate: onEliminateSupportBlock
   },
 };

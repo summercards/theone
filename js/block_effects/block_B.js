@@ -8,16 +8,33 @@ export function renderBlockB(ctx, x, y, width, height) {
 }
 
 import { getSelectedHeroes } from '../data/hero_state.js';
-import { addGold } from '../data/coin_state.js';
+// import { addGold } from '../data/coin_state.js'; // 原逻辑使用
 import { logBattle } from '../utils/battle_log.js';
+import { healPlayer } from '../data/player_state.js'; // ✅ 新增
+import { createFloatingText } from '../effects_engine.js'; // ✅ 新增
 
 /**
- * B方块消除后效果：
- * 每个方块生成一个“道具”，随机：
- * - 给一个英雄加物理 +5
- * - 给一个英雄加魔法 +5
- * - 加金币 +5
+ * B方块消除后效果（🟢新逻辑）：
+ * 每个方块给玩家回血 5 点；
+ * 如果场上有游侠，每个再 +1 点
  */
+export function onEliminateGreenBlock(count) {
+  const heroes = getSelectedHeroes().filter(Boolean);
+  if (count <= 0 || heroes.length === 0) return;
+
+  const hasRanger = heroes.some(h => h.role === '游侠');
+  const perBlockHeal = hasRanger ? 6 : 5;
+  const totalHeal = perBlockHeal * count;
+
+  healPlayer(totalHeal); // ✅ 加血
+  logBattle(`[B方块] 玩家恢复生命 +${totalHeal}${hasRanger ? '（游侠加成）' : ''}`);
+
+  // ✅ 漂浮加血文字（位置可调）
+  createFloatingText(`+${totalHeal} HP`, 160, 96, '#66FFAA');
+}
+
+
+/* === 🛑 原逻辑保留，已注释：随机分配属性或金币道具 ===
 export function onEliminateGreenBlock(count) {
   const heroes = getSelectedHeroes().filter(Boolean);
   if (heroes.length === 0) return;
@@ -38,3 +55,4 @@ export function onEliminateGreenBlock(count) {
     }
   }
 }
+*/

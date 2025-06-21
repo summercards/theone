@@ -34,6 +34,7 @@ import { showDamageText } from './effects_engine.js';
 import SuperBlockSystem from './data/super_block_system.js';
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 import { registerGameHooks } from './utils/game_shared.js';
+import { getPlayerHp, getPlayerMaxHp } from './data/player_state.js';
 globalThis.renderBlockA = renderBlockA;
 globalThis.renderBlockB = renderBlockB;
 globalThis.renderBlockC = renderBlockC;
@@ -892,7 +893,7 @@ for (let i = 0; i < heroes.length; i++) {
 const CHARGE_BAR_H = 6;
 const heroSectionBottom = maxHeroBottom + CHARGE_BAR_H + 6;
 /* === 玩家血条：固定在棋盘正上方 ================================= */
-const HP_BAR_W = 260, HP_BAR_H = 20;
+const HP_BAR_W = 280, HP_BAR_H = 20;
 const hpX = (canvasRef.width - HP_BAR_W) / 2;          // 水平居中
 const hpY = __gridStartY - HP_BAR_H - -5;              // 棋盘上方 14px
 
@@ -1213,18 +1214,28 @@ const topMargin = __gridStartY - 80;
 const endX = startX + heroIndex * (size + spacing) + size / 2;
 const endY = topMargin + size + 8;
 
-if (letter === 'D') {
-  // 💰 D 方块 → 金币飞向金币栏
-  createGoldParticles(centerX, centerY);
-} else if (letter === 'A') {
-  // ❤️ A 方块 → 粒子飞向攻击槽数值位置（在头像上方偏上）
-  const targetX = canvas.width / 2;
-  const targetY = __gridStartY - 125; // 攻击槽数字中心位置
-  createEnergyParticles(centerX, centerY, targetX, targetY, blockColor, 6);
-} else if (heroIndex >= 0) {
-  // 其他颜色 → 飞向职业头像
-  createEnergyParticles(centerX, centerY, endX, endY, blockColor, 6);
-}
+// 在 checkAndClearMatches 中，处理 B 方块粒子效果：
+if (letter === 'B') {
+    const cur = getPlayerHp();
+    const max = getPlayerMaxHp();
+  
+    if (cur < max) {
+      const hpBar = globalThis.hpBarPos;
+      if (hpBar) {
+        const targetX = hpBar.x + hpBar.width / 2;
+        const targetY = hpBar.y + hpBar.height / 2;
+        createEnergyParticles(centerX, centerY, targetX, targetY, blockColor, 6);
+      }
+    }
+  } else if (letter === 'D') {
+    createGoldParticles(centerX, centerY);
+  } else if (letter === 'A') {
+    const targetX = canvas.width / 2;
+    const targetY = __gridStartY - 125;
+    createEnergyParticles(centerX, centerY, targetX, targetY, blockColor, 6);
+  } else if (heroIndex >= 0) {
+    createEnergyParticles(centerX, centerY, endX, endY, blockColor, 6);
+  }
 
 
 

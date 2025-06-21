@@ -22,3 +22,5 @@ export function takeDamage(amount = 0) {
   hp = Math.max(0, hp - amount);
   return hp;
 }
+
+export { heal as healPlayer };
