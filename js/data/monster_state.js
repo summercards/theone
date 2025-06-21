@@ -13,9 +13,10 @@ export function markBossDefeated(level) {
     }
   }
   
+  //解锁魔界森林的条件
   export function hasDefeatedBoss2() {
-    return true;
-    //return defeatedBossLevel >= 20;
+    //return true;
+    return defeatedBossLevel >= 20;
   }
 
 

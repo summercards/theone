@@ -212,7 +212,7 @@ function onTouch(e) {
             conditionText = '观看广告解锁';
             break;
           case 4:
-            conditionText = '敬请期待后续开放';
+            conditionText = '通过分享解锁';
             break;
           default:
             conditionText = '暂无解锁条件';
@@ -461,33 +461,63 @@ for (const { hero } of iconRects) {
   
 }
 function tryUnlockSlot(index) {
-  const level = wx.getStorageSync('lastLevel') || 1;
-  const coins = getTotalCoins();
-
-  if (index === 1 && level >= 3) {
-    unlockedSlots[index] = true;
-  } else if (index === 2 && coins >= 1000) {
-    wx.setStorageSync('totalCoins', coins - 1000);
-    unlockedSlots[index] = true;
-  } else if (index === 3) {
-    const videoAd = wx.createRewardedVideoAd({ adUnitId: 'adunit-xxxx' });  // 替换为你的广告位ID
-    videoAd.onClose(res => {
-      if (res && res.isEnded) {
+    const level = wx.getStorageSync('lastLevel') || 1;
+    const coins = getTotalCoins();
+  
+    if (index === 1 && level >= 3) {
+      unlockedSlots[index] = true;
+    } else if (index === 2 && coins >= 1000) {
+      wx.setStorageSync('totalCoins', coins - 1000);
+      unlockedSlots[index] = true;
+    } else if (index === 3) {
+      const videoAd = wx.createRewardedVideoAd({ adUnitId: 'adunit-xxxx' });  // 替换为你的广告位ID
+      videoAd.onClose(res => {
+        if (res && res.isEnded) {
+          unlockedSlots[index] = true;
+          wx.showToast({ title: '已解锁', icon: 'success' });
+          render();
+        }
+      });
+      videoAd.load().then(() => videoAd.show());
+      return;
+    } else if (index === 4) {
+      const isDevTools = wx.getSystemInfoSync().platform === 'devtools';
+  
+      if (isDevTools) {
+        // ✅ 模拟环境下直接解锁（开发者工具中）
         unlockedSlots[index] = true;
-        wx.showToast({ title: '已解锁', icon: 'success' });
+        wx.setStorageSync('unlockedSlots', unlockedSlots);
+        wx.showToast({ title: '已模拟解锁', icon: 'success' });
         render();
+        return;
       }
-    });
-    videoAd.load().then(() => videoAd.show());
-    return;
-  } else {
-    wx.showToast({ title: '条件未满足', icon: 'none' });
-    return;
+  
+      // ✅ 真机分享逻辑
+      wx.showShareMenu({ withShareTicket: false });  // 确保展示分享菜单
+      wx.shareAppMessage({
+        title: '快来加入我的勇者小队，一起冒险！',
+        imageUrl: 'assets/ui/share_banner.png', // 可选，确保路径存在
+        success() {
+          unlockedSlots[index] = true;
+          wx.setStorageSync('unlockedSlots', unlockedSlots);
+          wx.showToast({ title: '已通过分享解锁', icon: 'success' });
+          render();
+        },
+        fail() {
+          wx.showToast({ title: '分享失败，请重试', icon: 'none' });
+        }
+      });
+      return;
+    } else {
+      wx.showToast({ title: '条件未满足', icon: 'none' });
+      return;
+    }
+  
+    wx.setStorageSync('unlockedSlots', unlockedSlots);
+    render();
   }
-
-  wx.setStorageSync('unlockedSlots', unlockedSlots);
-  render();
-}
+  
+  
 
 function onTouchend(e) {
   onTouch(e); // ✅ 复用已有点击处理逻辑

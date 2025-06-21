@@ -144,11 +144,13 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
   }
   
 
-export function addToAttackGauge(value) {
-    
-  attackGaugeDamage += value;
-  damagePopTime = Date.now(); // 让数字弹跳动画正常
-}
+  export function addToAttackGauge(value) {
+    if (value > 1) {
+      attackGaugeDamage += value;
+      damagePopTime = Date.now(); // ✅ 仅在有正向增益时触发动画
+    }
+  }
+  
 
 
 
@@ -1250,11 +1252,13 @@ if (letter === 'B') {
 
   /* === ③ 如果有消除，就累伤害 / 加蓄力 === */
   if (clearedCount > 0) {
+    let addedTotalDamage = 0;
     Object.keys(colorCounter).forEach(letter => {
       const baseDamage = (BLOCK_DAMAGE_MAP[letter] || 0);
       const count = colorCounter[letter];
       const added = baseDamage * count;
       attackGaugeDamage += added;
+      addedTotalDamage += added;
       console.log(`[调试] 方块消除，累计伤害巢: ${attackGaugeDamage}`);
       logBattle(`方块[${letter}] ×${count} → 攻击槽 +${added}`);
 
@@ -1274,7 +1278,10 @@ if (letter === 'B') {
     }
   }); // ✅ ← 这个是 .forEach 的闭合括号
 
+
+  if (addedTotalDamage > 0) {
     damagePopTime = Date.now();
+  }
 
     // b) 给英雄充能
     console.log('[调试] colorCounter =', colorCounter);
