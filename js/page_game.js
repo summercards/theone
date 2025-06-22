@@ -22,6 +22,16 @@ let earnedGold = 0;
 let levelJustCompleted = 0;
 let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
 let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
+
+const LevelConfigs = {
+    1: { gridSize: 4, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    2: { gridSize: 4, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    3: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    4: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    5: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'E', 'F'] },
+  };
+
+
 // === 变更：把另外两个特效工具也引进来
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
@@ -217,7 +227,10 @@ if (heroes?.length) {
 }
 
 
-globalThis.gridSize = 6;  // ✅ 强制还原为 6×6
+// 🌟 读取当前关卡的棋盘配置（默认 6×6，全部方块）
+const config = LevelConfigs[currentLevel] || {};
+globalThis.gridSize = config.gridSize || 6;
+globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
 
 
 // ✅ 使用小游戏的全局触摸事件监听
@@ -255,7 +268,7 @@ function releaseAllReadySkills() {
 }
 
 function initGrid() {
-  const blocks = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const blocks = globalThis.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
   gridData = [];
   for (let i = 0; i < gridSize; i++) {
     gridData[i] = [];
@@ -1316,7 +1329,7 @@ if (letter === 'B') {
         addCoins(earnedGold);
         goldPopTime = Date.now();              // ← 加这一行
         displayedGold = getSessionCoins(); // 让动画从当前金币值开始
-        levelJustCompleted = getNextLevel() - 1;
+        levelJustCompleted = currentLevel;
     
 
         showVictoryPopup = true;           // ★ 再弹窗
@@ -1353,18 +1366,17 @@ function dropBlocks() {
     }
   }
 }
-
 function fillNewBlocks() {
-  const blocks = ['A', 'B', 'C', 'D', 'E', 'F'];
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      if (gridData[row][col] === null || gridData[row][col] === undefined) {
-        const rand = Math.floor(Math.random() * blocks.length);
-        gridData[row][col] = blocks[rand];
+    const blocks = globalThis.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F']; // ✅ 使用配置
+    for (let row = 0; row < gridSize; row++) {
+      for (let col = 0; col < gridSize; col++) {
+        if (gridData[row][col] === null || gridData[row][col] === undefined) {
+          const rand = Math.floor(Math.random() * blocks.length);
+          gridData[row][col] = blocks[rand];
+        }
       }
     }
   }
-}
 
 function hasPossibleMatches() {
   for (let row = 0; row < gridSize; row++) {
@@ -1528,7 +1540,10 @@ function onTouchend(e) {
                  y >= btn.y && y <= btn.y + btn.height) {
         showVictoryPopup = false;
     
-        currentLevel = getNextLevel();      // ✅ 更新当前关卡编号
+        currentLevel = currentLevel + 1; // ✅ 明确用本地 currentLevel 推进
+        const config = LevelConfigs[currentLevel] || {};
+globalThis.gridSize = config.gridSize || 6;
+globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
         levelJustCompleted = currentLevel;  // ✅ 更新胜利用变量
         attackGaugeDamage = 0;
         attackDisplayDamage = 0;
