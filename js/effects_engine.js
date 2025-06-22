@@ -462,6 +462,20 @@ else if (e.type === 'proj') {
         ctx.restore();
       }
       
+      else if (e.type === 'monster_attack_flash') {
+        const t = now - e.startTime;
+        const dur = e.duration;
+        if (t > dur) return remove.push(i);
+      
+        const alpha = 0.3 + 0.2 * Math.sin((t / dur) * Math.PI * 2);
+        const hpBar = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
+      
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = 'rgba(255,0,0,0.4)';
+        drawRoundedRect(ctx, hpBar.x - 2, hpBar.y - 2, hpBar.width + 4, hpBar.height + 4, 8, true, false);
+        ctx.restore();
+      }
       
       else if (e.type === 'charge_glow') {
         const t = now - e.startTime;
@@ -919,5 +933,12 @@ export function createHeroLevelUpEffect(slotIndex) {
         radius: 6 + Math.random() * 2
       });
     }
+  }
+  export function createMonsterAttackFlash(duration = 400) {
+    effects.push({
+      type: 'monster_attack_flash',
+      startTime: Date.now(),
+      duration
+    });
   }
   

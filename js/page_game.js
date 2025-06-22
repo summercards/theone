@@ -55,6 +55,7 @@ import {
     createShake, 
     createChargeReleaseEffect , 
     createSkillDialog  , 
+    createMonsterAttackFlash ,   // ✅ 加这行
     createChargeGlowEffect
 } from './effects_engine.js';
   
@@ -2008,24 +2009,26 @@ showDamageText(pendingDamage, endX, endY + 50);
 }
 
 function monsterRetaliate() {
-  const monster = getMonster();
-  if (!monster || monster.hp <= 0) return;
-
-  const dmg = getMonsterDamage();
-  if (dmg <= 0) return;
-
-  // 伤害飘字，颜色可按你喜好调
-  showDamageText(dmg, canvasRef.width / 2, 110);    // 怪物头上
-
-  takeDamage(dmg);                                  // 扣玩家血
-  createShake?.(300, 4);                            // 震屏
-  const pos = globalThis.hpBarPos || { x: 24, y: 24 };
-drawPlayerHp(ctxRef, canvasRef, pos.x, pos.y);
-
-  if (isPlayerDead()) {
-    showGameOver = true;
+    const monster = getMonster();
+    if (!monster || monster.hp <= 0) return;
+  
+    const dmg = getMonsterDamage();
+    if (dmg <= 0) return;
+  
+    showDamageText(dmg, canvasRef.width / 2, 110);
+    takeDamage(dmg);
+    createShake?.(300, 4);
+    createMonsterAttackFlash();
+    createMonsterBounce();
+    const hp = globalThis.hpBarPos || { x: 24, y: 24 };
+    createExplosion(hp.x + hp.width / 2, hp.y + hp.height / 2, '#FF4444');
+    drawPlayerHp(ctxRef, canvasRef, hp.x, hp.y);
+  
+    if (isPlayerDead()) {
+      showGameOver = true;
+    }
   }
-}
+  
 
 function expandGridTo({ size = 7, steps = 3, hero }) {
   globalThis.gridSize = size;
