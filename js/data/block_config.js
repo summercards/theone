@@ -12,7 +12,7 @@ const BlockConfig = {
   A: {
     color: '#FF4C4C',
     role: '战士',
-    damage: 30,
+    damage: 0,
     onEliminate: onEliminateRedBlock
   },
   B: {

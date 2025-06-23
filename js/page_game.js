@@ -111,6 +111,28 @@ const BLOCK_DAMAGE_MAP = Object.fromEntries(
   Object.entries(BlockConfig).map(([k, v]) => [k, v.damage])
 );
 /* ============================================================ */
+/* ======== 动态方块伤害 ======== */
+/* ======== 动态方块伤害 ======== */
+const DAMAGE_RULES = {
+  A: { role: '战士',  attrs: ['physical'] },
+  B: { role: '游侠',  attrs: ['physical'] },
+  C: { role: '法师',  attrs: ['magical'] },
+  D: { role: '坦克',  attrs: ['physical', 'magical'] },   // 两项都加
+  E: { role: '刺客',  attrs: ['physical'] },
+  F: { role: '辅助',  attrs: ['healing', 'magical'] },    // 先用治疗，没有就用魔攻
+};
+
+function getBlockDamage(letter) {
+  const rule = DAMAGE_RULES[letter];
+  if (!rule) return BLOCK_DAMAGE_MAP[letter] || 0;
+
+  return getSelectedHeroes()
+    .filter(h => h && h.role === rule.role)
+    .reduce((sum, h) =>
+      sum + rule.attrs.reduce(
+        (acc, key) => acc + (h.attributes?.[key] || 0), 0
+      ), 0);
+}
 
 /* 攻击槽：累积伤害数值 */
 let attackGaugeDamage = 0;
@@ -1273,7 +1295,7 @@ if (letter === 'B') {
   if (clearedCount > 0) {
     let addedTotalDamage = 0;
     Object.keys(colorCounter).forEach(letter => {
-      const baseDamage = (BLOCK_DAMAGE_MAP[letter] || 0);
+      const baseDamage = getBlockDamage(letter);
       const count = colorCounter[letter];
       const added = baseDamage * count;
       attackGaugeDamage += added;
@@ -1811,7 +1833,8 @@ function startHeroBurst(dmg) {
     /* 总时长 = 起始停顿 + 有效英雄数 × 间隔 + 收尾缓冲 */
     const liveCount = heroes.filter(h => h).length;
  
-  
+  // ======== 计算动态方块伤害 ========
+
     function waitSkillsThenFinish() {
         if (skillsActive === 0) {
           startAttackEffect(attackGaugeDamage); // ✅ 使用最新伤害巢值

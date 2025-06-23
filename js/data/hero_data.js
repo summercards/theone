@@ -11,7 +11,7 @@ const HeroData = {
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
       hp: 60, // ✅ 新增
-      attributes: { physical: 5 },
+      attributes: { physical: 12 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
