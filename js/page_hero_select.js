@@ -1,5 +1,5 @@
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
-let unlockedSlots = [true, false, false, false, false]; // 第1个槽位默认解锁
+let unlockedSlots = [true, true, true, false, false]; // 第1个槽位默认解锁
 let lastAdTime = 0; // 上次点击时间戳
 const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
 let showUpgradeButtons = false;

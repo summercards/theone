@@ -24,10 +24,10 @@ let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
 let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
 
 const LevelConfigs = {
-    1: { gridSize: 4, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    2: { gridSize: 4, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    1: { gridSize: 3, allowedBlocks: ['A', 'D', 'F'] },
+    2: { gridSize: 3, allowedBlocks: ['A', 'B', 'F'] },
     3: { gridSize: 4, allowedBlocks: ['A', 'B',  'D', 'F'] },
-    4: { gridSize: 5, allowedBlocks: ['A', 'B',  'D', 'F'] },
+    4: { gridSize: 4, allowedBlocks: ['A', 'B',  'D', 'F'] },
     5: { gridSize: 5, allowedBlocks: ['A', 'B',  'D',  'F'] },
     6: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
     7: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
