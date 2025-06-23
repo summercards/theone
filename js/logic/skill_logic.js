@@ -502,7 +502,31 @@ export function applySkillEffect(hero, effect, context) {
       context.log(`${hero.name} 技能触发，所有英雄的技能槽增加 ${percent}%`);
       break;
     }
-
+    case "healPlayer": {
+      const base = effect.baseHeal ?? 20;
+      const growth = effect.growthRate ?? 0.1;
+      const level = hero.level ?? 1;
+    
+      const healAmount = Math.floor(base * (1 + growth * (level - 1)));
+    
+      const { getPlayerHp, getPlayerMaxHp, healPlayer } = require('../data/player_state.js');
+      const curHp = getPlayerHp();
+      const maxHp = getPlayerMaxHp();
+      const after = Math.min(maxHp, curHp + healAmount);
+    
+      healPlayer(healAmount);
+      context.log(`${hero.name} 为玩家恢复 ${healAmount} 点生命（当前 ${curHp} → ${after}）`);
+    
+      if (context.canvas) {
+        const { createFloatingTextUp } = require('../effects_engine.js');
+        const centerX = context.canvas.width / 2;
+        const centerY = context.canvas.height * 0.25;
+        createFloatingTextUp(`+${healAmount} HP`, centerX, centerY, '#66FF99', 32, 600);
+      }
+    
+      break;
+    }
+    
     default:
       console.warn("未知技能类型：", effect.type);
   }

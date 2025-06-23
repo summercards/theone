@@ -48,10 +48,14 @@ const HeroData = {
         unlockSkills: { 3: "piercingRain" }
       },
       skill: {
-        name: "精灵悦动",
-        description: "将当前伤害池翻倍",
-        effect: { type: "mulGauge", factor: 1.1 },
-        cooldown: 2
+        name: "自然恩泽",
+        description: "为玩家恢复生命，1级恢复24点，每级提升10%",
+        effect: {
+          type: "healPlayer",
+          baseHeal: 24,
+          growthRate: 0.10
+        },
+        cooldown: 3
       }
     },
     {
@@ -221,8 +225,8 @@ const HeroData = {
       },
       skill: {
         name: "你再叫我……",
-        description: "翻倍当前伤害并小幅追加",
-        effect: { type: "mulGauge", factor: 2.2 },
+        description: "将当前伤害池翻倍",
+        effect: { type: "mulGauge", factor: 1.1 },
         cooldown: 2
       }
     },
