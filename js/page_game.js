@@ -328,10 +328,20 @@ export function drawGame() {
 
   const maxWidth = canvasRef.width * 0.9;
   const maxHeight = canvasRef.height - 420;
-  const blockSize = Math.floor(Math.min(maxWidth, maxHeight) / gridSize);
+  const scaleMap = {
+    3: 0.5,
+    4: 0.6,
+    5: 0.8,
+    6: 1.0
+  };
+  const scaleFactor = scaleMap[gridSize] || 1.0;
+  const blockSize = Math.floor(Math.min(maxWidth, maxHeight) / gridSize * scaleFactor);
+  
   const startX = (canvasRef.width - blockSize * gridSize) / 2;
   const topSafeArea = 220; // 怪物区向上留空间
-const bottomPadding = 40; // 更贴近底部
+  const bottomPadding = gridSize <= 3 ? 150 :
+  gridSize === 4 ? 170 :
+  gridSize === 5 ? 110 : 40;
 const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - bottomPadding);
   
   
