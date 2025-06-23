@@ -27,9 +27,34 @@ const HeroData = {
         cooldown: 3
       }
     },
-
     {
       id: "hero002",
+      name: "凯瑟琳",
+      icon: "mage.png",
+      role: "法师",
+      rarity: "R",
+      hireCost: 20,         // ✅ 新增字段
+      locked: true,
+      hp: 35, // ✅ 新增
+      unlockBy: "ad",
+      attributes: { physical: 2, magical: 10 },
+      level: 1,
+      exp: 0,
+      expToNextLevel: 100,
+      levelUpConfig: {
+        attributeGrowth: { magical: 3 },
+        hpGrowth: 3, // ✅ 新增，每升一级增加 10 点 HP
+        unlockSkills: { 4: "meteorStorm" }
+      },
+      skill: {
+        name: "火球术",
+        description: "发射火球造成范围魔法伤害",
+        effect: { type: "magicalDamage", amount: 130 },
+        cooldown: 4
+      }
+    },
+    {
+      id: "hero003",
       name: "阿紫",
       icon: "archer.png",
       role: "游侠",
@@ -58,32 +83,7 @@ const HeroData = {
         cooldown: 3
       }
     },
-    {
-      id: "hero003",
-      name: "凯瑟琳",
-      icon: "mage.png",
-      role: "法师",
-      rarity: "R",
-      hireCost: 20,         // ✅ 新增字段
-      locked: true,
-      hp: 35, // ✅ 新增
-      unlockBy: "ad",
-      attributes: { physical: 2, magical: 10 },
-      level: 1,
-      exp: 0,
-      expToNextLevel: 100,
-      levelUpConfig: {
-        attributeGrowth: { magical: 3 },
-        hpGrowth: 3, // ✅ 新增，每升一级增加 10 点 HP
-        unlockSkills: { 4: "meteorStorm" }
-      },
-      skill: {
-        name: "火球术",
-        description: "发射火球造成范围魔法伤害",
-        effect: { type: "magicalDamage", amount: 130 },
-        cooldown: 4
-      }
-    },
+   
     {
       id: "hero004",
       name: "旺财",

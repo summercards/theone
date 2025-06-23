@@ -26,9 +26,14 @@ let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
 const LevelConfigs = {
     1: { gridSize: 4, allowedBlocks: ['A', 'B', 'D', 'F'] },
     2: { gridSize: 4, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    3: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
-    4: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
-    5: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'E', 'F'] },
+    3: { gridSize: 4, allowedBlocks: ['A', 'B',  'D', 'F'] },
+    4: { gridSize: 5, allowedBlocks: ['A', 'B',  'D', 'F'] },
+    5: { gridSize: 5, allowedBlocks: ['A', 'B',  'D',  'F'] },
+    6: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    7: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    8: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    9: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    10: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
   };
 
 
