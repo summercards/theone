@@ -87,7 +87,7 @@ const foodMonsters = [
       name: foodMonsters[i],
       maxHp: 1200 + i * 100,
       sprite: `${foodSprites[i]}.png`,
-      damage: 25 + i * 5,
+      damage: [20 + i * 5, 30 + i * 5],
       cooldown: 2,
       gold: 10 + lv * 2,
       spriteSize: 120,          // 容器大小保持120不变
@@ -102,7 +102,7 @@ const foodMonsters = [
     name: '暴食者',
     maxHp: 10000,
     sprite: 'glutton.png',
-    damage: 200,
+    damage: [59, 99],   // ❶ 变成数组即可
     cooldown: 3,
     gold: 60,
     isBoss: true,
@@ -130,7 +130,7 @@ const envyMonsters = [
       name: envyMonsters[i],
       maxHp: 2200 + i * 150,
       sprite: `${envySprites[i]}.png`,
-      damage: 60 + i * 10,
+      damage: [35 + i * 10, 50 + i * 10],
       cooldown: 3,
       gold: 15 + lv * 2,
       spriteSize: 120,
@@ -144,7 +144,7 @@ monsters.push(createMonster({
   name: '镜中君主',
   maxHp: 16000,
   sprite: 'jingzhongjunzhu.png',
-  damage: 300,
+  damage: [169, 199],   // ❶ 变成数组即可
   cooldown: 4,
   gold: 100,
   isBoss: true

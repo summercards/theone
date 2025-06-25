@@ -77,5 +77,13 @@ export function getMonsterGold() {
 }
 
 export function getMonsterDamage() {
-  return monster?.atk ?? monster?.skill?.damage ?? 0;
+  const raw = monster?.atk ?? monster?.skill?.damage ?? 0;
+
+  // 如果传进来的是 [min,max] 数组 → 在区间内抽一个整数
+  if (Array.isArray(raw) && raw.length === 2) {
+    const [min, max] = raw;
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  return raw;   // 仍兼容旧写法（单一数字）
 }
