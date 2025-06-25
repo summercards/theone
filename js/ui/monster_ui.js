@@ -119,6 +119,10 @@ export function drawMonsterSprite(ctx, canvas) {
   grad.addColorStop(1, '#a6457a');  // 柔和紫粉（统一暖色调）
   ctx.fillStyle = grad;
   drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
+  ctx.strokeStyle = '#0,0,0,0.4)';  // 或使用 rgba(0,0,0,0.4) 更柔和
+ctx.lineWidth = 1.2;
+drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
+
 
   const flash = Date.now() - monsterHitFlashTime < 200;
   if (flash) {

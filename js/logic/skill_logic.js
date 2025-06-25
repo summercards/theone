@@ -518,11 +518,14 @@ export function applySkillEffect(hero, effect, context) {
       context.log(`${hero.name} 为玩家恢复 ${healAmount} 点生命（当前 ${curHp} → ${after}）`);
     
       if (context.canvas) {
-        const { createFloatingTextUp } = require('../effects_engine.js');
-        const centerX = context.canvas.width / 2;
-        const centerY = context.canvas.height * 0.25;
-        createFloatingTextUp(`+${healAmount} HP`, centerX, centerY, '#66FF99', 32, 600);
+        const { createFloatingTextUp } = require('../effects_engine.js'); // ✅ 修正路径
+        const hp = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 }; // ✅ 修正 fallback
+        const floatX = hp.x + hp.width * 0.75;
+        const floatY = hp.y - 10;
+        createFloatingTextUp(`+${healAmount} HP`, floatX, floatY, '#66FF99', 32, 600);
       }
+      
+      
     
       break;
     }

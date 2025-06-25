@@ -30,7 +30,10 @@ export function onEliminateGreenBlock(count) {
   logBattle(`[B方块] 玩家恢复生命 +${totalHeal}${hasRanger ? '（游侠加成）' : ''}`);
 
   // ✅ 漂浮加血文字（位置可调）
-  createFloatingText(`+${totalHeal} HP`, 160, 96, '#66FFAA');
+  const hp = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
+  const floatX = hp.x + hp.width * 0.75;  // 血条偏右
+  const floatY = hp.y - 10;               // 血条上方
+  createFloatingText(`+${totalHeal} HP`, floatX, floatY, '#66FFAA');
 }
 
 

@@ -942,3 +942,34 @@ export function createHeroLevelUpEffect(slotIndex) {
     });
   }
   
+  export function playFireballEffect(fromX, fromY, toX, toY, size = 48, duration = 500) {
+    const startTime = Date.now();
+  
+    const canvas = globalThis.canvasRef;
+    const ctx = canvas?.getContext?.('2d');
+    if (!ctx) return;
+  
+    const img = new Image();
+    img.src = 'assets/effects/fireball.png'; // ✅ 放火球图片在 assets/effects 目录下
+  
+    function animate() {
+      const now = Date.now();
+      const t = Math.min(1, (now - startTime) / duration);
+  
+      const x = fromX + (toX - fromX) * t;
+      const y = fromY + (toY - fromY) * t;
+  
+      globalThis.__effects_next_frame = () => {
+        if (!img.complete) return;
+        ctx.save();
+        ctx.globalAlpha = 1;
+        ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
+        ctx.restore();
+      };
+  
+      if (t < 1) requestAnimationFrame(animate);
+    }
+  
+    animate();
+  }
+  
