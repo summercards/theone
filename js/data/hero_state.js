@@ -154,9 +154,20 @@ function getRequiredExpForLevel(level) {
   return 50 + level * level * 10;
 }
 
+function unlockHero(heroId) {
+    const hero = new HeroState(heroId);
+    if (!hero.locked) return;
+  
+    hero.locked = false;
+    saveHeroProgress(hero);
+    console.log(`✅ 英雄 ${hero.name} 解锁成功`);
+  }
+
+  
 module.exports = {
   HeroState,
   setSelectedHeroes,
   getSelectedHeroes,
-  getRequiredExpForLevel
+  getRequiredExpForLevel,
+  unlockHero // ✅ 新增导出
 };

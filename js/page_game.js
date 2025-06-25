@@ -50,6 +50,7 @@ import SuperBlockSystem from './data/super_block_system.js';
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 import { registerGameHooks } from './utils/game_shared.js';
 import { getPlayerHp, getPlayerMaxHp } from './data/player_state.js';
+import { unlockHero } from './data/hero_state.js';
 globalThis.renderBlockA = renderBlockA;
 globalThis.renderBlockB = renderBlockB;
 globalThis.renderBlockC = renderBlockC;
@@ -487,6 +488,26 @@ ctx.fillText(popupExpText, W / 2, expY);
     rewards.forEach((txt, i) => {
       ctx.fillText(txt, W / 2, rewardStartY + i * 28);
     });
+  // ✅ 如果有奖励英雄，则绘制头像并记录可点击区域
+if (globalThis.levelRewardsHeroId) {
+    const HeroState = require('./data/hero_state.js').HeroState;
+    const hero = new HeroState(globalThis.levelRewardsHeroId);
+  
+    const iconSize = 72;
+    const iconX = W / 2 - iconSize / 2;
+    const iconY = rewardStartY + rewards.length * 28 + 20;
+  
+    drawHeroIconFull(ctx, hero, iconX, iconY, iconSize, 1.0);
+  
+    // 🌟 记录点击热区供触控逻辑使用
+    globalThis.rewardHeroIconRect = {
+      x: iconX,
+      y: iconY,
+      width: iconSize,
+      height: iconSize,
+      heroId: hero.id
+    };
+  }
   
     /* 6. 英雄升级纵向列表 */
     const ups = globalThis.heroLevelUps || [];
@@ -1560,7 +1581,22 @@ function onTouchend(e) {
 
   const x = touch.clientX;
   const y = touch.clientY;
+// ✅ 点击奖励英雄头像 → 自动加入空出战栏
+const icon = globalThis.rewardHeroIconRect;
+if (icon && x >= icon.x && x <= icon.x + icon.width &&
+            y >= icon.y && y <= icon.y + icon.height) {
 
+  const team = wx.getStorageSync('selectedHeroes') || [null, null, null, null, null];
+  const emptyIdx = team.findIndex(id => !id);
+  if (emptyIdx >= 0) {
+    team[emptyIdx] = icon.heroId;
+    wx.setStorageSync('selectedHeroes', team);
+    wx.showToast({ title: '已加入出战栏', icon: 'success' });
+  } else {
+    wx.showToast({ title: '队伍已满', icon: 'none' });
+  }
+  return; // ✅ 阻止点击落入“下一关”
+}
     // ✅ 胜利弹窗点击“下一关”
     if (showVictoryPopup) {
       const btn = globalThis.victoryBtnArea;
@@ -2014,7 +2050,19 @@ showDamageText(pendingDamage, endX, endY + 50);
           
             globalThis.expGainedThisRound = exp;       // ✅ 设置给弹窗读取
             rewardExpToHeroes(exp);                    // 分发经验
-          
+          // ✅ 添加关卡奖励英雄（例如第 2 关送出 hero002）
+const levelRewardTexts = [];
+
+if (currentLevel === 2) {
+  if (typeof unlockHero === 'function') {
+    unlockHero('hero002');
+  }
+  levelRewardTexts.push('解锁新英雄：爱丽丝（002）');
+  globalThis.levelRewardsHeroId = 'hero002';  // 🌟 添加这一句
+}
+
+globalThis.levelRewards = levelRewardTexts;
+
             // ✅ 胜利弹窗
             showVictoryPopup = true;
             popupGoldDisplayed = 0;

@@ -43,12 +43,12 @@ const HeroData = {
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { magical: 3 },
-        hpGrowth: 3, // ✅ 新增，每升一级增加 10 点 HP
+        hpGrowth: 3, // ✅ 新增，每升一级增加 3 点 HP
         unlockSkills: { 4: "meteorStorm" }
       },
       skill: {
         name: "火球术",
-        description: "发射火球造成范围魔法伤害",
+        description: "发射火球造成魔法伤害",
         effect: { type: "magicalDamage", amount: 130 },
         cooldown: 4
       }
@@ -74,10 +74,10 @@ const HeroData = {
       },
       skill: {
         name: "自然恩泽",
-        description: "为玩家恢复生命，1级恢复24点，每级提升10%",
+        description: "为玩家恢复生命，1级恢复12点，每级提升10%",
         effect: {
           type: "healPlayer",
-          baseHeal: 24,
+          baseHeal: 12,
           growthRate: 0.10
         },
         cooldown: 3
