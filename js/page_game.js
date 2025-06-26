@@ -489,7 +489,7 @@ ctx.fillText(popupExpText, W / 2, expY);
       ctx.fillText(txt, W / 2, rewardStartY + i * 28);
     });
   // ✅ 如果有奖励英雄，则绘制头像并记录可点击区域
-if (globalThis.levelRewardsHeroId) {
+  if (globalThis.levelRewardsHeroId) {
     const HeroState = require('./data/hero_state.js').HeroState;
     const hero = new HeroState(globalThis.levelRewardsHeroId);
   
@@ -498,6 +498,20 @@ if (globalThis.levelRewardsHeroId) {
     const iconY = rewardStartY + rewards.length * 28 + 20;
   
     drawHeroIconFull(ctx, hero, iconX, iconY, iconSize, 1.0);
+  
+    // ⬇️ 显示“点击加入队伍”文字
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('点击加入队伍', W / 2, iconY + iconSize + 4);
+  
+    // ⬇️ 显示正确的英雄名称（自动读取）
+    const fullHero = HeroData.getHeroById(hero.id);
+    const realName = fullHero?.name || '新英雄';
+    ctx.fillStyle = '#FFD700';
+    ctx.font = '18px sans-serif';
+    ctx.fillText(`解锁新英雄：${realName}`, W / 2, iconY + iconSize + 28);
   
     // 🌟 记录点击热区供触控逻辑使用
     globalThis.rewardHeroIconRect = {
@@ -508,6 +522,7 @@ if (globalThis.levelRewardsHeroId) {
       heroId: hero.id
     };
   }
+  
   
     /* 6. 英雄升级纵向列表 */
     const ups = globalThis.heroLevelUps || [];
@@ -2076,7 +2091,6 @@ if (currentLevel === 2) {
   if (typeof unlockHero === 'function') {
     unlockHero('hero002');
   }
-  levelRewardTexts.push('解锁新英雄：爱丽丝（002）');
   globalThis.levelRewardsHeroId = 'hero002';  // 🌟 添加这一句
 }
 
