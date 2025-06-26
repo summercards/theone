@@ -1389,16 +1389,21 @@ if (letter === 'B') {
 
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
-        earnedGold = getMonsterGold();
-        addCoins(earnedGold);
-        goldPopTime = Date.now();              // ← 加这一行
-        displayedGold = getSessionCoins(); // 让动画从当前金币值开始
-        levelJustCompleted = currentLevel;
+    earnedGold = getMonsterGold();
+       addCoins(earnedGold);
+       goldPopTime       = Date.now();
+       displayedGold     = getSessionCoins();
+       levelJustCompleted = currentLevel;
     
-
-        showVictoryPopup = true;           // ★ 再弹窗
-        goldPopTime = Date.now(); // ✨ 胜利弹窗金币弹跳
-    return;                                // 暂停，等待点击继续
+       /* —— 新增：关卡里程碑英雄解锁 —— */
+       if (currentLevel === 2 || currentLevel === 6) {
+         const heroId = currentLevel === 2 ? 'hero002' : 'hero003';
+         if (typeof unlockHero === 'function') unlockHero(heroId);
+         globalThis.levelRewardsHeroId = heroId;   // 让胜利弹窗画出头像
+       }
+    
+       showVictoryPopup = true;
+       return;            // 暂停游戏流，等待玩家点击“下一关”
   }
   else {
     // 敌人仍存活：怪物回合已由其他逻辑处理（如 turnsLeft）
@@ -2087,12 +2092,13 @@ showDamageText(pendingDamage, endX, endY + 50);
           // ✅ 添加关卡奖励英雄（例如第 2 关送出 hero002）
 const levelRewardTexts = [];
 
-if (currentLevel === 2) {
-  if (typeof unlockHero === 'function') {
-    unlockHero('hero002');
-  }
-  globalThis.levelRewardsHeroId = 'hero002';  // 🌟 添加这一句
-}
+if (currentLevel === 2 || currentLevel === 6) {
+     const heroId = currentLevel === 2 ? 'hero002' : 'hero003';   // ★ 新增
+     if (typeof unlockHero === 'function') {
+       unlockHero(heroId);
+     }
+     globalThis.levelRewardsHeroId = heroId;
+   }
 
 globalThis.levelRewards = levelRewardTexts;
 
