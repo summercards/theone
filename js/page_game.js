@@ -1,3 +1,13 @@
+const VictoryDialogLines = [
+  "干得漂亮！前方还有冒险在等着你！",
+  "英雄，荣耀属于你！",
+  "一鼓作气，再下一城！",
+  "休息片刻，继续征程。",
+  "这只是开始，别松懈哦~",
+  "钱袋子变鼓了，心也跟着鼓起来！",
+  "回到旅店，召集更多的同伴吧!"
+];
+
 let comboCounter = 0;
 let comboShowTime = 0;      // 🎥 记录当前动画的开始时间
 let lastComboUpdateTime = 0; // 🕒 实际触发新 combo 的时间
@@ -436,14 +446,48 @@ if (showVictoryPopup) {
     ctx.font = 'bold 36px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    const titleY = H * 0.18;
+    const titleY = H * 0.12 ;  
     ctx.fillText(title, W / 2, titleY);
   
     /* 3. 中央插图 */
     const heroImgW = 120, heroImgH = 120;
     const heroImgX = (W - heroImgW) / 2;
-    const heroImgY = titleY + 60;
+    const heroImgY = titleY + 120;
   
+    /* === 3-A 对白气泡（在插图头顶） ========================== */
+const dialog = globalThis.victoryDialogText || "";
+if (dialog) {
+  ctx.save();
+  ctx.font = '16px PingFang SC, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const padX = 18, padY = 10;
+  const txtW = ctx.measureText(dialog).width;
+  const bubbleW = txtW + padX * 2;
+  const bubbleH = 40;
+  const bubbleX = heroImgX + heroImgW / 2 - bubbleW / 2;
+  const bubbleY = heroImgY - bubbleH - 16;      // ↑ 插图上方 16px
+
+  // 1. 白底圆角框
+  ctx.fillStyle = '#FFFFFF';
+  drawRoundedRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 10, true, false);
+
+  // 2. 小箭头（指向插图）
+  ctx.beginPath();
+  ctx.moveTo(bubbleX + bubbleW / 2 - 6, bubbleY + bubbleH);   // 左脚
+  ctx.lineTo(bubbleX + bubbleW / 2 + 6, bubbleY + bubbleH);   // 右脚
+  ctx.lineTo(heroImgX + heroImgW / 2,    heroImgY - 2);       // 尖端
+  ctx.closePath();
+  ctx.fill();
+
+  // 3. 黑字内容
+  ctx.fillStyle = '#000';
+  ctx.fillText(dialog, bubbleX + bubbleW / 2, bubbleY + bubbleH / 2);
+  ctx.restore();
+}
+/* ========================================================= */
+
     if (!globalThis.victoryHeroImage) {
       const img = wx.createImage();
       img.src = 'assets/ui/victory_hero.png';
@@ -1631,6 +1675,7 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
       if (btn && x >= btn.x && x <= btn.x + btn.width &&
                  y >= btn.y && y <= btn.y + btn.height) {
         showVictoryPopup = false;
+        globalThis.victoryDialogText = null;   // 清掉上一次对白
         gaugeCount = 0;        // 只清操作计数
         currentLevel = currentLevel + 1; // ✅ 明确用本地 currentLevel 推进
         const config = LevelConfigs[currentLevel] || {};
@@ -2101,6 +2146,10 @@ if (currentLevel === 2 || currentLevel === 6) {
    }
 
 globalThis.levelRewards = levelRewardTexts;
+
+// 弹窗即将出现——先抽一行对白
+globalThis.victoryDialogText =
+  VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
 
             // ✅ 胜利弹窗
             showVictoryPopup = true;
