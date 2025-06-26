@@ -1626,7 +1626,7 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
       if (btn && x >= btn.x && x <= btn.x + btn.width &&
                  y >= btn.y && y <= btn.y + btn.height) {
         showVictoryPopup = false;
-    
+        gaugeCount = 0;        // 只清操作计数
         currentLevel = currentLevel + 1; // ✅ 明确用本地 currentLevel 推进
         const config = LevelConfigs[currentLevel] || {};
 globalThis.gridSize = config.gridSize || 6;

@@ -185,7 +185,7 @@ render(ctx, x, y, width, height, type = 'S1') {
             dealDamage(200, { allowKill: true });   // 扣血
             createMonsterBounce();                  // 怪物弹一下
             showDamageText(200, endX, endY + 50);   // 飘字
-          }, 200);
+          }, 900);
         
           // ③ 触发后把自己清空即可（不再清整行）
           gridData[row][col] = null;
