@@ -18,6 +18,11 @@ const SUPER_UNLOCK_LEVEL = {
     createChargeGlowEffect,
     createChargeReleaseEffect,
   } = require('../effects_engine.js');
+
+  const { dealDamage } = require('./monster_state.js');
+const { createProjectile, createMonsterBounce, showDamageText } = require('../effects_engine.js');
+
+
   // 从全局缓存里取贴图，没有时返回 null
 function getSuperTexture(type) {
     return (globalThis.imageCache && globalThis.imageCache[`super_${type}`]) || null;
@@ -167,9 +172,26 @@ render(ctx, x, y, width, height, type = 'S1') {
   
       /* —— 清屏规则 —— */
       switch (type) {
-        case 'S1': // 横排炸
-          for (let c = 0; c < gridSize; c++) gridData[row][c] = null;
+        case 'S1': {                   // 火球：单体 200 伤
+          // ① 计算起终点坐标
+          const startX = centerX;
+          const startY = centerY;
+          const endX   = globalThis.canvasRef.width  / 2;   // 怪物在画布水平居中
+          const endY   = 180;                               // 与 page_game.js 中保持一致
+        
+          // ② 创建火球弹道；power 用来让火球大小 ≈ 伤害
+          createProjectile(startX, startY, endX, endY, 500, () => {
+            // —— 抵达后回调 —— //
+            dealDamage(200, { allowKill: true });   // 扣血
+            createMonsterBounce();                  // 怪物弹一下
+            showDamageText(200, endX, endY + 50);   // 飘字
+          }, 200);
+        
+          // ③ 触发后把自己清空即可（不再清整行）
+          gridData[row][col] = null;
           break;
+        }
+        
   
         case 'S2': // 3×3 区域
           for (let dr = -1; dr <= 1; dr++) {
