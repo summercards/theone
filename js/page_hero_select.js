@@ -403,12 +403,15 @@ for (const { hero } of iconRects) {
 
       // 🔥 在英雄池中升级时设置升级特效坐标回调
       hs.onLevelUp = () => {
-        const { createHeroLevelUpEffectAt } = require('./effects_engine.js');
+        const { createHeroLevelUpEffectAt, createFloatingTextUp } = require('./effects_engine.js');
+
         const rect = iconRects.find(r => r.hero?.id === hero.id)?.rect;
         if (rect) {
           const centerX = rect.x + rect.width / 2;
           const centerY = rect.y;
           createHeroLevelUpEffectAt(centerX, centerY); // 在头像正上方播放特效
+          createFloatingTextUp(`+${hs.expToNextLevel} 经验`, centerX, centerY - 16, '#33AAFF', 20, 1000);
+
         }
       };
       
@@ -782,29 +785,29 @@ drawStyledText(ctx, `进入第${level}关`,
 
 
   // 广告按钮
-  let adBtnRect = {
-    x: canvas.width - PAD_X - ICON * 1.2,
-    y: toggleY,
-    width: ICON * 1.2,
-    height: ICON * 0.8
-  };
-  adBtnRect = avoidOverlap(adBtnRect, layoutRects);
-  layoutRects.push(adBtnRect);
+  // // 广告按钮（已隐藏）
+// let adBtnRect = {
+//   x: canvas.width - PAD_X - ICON * 1.2,
+//   y: toggleY,
+//   width: ICON * 1.2,
+//   height: ICON * 0.8
+// };
+// adBtnRect = avoidOverlap(adBtnRect, layoutRects);
+// layoutRects.push(adBtnRect);
 
-  ctx.fillStyle = '#9c275d';
-  drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
-  drawStyledText(ctx, '看广告得金币',
-  adBtnRect.x + adBtnRect.width / 2,
-  adBtnRect.y + adBtnRect.height / 2, {
-    font: 'bold 18px IndieFlower',
-    fill: '#ffe3e3',
-    //stroke: '#FFF',
-    align: 'center',
-    baseline: 'middle'
-});
+// ctx.fillStyle = '#9c275d';
+// drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
+// drawStyledText(ctx, '看广告得金币',
+// adBtnRect.x + adBtnRect.width / 2,
+// adBtnRect.y + adBtnRect.height / 2, {
+//   font: 'bold 18px IndieFlower',
+//   fill: '#ffe3e3',
+//   align: 'center',
+//   baseline: 'middle'
+// });
 
+// globalThis.adBtnRect = adBtnRect;
 
-  globalThis.adBtnRect = adBtnRect;
 // 返回按钮（左上角）
 btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
 ctx.fillStyle = '#5e3a7d';

@@ -264,6 +264,7 @@ else if (e.type === 'proj') {
       ctx.textBaseline = 'middle';
       ctx.fillStyle = e.color;
     
+      ctx.strokeText(e.text, e.x, e.y - rise);
       ctx.fillText(e.text, e.x, e.y - rise);
       ctx.restore();
     }
