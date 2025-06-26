@@ -75,7 +75,7 @@ import {
     createChargeGlowEffect
 } from './effects_engine.js';
   
-import { getSelectedHeroes } from './data/hero_state.js';
+import { getSelectedHeroes, setSelectedHeroes } from './data/hero_state.js';
 import { setCharge, getCharges } from './data/hero_charge_state.js';
 // 👾 Monster system
 import { loadMonster, dealDamage, isMonsterDead, getNextLevel, getMonsterGold } from './data/monster_state.js';
@@ -1591,7 +1591,15 @@ if (icon && x >= icon.x && x <= icon.x + icon.width &&
   if (emptyIdx >= 0) {
     team[emptyIdx] = icon.heroId;
     wx.setStorageSync('selectedHeroes', team);
-    wx.showToast({ title: '已加入出战栏', icon: 'success' });
+    setSelectedHeroes(team);   // ① 立刻刷新内存中的 selectedHeroes
+drawGame();                // ② (可选) 让弹窗背后的 UI 马上看到变动
+setSelectedHeroes(team);                 // ↙️ 刷新内存
+
+   // ✅ 关闭弹窗里的奖励头像，避免下一帧再画一次
+   globalThis.levelRewardsHeroId = null;
+   globalThis.rewardHeroIconRect = null;
+
+   wx.showToast({ title: '已加入出战栏', icon: 'success' });
   } else {
     wx.showToast({ title: '队伍已满', icon: 'none' });
   }
@@ -1615,6 +1623,17 @@ globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'
      
     
         initGrid();
+        // ===== 重新载入最新出战英雄 =====
+       const heroes = getSelectedHeroes();
+       const totalHp = heroes.reduce((sum, h) => sum + (h?.hp || 0), 0);
+       initPlayer(totalHp);                       // 更新玩家血量
+
+       // 重新注册钩子，让新英雄技能生效
+       registerGameHooks({
+         expand: expandGridTo,
+         addGauge: addToAttackGauge,
+         hitFlash: monsterHitFlashTime
+       });
         drawGame();
       }
       return;
