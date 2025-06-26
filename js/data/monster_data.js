@@ -85,7 +85,7 @@ const foodMonsters = [
       id: lv,
       level: lv,
       name: foodMonsters[i],
-      maxHp: 200 + i * 100,
+      maxHp: 1200 + i * 100,
       sprite: `${foodSprites[i]}.png`,
       damage: [20 + i * 5, 30 + i * 5],
       cooldown: 2,
