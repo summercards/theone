@@ -115,8 +115,9 @@ export function drawMonsterSprite(ctx, canvas) {
   drawRoundedRect(ctx, barX, barY, BAR_W, BAR_H, 8, true, false);
 
   const grad = ctx.createLinearGradient(barX, barY, barX + BAR_W * hpRatio, barY);
-  grad.addColorStop(0, '#6a254d');  // 深紫红（偏酒红）
-  grad.addColorStop(1, '#a6457a');  // 柔和紫粉（统一暖色调）
+/* ② 左→右：桃色(#E3488E) 过渡到亮紫(#C96BFF) */
+grad.addColorStop(0, '#f2093b');   // 鲜亮桃粉
+grad.addColorStop(1, '#f2091f');   // 饱和紫罗兰
   ctx.fillStyle = grad;
   drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
   ctx.strokeStyle = '#0,0,0,0.4)';  // 或使用 rgba(0,0,0,0.4) 更柔和

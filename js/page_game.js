@@ -7,7 +7,8 @@ const VictoryDialogLines = [
   "钱袋子变鼓了，心也跟着鼓起来！",
   "回到旅店，召集更多的同伴吧!"
 ];
-
+let comboTextPos   = null;   // 最近一次画 Combo 飘字的位置
+let gaugeCenterPos = null;   // 攻击槽中心位置
 let comboCounter = 0;
 let comboShowTime = 0;      // 🎥 记录当前动画的开始时间
 let lastComboUpdateTime = 0; // 🕒 实际触发新 combo 的时间
@@ -228,7 +229,7 @@ let selected = null;
 /* ================= 背景层：黑 → 紫渐变 =================== */
 function drawBackground() {
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);          // 复位矩阵
-    const darkPurple = '#4C0013';                   // 最底端色
+    const darkPurple = '#16041e';                   // 最底端色
     const g = ctxRef.createLinearGradient(0, 0, 0, canvasRef.height * 0.9);
     g.addColorStop(0, '#000');                      // 顶部纯黑
     g.addColorStop(1, darkPurple);                  // 90% 处过渡到暗紫
@@ -1577,6 +1578,7 @@ function processClearAndDrop() {
       comboQueue.shift();
   
       if (comboQueue.length > 0) {
+        comboTextPos = { x: comboX, y: comboY };
         setTimeout(triggerComboTick, 180);
       } else {
         comboTimerActive = false;
@@ -1624,13 +1626,25 @@ function processClearAndDrop() {
                 }, 500);
               } else {
                 setTimeout(() => {
+                  /* === combo 结算加伤害 ========================= */
+                  if (comboCounter > 0) {
+                    const COMBO_BONUS_FACTOR = 1;          // ↙ 想 2 倍就写 2
+                    const bonus = comboCounter * COMBO_BONUS_FACTOR;
+                
+                    attackGaugeDamage += bonus;            // 给伤害巢加成
+                    damagePopTime = Date.now();            // 触发数字弹跳动画
+                    logBattle(`Combo 结算：+${bonus} 伤害（Combo ×${comboCounter}）`);
+                  }
+                  /* ============================================= */
+                
                   comboQueue.length = 0;
-                  comboCounter = 0; // ✅ 只在结算完再重置
+                  comboCounter = 0;                         // 最后再清零
                   drawGame();
+                  clearingRunning = false;
+                  tryStartHeroBurst();
                 }, 2000);
   
-                clearingRunning = false;
-                tryStartHeroBurst();
+
               }
             }
           }, 300);
