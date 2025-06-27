@@ -34,16 +34,16 @@ let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
 let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
 
 const LevelConfigs = {
-    1: { gridSize: 3, allowedBlocks: ['A', 'D', 'F'] },
-    2: { gridSize: 3, allowedBlocks: ['A', 'B', 'F'] },
-    3: { gridSize: 4, allowedBlocks: ['A', 'B',  'D', 'F'] },
-    4: { gridSize: 4, allowedBlocks: ['A', 'B',  'D', 'F'] },
-    5: { gridSize: 5, allowedBlocks: ['A', 'B',  'D',  'F'] },
-    6: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    7: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    8: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
-    9: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
-    10: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    1: { gridSize: 5, allowedBlocks: ['A', 'D', 'F'] },
+    2: { gridSize: 5, allowedBlocks: ['A', 'B', 'F'] },
+    3: { gridSize: 5, allowedBlocks: ['A', 'B',  'D', 'F'] },
+    4: { gridSize: 6, allowedBlocks: ['A', 'B',  'D', 'F'] },
+    5: { gridSize: 6, allowedBlocks: ['A', 'B',  'D',  'F'] },
+    6: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    7: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    8: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    9: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    10: { gridSize: 7, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
   };
 
 
@@ -339,12 +339,22 @@ export function drawGame() {
 
   const maxWidth = canvasRef.width * 0.9;
   const maxHeight = canvasRef.height - 420;
-  const blockSize = Math.floor(Math.min(maxWidth, maxHeight) / gridSize);
+  const scaleMap = {
+    3: 0.9,
+    4: 0.9,
+    5: 0.9,
+    6: 1.0
+  };
+  const scaleFactor = scaleMap[gridSize] || 1.0;
+  const blockSize = Math.floor(Math.min(maxWidth, maxHeight) / gridSize * scaleFactor);
   
   const startX = (canvasRef.width - blockSize * gridSize) / 2;
   const topSafeArea = 220; // 怪物区向上留空间
-  const bottomPadding = 40; // 更贴近底部
+  const bottomPadding = gridSize <= 3 ? 150 :
+  gridSize === 4 ? 170 :
+  gridSize === 5 ? 80 : 40;
 const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - bottomPadding);
+
   
   
 
@@ -879,38 +889,48 @@ globalThis.backToHomeBtn = {
   height: btnBackSize
 };
 
+/* --- 操作计数展示（底部居中・仅数字） --- */
+{
+  const countDown  = Math.max(0, 5 - gaugeCount);
+  const countText  = `${countDown}`;
 
+  /* ① 字体与位置 */
+  const fontSize   = 25;
+  ctxRef.font         = `bold ${fontSize}px sans-serif`;
+  ctxRef.textAlign    = 'center';
+  ctxRef.textBaseline = 'middle';
 
+  const countX = canvasRef.width / 2;
+  const countY = __gridStartY + __blockSize * gridSize + 18;
 
-/* --- 操作计数展示 --- */
-const countDown = Math.max(0, 5 - gaugeCount);   // 还剩几次操作
-const countText = `操作次数: ${countDown}`;
-// === 操作计数展示（固定在棋盘上方） ===
-const rightPad = 26;        // 距离右边缘
-const countX   = canvasRef.width - rightPad;
-const countY   = 116;       // 与“金币”文字同一行
+  /* ② 尺寸：再长一点 */
+  const padX  = 36;          // ← 左右留白加大，条更细长
+  const padY  = 5;           // 上下留白
+  const txtW  = ctxRef.measureText(countText).width;
+  const boxW  = txtW + padX * 2;
+  const boxH  = fontSize + padY * 2;
+  const boxX  = countX - boxW / 2;
+  const boxY  = countY - boxH / 2;
+  const radius = boxH / 2;   // 圆角＝高度一半
 
-// 闪烁：触发后 600 ms 内黄白交替
-let color = '#FFF';
-if (gaugeFlashTime && Date.now() - gaugeFlashTime < 600) {
-  color = (Date.now() % 200 < 100) ? '#FFD700' : '#FFF';
-} else if (gaugeFlashTime && Date.now() - gaugeFlashTime >= 600) {
-  gaugeFlashTime = 0;
+  /* ③ 底色 + 描边 */
+  ctxRef.fillStyle   = '#3e2653';       // 暖深灰
+  drawRoundedRect(ctxRef, boxX, boxY, boxW, boxH, radius, true, false);
+
+  ctxRef.lineWidth   = 3;
+  ctxRef.strokeStyle = '#751b50';       // 与棋盘外框同色
+  drawRoundedRect(ctxRef, boxX, boxY, boxW, boxH, radius, false, true);
+
+  /* ④ 文字（纯白，无描边） */
+  ctxRef.fillStyle = '#FFFFFF';
+  ctxRef.fillText(countText, countX, countY);
 }
 
-// 设置文字样式
-ctxRef.font = 'bold 16px sans-serif';
-ctxRef.textAlign = 'right';
-ctxRef.textBaseline = 'middle';
 
-// 描边
-ctxRef.lineWidth = 2;
-ctxRef.strokeStyle = '#000';
-ctxRef.strokeText(countText, countX, countY);
 
-// 填充
-ctxRef.fillStyle = color;
-ctxRef.fillText(countText, countX, countY);
+
+
+
 
 
 
@@ -1879,18 +1899,16 @@ function handleSwap(src, dst) {
       }
    
       if (gaugeCount >= 5) {
-        gaugeFlashTime = Date.now();
-        pendingHeroBurst = true;
-        pendingBurstDamage = attackGaugeDamage;
+        gaugeFlashTime      = Date.now();
+        pendingHeroBurst    = true;           // 标记排队播放连招
+        pendingBurstDamage  = attackGaugeDamage;
       
-        // 防止多次触发
-        const currentCount = gaugeCount;
-        gaugeCount = 9999; // 临时设置一个非法大值，防止继续触发
+        gaugeCount = 9999;                    // 依旧锁死，UI 显示 0
       
+        // 2 秒后只启动英雄连招，不再清零计数
         setTimeout(() => {
-          gaugeCount = 0; // 重置回 0
           tryStartHeroBurst();
-        }, 2000); // 等待2秒再触发
+        }, 2000);
       }
 
       
@@ -2113,6 +2131,9 @@ const size = pendingDamage > 10000 ? 64
 showDamageText(pendingDamage, endX, endY + 50);
 
     pendingDamage = 0;
+    setTimeout(() => {
+      gaugeCount = 0;
+    }, 500);
 
     if (isMonsterDead()) {
         const monster = getMonster();
