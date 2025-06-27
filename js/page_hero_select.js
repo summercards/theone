@@ -438,11 +438,7 @@ for (const { hero } of iconRects) {
 
 
   /* ---------- 确认按钮 ---------- */
-  const confirmRect = {
-    x: canvasRef.width / 2 - 80,
-    y: canvasRef.height - 80,
-    width: 160, height: 50
-  };
+  const confirmRect = globalThis.confirmRect;
   if (hit(x, y, confirmRect)) {
     // 检查是否至少有一个出战英雄
     const hasHero = selectedHeroes.some(id => id !== null);
@@ -775,7 +771,7 @@ const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
 
   // 确认按钮
 // ✅ 将确认按钮 Y 坐标与左侧“升级按钮”对齐
-const confirmY = upgradeToggleRect.y;
+const confirmY = btnPrevRect.y - ICON * 0.1;
 
 let confirmRect = {
   x: canvas.width / 2 - ICON * 1.5,
@@ -786,10 +782,10 @@ let confirmRect = {
 
 confirmRect = avoidOverlap(confirmRect, layoutRects);
 layoutRects.push(confirmRect);
-
+globalThis.confirmRect = confirmRect;
 const confirmX = confirmRect.x;
 ctx.fillStyle = '#6d2c91';
-drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 0.8, 6, true, false);
+drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 1.0, 28, true, false);
 let level = 1;
 try {
   const stored = wx.getStorageSync('lastLevel');
@@ -801,8 +797,8 @@ try {
 
 drawStyledText(ctx, `进入第${level}关`,
   confirmX + ICON * 1.5,
-  confirmY + ICON * 0.4, {
-    font: 'bold 18px IndieFlower',
+  confirmY + ICON * 0.5, {
+    font: 'bold 20px IndieFlower',
     fill: '#f8d6ff',
     //stroke: '#000',
     align: 'center',
