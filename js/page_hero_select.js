@@ -34,8 +34,10 @@ const {
 const HeroData          = require('./data/hero_data.js');
 
 const ICON       = 60;                  // 头像大小（全局常量）
-const HERO_PER_PAGE = 10;
-const TOTAL_PAGES   = 3;
+const HERO_PER_PAGE = 15;                                   // 每页 15
+ const TOTAL_PAGES   = Math.ceil(                           // 页数自动算
+   HeroData.heroes.length / HERO_PER_PAGE
+ );
 
 const lockIconImg = wx.createImage();   // 锁图标
 lockIconImg.src   = 'assets/ui/lock.png';
@@ -540,7 +542,7 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // === 自适应尺寸参数 ===
-  const ICON = Math.floor(canvas.width / 6.5);  // 更大头像
+  const ICON = Math.floor(canvas.width / 7.2);  // 更大头像
   const GAP = Math.floor(ICON * 0.22);                         // 稍微紧凑
   const PAD_X = Math.floor((canvas.width - (ICON * 5 + GAP * 4)) / 2);
   const topOffset = Math.floor(canvas.height * 0.35);        // 更靠上
@@ -567,8 +569,10 @@ ctx.fillRect(0, canvas.height * 0.9, canvas.width, canvas.height * 0.1);
 // ✅ 英雄选择界面顶部“酒吧背景图”
 const barImage = globalThis.imageCache['hero_window'];
 if (barImage && barImage.complete && barImage.width) {
-  const IMG_W = 390;
-  const IMG_H = 280; // 保持原图比例
+// 绿框大约离左右各留 20px、高宽比≈16:9
+const sidePad = 20;
+const IMG_W   = canvas.width - sidePad * 2;   // 宽度随屏幕自适应
+const IMG_H   = IMG_W * 9 / 16;              // 保持 16:9
   const x = (canvas.width - IMG_W) / 2;
   const y = canvas.height * 0.11;  // 顶部偏移，可根据实际位置微调
 
@@ -705,9 +709,16 @@ for (let i = 0; i < 5; i++) {
 // 🟡 插入在这里，确保 drawIcon 后才能访问
 globalThis.layoutRects = layoutRects;
   // 翻页按钮
-  const btnY = poolStartY + ICON * 2.5 + 30;
-  btnPrevRect = { x: PAD_X, y: btnY, width: ICON * 0.8, height: ICON * 0.8 };
-  btnNextRect = { x: canvas.width - PAD_X - ICON * 0.8, y: btnY, width: ICON * 0.8, height: ICON * 0.8 };
+// poolRows = 行数（15 个英雄 → 3 行；10 个英雄仍是 2 行）
+ const poolRows = Math.ceil(HERO_PER_PAGE / 5);
+
+ // 向下再挪 12px；若想更低调，把 12 改更大
+ const btnY = poolStartY + ICON * poolRows + 90;
+
+ // 按钮缩小到 ICON 的 0.6 倍
+ const BTN  = ICON * 0.65;
+ btnPrevRect = { x: PAD_X,             y: btnY, width: BTN, height: BTN };
+ btnNextRect = { x: canvas.width - PAD_X - BTN, y: btnY, width: BTN, height: BTN };
 
   ctx.fillStyle = pageIndex > 0 ? '#9c275d' : '#300';
   drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 8, true, false);
@@ -718,9 +729,9 @@ globalThis.layoutRects = layoutRects;
   drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 8, true, false);
   drawText(ctx, '>', btnNextRect.x + btnNextRect.width / 2, btnNextRect.y + btnNextRect.height / 2,
   'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
-  drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
-    canvas.width / 2, btnY + btnPrevRect.height / 2,
-    '14px IndieFlower', '#DCC6F0', 'center', 'middle');
+  //drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
+    //canvas.width / 2, btnY + btnPrevRect.height / 2,
+   // '14px IndieFlower', '#DCC6F0', 'center', 'middle');
 
   // 升级按钮开关
   const toggleY = canvas.height - ICON * 1.5;
