@@ -811,7 +811,7 @@ const fontSize = Math.floor(baseFont * fontScale);
 const DAMAGE巢顶部 = __gridStartY - 170;
 const DAMAGE巢底部 = __gridStartY - 80;
 const centerY = (DAMAGE巢顶部 + DAMAGE巢底部) / 2;
-
+gaugeCenterPos = { x: canvasRef.width / 2, y: centerY };
 // 🎯 绘制
 ctxRef.save();
 ctxRef.setTransform(1, 0, 0, 1, 0, 0);
@@ -1103,6 +1103,9 @@ if (comboCounter >= 1 && Date.now() - lastComboUpdateTime < 2500) {
     ctx.fillText(`Combo ×${comboCounter}!`, 0, 0);
   
     ctx.restore();
+
+   // 记录飘字中心，供稍后生成飞行粒子
+   comboTextPos = { x: x, y: y };       // x、y 就是上面那两个变量
   }
   
   
@@ -1578,7 +1581,6 @@ function processClearAndDrop() {
       comboQueue.shift();
   
       if (comboQueue.length > 0) {
-        comboTextPos = { x: comboX, y: comboY };
         setTimeout(triggerComboTick, 180);
       } else {
         comboTimerActive = false;
@@ -1626,23 +1628,39 @@ function processClearAndDrop() {
                 }, 500);
               } else {
                 setTimeout(() => {
-                  /* === combo 结算加伤害 ========================= */
-                  if (comboCounter > 0) {
-                    const COMBO_BONUS_FACTOR = 1;          // ↙ 想 2 倍就写 2
-                    const bonus = comboCounter * COMBO_BONUS_FACTOR;
-                
-                    attackGaugeDamage += bonus;            // 给伤害巢加成
-                    damagePopTime = Date.now();            // 触发数字弹跳动画
-                    logBattle(`Combo 结算：+${bonus} 伤害（Combo ×${comboCounter}）`);
-                  }
-                  /* ============================================= */
+/* === combo 结算：粒子注入 + 加伤害 ============ */
+/* === combo 结算：粒子注入 + 加伤害 ============ */
+if (comboCounter > 0) {
+  const bonus = comboCounter * 1;                // 倍率写这里
+
+  // ➜ 生成能量粒子飞向伤害巢
+  if (comboTextPos && gaugeCenterPos) {
+    createEnergyParticles(
+      comboTextPos.x, comboTextPos.y,
+      gaugeCenterPos.x, gaugeCenterPos.y,
+      '#f9e71f',                                  // 粒子颜色
+      2                                          // 数量
+    );
+
+    // 粒子飞完 500ms 后真正加伤害
+    setTimeout(() => {
+      attackGaugeDamage += bonus;
+      damagePopTime = Date.now();                 // 数字弹跳
+    }, 500);
+  } else {
+    attackGaugeDamage += bonus;                   // 找不到坐标就直接加
+    damagePopTime = Date.now();
+  }
+}
+
+   /* ============================================= */
                 
                   comboQueue.length = 0;
                   comboCounter = 0;                         // 最后再清零
                   drawGame();
                   clearingRunning = false;
                   tryStartHeroBurst();
-                }, 2000);
+                }, 1200);
   
 
               }

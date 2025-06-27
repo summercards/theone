@@ -255,7 +255,16 @@ else if (e.type === 'proj') {
       if (t > e.duration) return remove.push(i);
     
       const rise = (t / e.duration) * 20; // ⬆️ 总共上升 30 像素
-    
+      
+      const PARTICLE_PRESETS = { energySpark: {
+        sprite: null,          // 用纯色圆
+        colorStart: 'rgba(173, 255, 255, 0.9)', // 青蓝高光
+        colorEnd:   'rgba(80,  150, 255, 0.0)', // 渐隐
+        size: 20,              // 初始直径
+        shrink: 0.92,          // 每帧收缩
+        trail: true            // 让 drawParticle 画半透明拖尾
+      },
+     }
       ctx.save();
       ctx.globalAlpha = 1.0; // ❗始终不透明
     
@@ -556,20 +565,24 @@ export function createProjectile(
       });
     }
 
-export function createEnergyParticles(x0, y0, x1, y1, color = '#FFD700', count = 6) {
-    const now = Date.now();
-    for (let i = 0; i < count; i++) {
-      const offsetDelay = i * 50; // 每个粒子稍有延迟
-      effects.push({
-        type: 'energy_particle',
-        x0, y0, x1, y1,
-        startTime: now + offsetDelay,
-        color,
-        duration: 500 + Math.random() * 150,
-        radius: 4 + Math.random() * 2
-      });
-    }
-  }
+/* === 能量星光粒子（Combo ➜ 伤害巢） ===================== */
+export function createEnergyParticles(x0, y0, x1, y1,
+  color = '#A3F4FF', // 能量蓝
+  count = 10) {
+const now = Date.now();
+for (let i = 0; i < count; i++) {
+const offset = i * 40;                 // 依次稍延迟
+effects.push({
+type: 'energy_particle',
+x0, y0, x1, y1,
+startTime: now + offset,
+duration: 250,                       // 0.5 s 飞行
+radius: 5 + Math.random() * 2,
+color
+});
+}
+}
+
   
   export function createFloatingText(text, x, y, color = '#FF4444', size = 36, duration = 1000) {
     effects.push({ 
