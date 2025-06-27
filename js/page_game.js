@@ -1631,14 +1631,17 @@ function processClearAndDrop() {
 /* === combo 结算：粒子注入 + 加伤害 ============ */
 /* === combo 结算：粒子注入 + 加伤害 ============ */
 if (comboCounter > 0) {
-  const bonus = comboCounter * 1;                // 倍率写这里
+  /* === ① 计算加成 ================================= */
+  const baseDamage = attackGaugeDamage;          // 结算时的原始伤害巢数值
+  const perCombo   = Math.floor(baseDamage * 0.10); // 取 10 %，向下取整
+  const bonus      = perCombo * comboCounter;    // 总加成 = combo × 10 %
 
   // ➜ 生成能量粒子飞向伤害巢
   if (comboTextPos && gaugeCenterPos) {
     createEnergyParticles(
       comboTextPos.x, comboTextPos.y,
       gaugeCenterPos.x, gaugeCenterPos.y,
-      '#f9e71f',                                  // 粒子颜色
+      '#d80d0d',                                  // 粒子颜色
       2                                          // 数量
     );
 
@@ -1646,7 +1649,7 @@ if (comboCounter > 0) {
     setTimeout(() => {
       attackGaugeDamage += bonus;
       damagePopTime = Date.now();                 // 数字弹跳
-    }, 500);
+    }, 250);
   } else {
     attackGaugeDamage += bonus;                   // 找不到坐标就直接加
     damagePopTime = Date.now();

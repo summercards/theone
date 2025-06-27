@@ -37,8 +37,8 @@ drawRoundedRect(ctx, x - 2, y - 2, BAR_W + 4, BAR_H + 4, 8, false, true); // 外
 
   /* === 前景条（红→橙渐变） === */
   const grad = ctx.createLinearGradient(x, y, x + innerW, y);
-  grad.addColorStop(0, '#cc4444');   // 深红
-  grad.addColorStop(1, '#ff6666');   // 浅红
+  grad.addColorStop(0, '#ee9811');   // 深红
+  grad.addColorStop(1, '#ee9811');   // 浅红
   ctx.fillStyle = grad;
   drawRoundedRect(ctx, x, y, innerW, BAR_H, 6, true, false);
 
