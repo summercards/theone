@@ -370,8 +370,6 @@ if (hero.locked) {
   }
 }
 
-
-
 }
 
       // === 已解锁：加入出战列表 ===
@@ -390,7 +388,6 @@ if (hero.locked) {
     }
   }
 
-  /* ---------- 头像下方“升级”按钮 ---------- */
 /* ---------- 头像下方“升级”按钮 ---------- */
 for (const { hero } of iconRects) {
   const btn = hero?.upgradeButtonRect;
@@ -545,7 +542,7 @@ function render() {
   const ICON = Math.floor(canvas.width / 7.2);  // 更大头像
   const GAP = Math.floor(ICON * 0.22);                         // 稍微紧凑
   const PAD_X = Math.floor((canvas.width - (ICON * 5 + GAP * 4)) / 2);
-  const topOffset = Math.floor(canvas.height * 0.35);        // 更靠上
+  const topOffset = Math.floor(canvas.height * 0.3);        // 更靠上
   const selectedY = topOffset + ICON + 20;                    // 出战槽区域位置下调一点
 
 
@@ -574,7 +571,7 @@ const sidePad = 20;
 const IMG_W   = canvas.width - sidePad * 2;   // 宽度随屏幕自适应
 const IMG_H   = IMG_W * 9 / 16;              // 保持 16:9
   const x = (canvas.width - IMG_W) / 2;
-  const y = canvas.height * 0.11;  // 顶部偏移，可根据实际位置微调
+  const y = canvas.height * 0.12;  // 顶部偏移，可根据实际位置微调
 
   ctx.drawImage(barImage, x, y, IMG_W, IMG_H);
 }
@@ -627,7 +624,7 @@ if (showDialog) {
 
 
   // 出战槽标题
-  drawText(ctx, '出战英雄（点击移除）', PAD_X, selectedY - 20,
+  drawText(ctx, '出战英雄', PAD_X, selectedY - 20,
            '16px IndieFlower', '#DCC6F0', 'left', 'top');
 
 // 出战槽（灰底 + 紫边 + 英雄头像）
@@ -669,9 +666,29 @@ for (let i = 0; i < 5; i++) {
 
 
   // 英雄池标题
-  const poolStartY = selectedY + ICON + 35;// 英雄池更贴出战区
-  drawText(ctx, '英雄池（点击添加）', PAD_X, poolStartY - 20,
+  const poolStartY = selectedY + ICON + 50;// 英雄池更贴出战区
+  drawText(ctx, '英雄池', PAD_X, poolStartY - 30,
            '16px IndieFlower', '#DCC6F0', 'left', 'top');
+
+// === 英雄池包裹框 ===
+const poolCols = 5;
+const poolRows = Math.ceil(HERO_PER_PAGE / poolCols);
+
+const poolW = ICON * poolCols + GAP * (poolCols - 1);
+const poolH = ICON * poolRows + ICON * 0.5 * (poolRows - 1);
+const poolX = PAD_X - 8;
+const poolY = poolStartY - 8;
+const poolPaddingW = poolW + 16;
+const poolPaddingH = poolH + 16;
+
+ctx.strokeStyle = '#4d295c';       // 紫色描边
+ctx.lineWidth = 2;
+drawRoundedRect(ctx, poolX, poolY, poolPaddingW, poolPaddingH, 10, false, true);
+
+ctx.save();
+ctx.fillStyle = 'rgba(255,255,255,0.05)'; // 可选：半透明浅底
+drawRoundedRect(ctx, poolX, poolY, poolPaddingW, poolPaddingH, 10, true, false);
+ctx.restore();
 
   // 英雄池头像区域
   const startIdx = pageIndex * HERO_PER_PAGE;
@@ -709,11 +726,10 @@ for (let i = 0; i < 5; i++) {
 // 🟡 插入在这里，确保 drawIcon 后才能访问
 globalThis.layoutRects = layoutRects;
   // 翻页按钮
-// poolRows = 行数（15 个英雄 → 3 行；10 个英雄仍是 2 行）
- const poolRows = Math.ceil(HERO_PER_PAGE / 5);
 
  // 向下再挪 12px；若想更低调，把 12 改更大
- const btnY = poolStartY + ICON * poolRows + 90;
+ const PAGING_SPACING = 70;  // ← 你可以改成 30、50 等更紧凑或更宽松
+const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
 
  // 按钮缩小到 ICON 的 0.6 倍
  const BTN  = ICON * 0.65;
@@ -999,8 +1015,8 @@ function drawIcon(ctx, hero, x, y, size = ICON, isFromPool = false) {
 const saved = wx.getStorageSync('heroProgress')?.[hero.id];
 const physical = saved?.attributes?.physical ?? hero.attributes.physical ?? 0;
 const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
-const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
-drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
+//const attrText = hero.role === '法师' ? `魔攻: ${magical}` : `物攻: ${physical}`;
+//drawText(ctx, attrText, x + 4, y + size + 6, '12px IndieFlower', '#FFF', 'left', 'top');
   
     // ==== 升级按钮 ====
     if (isFromPool && showUpgradeButtons && !hero.locked) {
