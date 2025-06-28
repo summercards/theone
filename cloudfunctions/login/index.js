@@ -1,3 +1,8 @@
+// cloudfunctions/login/index.js
+const cloud = require('wx-server-sdk');
+cloud.init();                        // 让 SDK 读取到当前 env
+
 exports.main = async (event, context) => {
-  return context.OPENID;    // 新运行时可直接拿到
+  const { OPENID } = cloud.getWXContext();
+  return OPENID;                     // 仅返回字符串
 };
