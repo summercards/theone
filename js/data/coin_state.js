@@ -1,4 +1,4 @@
-import { markDirty } from '../cloud/cloud_save_manager.js'
+const { markDirty } = require('../cloud/cloud_save_manager.js');
 // js/data/coin_state.js
 /* -------------------------------------------------------
  * 简单的本地金币状态管理：
@@ -49,3 +49,20 @@ export function commitSessionCoins() {
   markDirty();        // ← 新增，放在最后即可
   sessionCoins = 0;
 }
+/** ← 云端回灌金币总额 */
+function applyCoins(value) {
+    if (typeof value === 'number') {
+      wx.setStorageSync(STORAGE_KEY, value);
+    }
+  }
+
+  module.exports = {
+    addGold,
+    addCoins : addGold,
+    getSessionCoins,
+    getTotalCoins,
+    spendCoins,
+    commitSessionCoins,
+    applyCoins
+  };
+  

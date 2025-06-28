@@ -168,17 +168,16 @@ function unlockHero(heroId) {
 const STORAGE_KEY = 'heroProgress';
 
 /** 把当前英雄成长数据导出给云管理器 */
-export function exportHeroProgress() {
-  // 如果你存的是对象就返回对象；如果是数组就返回数组
-  return wx.getStorageSync(STORAGE_KEY) || {};
-}
+function exportHeroProgress() {
+    return wx.getStorageSync('heroProgress') || {};
+  }
 
 /** 云端数据拉下来后回写到本地 */
-export function applyHeroProgress(data) {
-  if (data && typeof data === 'object') {
-    wx.setStorageSync(STORAGE_KEY, data);
+function applyHeroProgress(data) {
+    if (data && typeof data === 'object') {
+      wx.setStorageSync('heroProgress', data);
+    }
   }
-}
 
   
 module.exports = {
@@ -186,5 +185,8 @@ module.exports = {
   setSelectedHeroes,
   getSelectedHeroes,
   getRequiredExpForLevel,
-  unlockHero // ✅ 新增导出
+  unlockHero,
+ exportHeroProgress,   // ★ 新增
+ applyHeroProgress,    // ★ 新增
+ clearSelectedHeroes   // 若其它文件会用到
 };

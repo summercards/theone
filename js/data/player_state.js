@@ -1,26 +1,31 @@
-// js/data/player_state.js
-//------------------------------------------------------------
-let maxHp  = 100;
-let hp     = maxHp;
+// js/utils/player_stats.js
+const STORAGE_KEY = 'player_stats';
 
-// 允许关卡或英雄天赋动态设定
-export function initPlayer(startHp = 100) {
-  maxHp = startHp;
-  hp    = maxHp;
+/** 单局结束时更新统计（原有逻辑） */
+function updatePlayerStats({ stage, damage, gold }) {
+  const old = wx.getStorageSync(STORAGE_KEY) || {
+    maxStage  : 0,
+    maxDamage : 0,
+    maxGold   : 0
+  };
+  const next = {
+    maxStage  : Math.max(old.maxStage , stage   ?? old.maxStage ),
+    maxDamage : Math.max(old.maxDamage, damage  ?? old.maxDamage),
+    maxGold   : Math.max(old.maxGold , gold    ?? old.maxGold )
+  };
+  wx.setStorageSync(STORAGE_KEY, next);
 }
 
-export function getPlayerHp()       { return hp;     }
-export function getPlayerMaxHp()    { return maxHp;  }
-export function isPlayerDead()      { return hp <= 0;}
-
-export function heal(amount = 0) {
-  hp = Math.min(maxHp, hp + amount);
-  return hp;
+/** → 云端保存用 */
+function exportStats() {
+  return wx.getStorageSync(STORAGE_KEY) || {};
 }
 
-export function takeDamage(amount = 0) {
-  hp = Math.max(0, hp - amount);
-  return hp;
+/** ← 云端回灌用 */
+function applyStats(obj) {
+  if (obj && typeof obj === 'object') {
+    wx.setStorageSync(STORAGE_KEY, obj);
+  }
 }
 
-export { heal as healPlayer };
+module.exports = { updatePlayerStats, exportStats, applyStats };
