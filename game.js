@@ -1,11 +1,24 @@
-// game.js  （根目录）
-import { loadCloudSave } from './js/cloud/cloud_save_manager.js';
-import { applyAll }      from './js/cloud/apply_all.js';
+import {
+  initCloud,
+  loadAll,
+  migrateLocalToCloudOnce,
+  queueSave
+} from './js/utils/cloud_save.js';
 
-wx.cloud.init({ env: 'prod-hero3match', traceUser: true });
-loadCloudSave(applyAll);            // 首次启动拉云存档
+/* ======= 云存档启动 ======= */
+initCloud();          // ① 初始化（离线时自动降级）
+loadAll();            // ② 读取云端 → 填进本地
+migrateLocalToCloudOnce(); // ③ 首次把旧存档整体推上去
+
+// ④ “劫持”本地写，把以后所有 wx.setStorageSync 同步到云
+const _set = wx.setStorageSync;
+wx.setStorageSync = (k, v) => {
+  _set(k, v);         // 本地如常
+  queueSave(k, v);    // 追加到待同步队列
+};
+
+
 /* CENTRALIZED EVENT PROXY VERSION */
-wx.cloud.init({ env: 'prod-hero3match', traceUser: true });
 import PageLoading    from './js/page_loading.js'; 
 import PageHome       from './js/page_home.js';
 import PageHeroSelect from './js/page_hero_select.js';
