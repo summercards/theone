@@ -49,6 +49,7 @@ const LevelConfigs = {
 
 
 // === 变更：把另外两个特效工具也引进来
+import { markDirty } from './cloud/cloud_save_manager.js';   // ★ 必加
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
 import { renderBlockC } from './block_effects/block_C.js';
@@ -244,6 +245,7 @@ export function initGamePage(ctx, switchPage, canvas, options = {}) {
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
     wx.setStorageSync('lastLevel', currentLevel.toString());
+    markDirty();        // ← 新增，放在最后即可
     globalThis.expGainedThisRound = 0;
   ctxRef = ctx;
   switchPageFn = switchPage;
@@ -1711,6 +1713,7 @@ if (icon && x >= icon.x && x <= icon.x + icon.width &&
   if (emptyIdx >= 0) {
     team[emptyIdx] = icon.heroId;
     wx.setStorageSync('selectedHeroes', team);
+    markDirty();        // ← 新增，放在最后即可
     setSelectedHeroes(team);   // ① 立刻刷新内存中的 selectedHeroes
 drawGame();                // ② (可选) 让弹窗背后的 UI 马上看到变动
 setSelectedHeroes(team);                 // ↙️ 刷新内存
@@ -1817,7 +1820,7 @@ if (btn &&
     y >= btn.y && y <= btn.y + btn.height) {
 
         wx.setStorageSync('lastLevel', currentLevel.toString());
-
+        markDirty();        // ← 新增，放在最后即可
         
   switchPageFn?.('home', () => {
     destroyGamePage(); // 清理资源
@@ -2220,7 +2223,7 @@ globalThis.victoryDialogText =
             });
           
             wx.setStorageSync('lastLevel', currentLevel.toString());
-          
+            markDirty();        // ← 新增，放在最后即可
             drawGame(); // ✅ 一定要放在最后触发弹窗绘制
           }, 600);
           

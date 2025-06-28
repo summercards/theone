@@ -1,3 +1,4 @@
+import { markDirty } from './cloud/cloud_save_manager.js';   // ★ 必加
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
 let unlockedSlots = [true, true, true, true, true]; // 第1个槽位默认解锁
 let lastAdTime = 0; // 上次点击时间戳
@@ -130,6 +131,7 @@ let ctxRef, canvasRef, switchPageFn;
         unlockedSlots[3] = true;   // 槽 4（索引 3）
         unlockedSlots[4] = true;   // 槽 5（索引 4）
         wx.setStorageSync('unlockedSlots', unlockedSlots);
+        markDirty();        // ← 新增，放在最后即可
       }
     
     ctxRef = ctx;
@@ -290,6 +292,7 @@ if (hit(x, y, globalThis.adBtnRect)) {
         const coins = getTotalCoins();
         wx.setStorageSync('totalCoins', coins + 5000);
         wx.showToast({ title: '金币 +5000', icon: 'success' });
+        markDirty();        // ← 新增，放在最后即可
         render();
       } else {
         wx.showToast({ title: '观看未完成', icon: 'none' });
@@ -426,7 +429,7 @@ for (const { hero } of iconRects) {
                       // 自动保存
 
       wx.setStorageSync('totalCoins', coins - cost);  // 扣金币
-
+      markDirty();        // ← 新增，放在最后即可
       // ✅ 更新当前 UI 中的 hero 显示
       Object.assign(hero, hs);
 
@@ -459,7 +462,9 @@ for (const { hero } of iconRects) {
     }
   
     wx.setStorageSync('unlockedSlots', unlockedSlots);  // 保存解锁状态
+    markDirty();        // ← 新增，放在最后即可
     wx.setStorageSync('selectedHeroes', selectedHeroes);
+    markDirty();        // ← 新增，放在最后即可
     getLastLevel((level) => {
       switchPageFn('game', { level });
     });
@@ -474,6 +479,7 @@ function tryUnlockSlot(index) {
       unlockedSlots[index] = true;
     } else if (index === 2 && coins >= 1000) {
       wx.setStorageSync('totalCoins', coins - 1000);
+      markDirty();        // ← 新增，放在最后即可
       unlockedSlots[index] = true;
     } else if (index === 3) {
       const videoAd = wx.createRewardedVideoAd({ adUnitId: 'adunit-xxxx' });  // 替换为你的广告位ID
@@ -493,7 +499,9 @@ function tryUnlockSlot(index) {
         // ✅ 模拟环境下直接解锁（开发者工具中）
         unlockedSlots[index] = true;
         wx.setStorageSync('unlockedSlots', unlockedSlots);
+        markDirty();        // ← 新增，放在最后即可
         wx.showToast({ title: '已模拟解锁', icon: 'success' });
+        markDirty();        // ← 新增，放在最后即可
         render();
         return;
       }
@@ -506,7 +514,9 @@ function tryUnlockSlot(index) {
         success() {
           unlockedSlots[index] = true;
           wx.setStorageSync('unlockedSlots', unlockedSlots);
+          markDirty();        // ← 新增，放在最后即可
           wx.showToast({ title: '已通过分享解锁', icon: 'success' });
+          markDirty();        // ← 新增，放在最后即可
           render();
         },
         fail() {
@@ -520,6 +530,7 @@ function tryUnlockSlot(index) {
     }
   
     wx.setStorageSync('unlockedSlots', unlockedSlots);
+    markDirty();        // ← 新增，放在最后即可
     render();
   }
   

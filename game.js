@@ -1,4 +1,11 @@
+// game.js  （根目录）
+import { loadCloudSave } from './js/cloud/cloud_save_manager.js';
+import { applyAll }      from './js/cloud/apply_all.js';
+
+wx.cloud.init({ env: 'prod-hero3match', traceUser: true });
+loadCloudSave(applyAll);            // 首次启动拉云存档
 /* CENTRALIZED EVENT PROXY VERSION */
+wx.cloud.init({ env: 'prod-hero3match', traceUser: true });
 import PageLoading    from './js/page_loading.js'; 
 import PageHome       from './js/page_home.js';
 import PageHeroSelect from './js/page_hero_select.js';

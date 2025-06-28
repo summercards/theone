@@ -1,3 +1,4 @@
+import { markDirty } from '../cloud/cloud_save_manager.js'
 // js/data/coin_state.js
 /* -------------------------------------------------------
  * 简单的本地金币状态管理：
@@ -37,6 +38,7 @@ export function spendCoins(amount) {
   const current = wx.getStorageSync(STORAGE_KEY) || 0;
   if (current < amount) return false;
   wx.setStorageSync(STORAGE_KEY, current - amount);
+  markDirty();        // ← 新增，放在最后即可
   return true;
 }
 
@@ -44,5 +46,6 @@ export function spendCoins(amount) {
 export function commitSessionCoins() {
   const current = wx.getStorageSync(STORAGE_KEY) || 0;
   wx.setStorageSync(STORAGE_KEY, current + sessionCoins);
+  markDirty();        // ← 新增，放在最后即可
   sessionCoins = 0;
 }

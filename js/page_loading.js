@@ -1,3 +1,5 @@
+
+
 const HeroData = require('./data/hero_data.js');
 
 let ctxRef, canvasRef, switchPageFn;
