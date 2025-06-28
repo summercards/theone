@@ -1,5 +1,5 @@
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
-let unlockedSlots = [true, true, true, false, false]; // 第1个槽位默认解锁
+let unlockedSlots = [true, true, true, true, true]; // 第1个槽位默认解锁
 let lastAdTime = 0; // 上次点击时间戳
 const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
 let showUpgradeButtons = false;
@@ -123,7 +123,15 @@ let ctxRef, canvasRef, switchPageFn;
       }
     } catch (e) {
       // 保持默认值
+      
     }
+     // === 兜底：保证槽 4、槽 5 为已解锁 ===
+  if (!unlockedSlots[3] || !unlockedSlots[4]) {   // 只在需要时改写
+        unlockedSlots[3] = true;   // 槽 4（索引 3）
+        unlockedSlots[4] = true;   // 槽 5（索引 4）
+        wx.setStorageSync('unlockedSlots', unlockedSlots);
+      }
+    
     ctxRef = ctx;
     canvasRef = canvas;
     switchPageFn = switchPage;
