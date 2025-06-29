@@ -1,6 +1,3 @@
-
-
-
 import {
   initCloud,
   loadAll,

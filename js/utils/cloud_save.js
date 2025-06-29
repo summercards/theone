@@ -32,36 +32,22 @@
    }
    
    /* ---------- 云 → 本地（启动灌入） ---------- */
-   /* ---------- 云 → 本地（启动灌入） ---------- */
-export async function loadAll () {
-  if (!inited) return {};                   // 1. 未初始化直接退出
-  const db     = wx.cloud.database();
-  const openid = await ensureOpenId();
-  if (!openid) return {};                   // 2. 取不到 openid 也退出
-
-  // 3. 查询当前用户唯一一条存档
-  const res = await db.collection('player_saves')
-                      .where({ _openid: openid })
-                      .limit(1)
-                      .get()
-                      .catch(() => ({ data: [] }));
-
-  if (!res.data.length) return {};          // 4. 第一次登录：云端无数据
-
-  const doc  = res.data[0];                 // 5. 直接拿整条文档
-  const save = {};                          //    用来回传给调用方
-
-  // 6. 把除系统字段外的键全部写回本地
-  Object.keys(doc).forEach(key => {
-    if (key.startsWith('_')) return;        //    忽略 _id / _openid / _createTime ...
-    LOCAL_SET(key, doc[key]);               //    写入本地缓存
-    save[key] = doc[key];                   //    累积到返回对象
-  });
-
-  console.log('[cloud_save] 云端数据已回灌到本地');
-  return save;                              // 7. 供游戏逻辑读取
-}
-
+   export async function loadAll () {
+     if (!inited) return {};
+     const db     = wx.cloud.database();
+     const openid = await ensureOpenId();
+     if (!openid) return {};
+   
+     const res = await db.collection('player_saves')
+                         .where({ _openid: openid })
+                         .limit(1).get().catch(() => ({ data: [] }));
+   
+     if (!res.data.length) return {};
+     const save = res.data[0].data || {};     // 防止 data 为 undefined
+     Object.keys(save).forEach(k => LOCAL_SET(k, save[k]));
+     console.log('[cloud_save] 云端数据已回灌到本地');
+     return save;
+   }
    
    /* ---------- 本地 → 云端（防抖 3 s） ---------- */
    export function queueSave (key, val) {

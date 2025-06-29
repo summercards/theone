@@ -1,4 +1,3 @@
-import { markDirty } from '../cloud/cloud_save_manager.js';   // ★ 必加
 // js/data/hero_state.js
 const HeroData = require('./hero_data.js');
 const { spendCoins } = require('./coin_state.js');
@@ -145,7 +144,6 @@ function saveHeroProgress(hero) {
     hp:         hero.hp   // ✅ 保存 HP
   };
   wx.setStorageSync('heroProgress', data);
-  markDirty();        // ← 新增，放在最后即可
 }
 
 export function clearSelectedHeroes () {
@@ -164,20 +162,6 @@ function unlockHero(heroId) {
     saveHeroProgress(hero);
     console.log(`✅ 英雄 ${hero.name} 解锁成功`);
   }
-/* -------------------- 需要同步的键 -------------------- */
-const STORAGE_KEY = 'heroProgress';
-
-/** 把当前英雄成长数据导出给云管理器 */
-function exportHeroProgress() {
-    return wx.getStorageSync('heroProgress') || {};
-  }
-
-/** 云端数据拉下来后回写到本地 */
-function applyHeroProgress(data) {
-    if (data && typeof data === 'object') {
-      wx.setStorageSync('heroProgress', data);
-    }
-  }
 
   
 module.exports = {
@@ -185,8 +169,5 @@ module.exports = {
   setSelectedHeroes,
   getSelectedHeroes,
   getRequiredExpForLevel,
-  unlockHero,
- exportHeroProgress,   // ★ 新增
- applyHeroProgress,    // ★ 新增
- clearSelectedHeroes   // 若其它文件会用到
+  unlockHero // ✅ 新增导出
 };
