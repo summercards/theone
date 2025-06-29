@@ -583,30 +583,32 @@ ctx.fillText(popupExpText, W / 2, expY);
     /* 6. 英雄升级纵向列表 */
     const ups = globalThis.heroLevelUps || [];
     if (ups.length > 0) {
-      const avatar = 64;                    // 头像尺寸
+      const avatar = 42;                    // 头像尺寸
       const rowGap = 4;                    // 行距
       const startX = W * 0.18;              // 左边距，与出战栏齐
-      const startY = rewardStartY + rewards.length * 28 + 12;
+      const btnY = H - 80; // 已经存在
+const totalHeight = ups.length * (avatar + rowGap);
+const startY = btnY - totalHeight - 12;  // ✅ 紧贴按钮上方，留 12px 缓冲
   
       ups.forEach((up, i) => {
         const rowY = startY + i * (avatar + rowGap);
   
         /* 6.1 头像 */
          /* 6-1 头像：直接复用出战栏绘制函数 */
-         drawHeroIconFull(ctx, up.hero, startX, rowY, avatar, 0.85);  // 最后一个参数是 scale（1 = 原尺寸）
+         drawHeroIconFull(ctx, up.hero, startX, rowY, avatar, 0.72);  // 最后一个参数是 scale（1 = 原尺寸）
   
 /* 6.2 名字（头像右侧，靠上） */
 const nameX = startX + avatar + 12;   // 头像右侧 12px
 const nameY = rowY + 6;               // 距头像顶 6px
 ctx.fillStyle   = '#FFFFFF';
-ctx.font        = 'bold 18px sans-serif';
+ctx.font        = 'bold 12px sans-serif';
 ctx.textAlign   = 'left';
 ctx.textBaseline= 'top';
 ctx.fillText(up.name ?? '', nameX, nameY);
 
 /* 6.3 “升级！”（与名字同行，右对齐） */
 ctx.fillStyle   = '#FFD700';
-ctx.font        = 'bold 18px sans-serif';
+ctx.font        = 'bold 12px sans-serif';
 ctx.textAlign   = 'right';
 ctx.textBaseline= 'top';
 ctx.fillText('升级！', W - startX, nameY);
@@ -614,7 +616,7 @@ ctx.fillText('升级！', W - startX, nameY);
 /* 6.4 等级变化（紧贴名字下方） */
 const lvlY = nameY + 20;              // 行距 
 ctx.fillStyle   = '#CCCCCC';
-ctx.font        = 'bold 18px sans-serif';
+ctx.font        = 'bold 12px sans-serif';
 ctx.textAlign   = 'left';
 ctx.textBaseline= 'top';
 ctx.fillText(`Lv.${up.oldLevel} → Lv.${up.newLevel}`, nameX, lvlY);
@@ -624,7 +626,7 @@ ctx.fillText(`Lv.${up.oldLevel} → Lv.${up.newLevel}`, nameX, lvlY);
     /* 7. “下一关”按钮 */
     const btnW = 160, btnH = 48;
     const btnX = (W - btnW) / 2;
-    const btnY = H * 0.83;
+    const btnY = H - 80;  // 更靠近底部
   
     ctx.fillStyle = '#D43C44';
     drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
