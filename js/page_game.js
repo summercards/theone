@@ -1464,12 +1464,7 @@ if (letter === 'B') {
        displayedGold     = getSessionCoins();
        levelJustCompleted = currentLevel;
     
-       /* —— 新增：关卡里程碑英雄解锁 —— */
-       if (currentLevel === 2 || currentLevel === 6) {
-         const heroId = currentLevel === 2 ? 'hero002' : 'hero003';
-         if (typeof unlockHero === 'function') unlockHero(heroId);
-         globalThis.levelRewardsHeroId = heroId;   // 让胜利弹窗画出头像
-       }
+
     
        showVictoryPopup = true;
        return;            // 暂停游戏流，等待玩家点击“下一关”
@@ -2191,16 +2186,29 @@ showDamageText(pendingDamage, endX, endY + 50);
           
             globalThis.expGainedThisRound = exp;       // ✅ 设置给弹窗读取
             rewardExpToHeroes(exp);                    // 分发经验
-          // ✅ 添加关卡奖励英雄（例如第 2 关送出 hero002）
+ 
+
+// ✅ 添加关卡奖励英雄（例如每隔几关解锁新英雄）
 const levelRewardTexts = [];
 
-if (currentLevel === 2 || currentLevel === 6) {
-     const heroId = currentLevel === 2 ? 'hero002' : 'hero003';   // ★ 新增
-     if (typeof unlockHero === 'function') {
-       unlockHero(heroId);
-     }
-     globalThis.levelRewardsHeroId = heroId;
-   }
+let heroId = null;
+if (currentLevel === 2) {
+  heroId = 'hero002';
+} else if (currentLevel === 4) {
+  heroId = 'hero003';
+} else if (currentLevel === 6) {
+  heroId = 'hero004';
+} else if (currentLevel === 8) {
+  heroId = 'hero005';
+} else if (currentLevel === 10) {
+  heroId = 'hero016';
+}
+
+if (heroId) {
+  if (typeof unlockHero === 'function') unlockHero(heroId);
+  globalThis.levelRewardsHeroId = heroId;
+}
+
 
 globalThis.levelRewards = levelRewardTexts;
 
