@@ -85,7 +85,7 @@ const foodMonsters = [
       id: lv,
       level: lv,
       name: foodMonsters[i],
-      maxHp: 1200 + i * 100,
+      maxHp: 3200 + i * 200,
       sprite: `${foodSprites[i]}.png`,
       damage: [20 + i * 5, 30 + i * 5],
       cooldown: 2,
@@ -100,7 +100,7 @@ const foodMonsters = [
     id: 10,
     level: 10,
     name: '暴食者',
-    maxHp: 8000,
+    maxHp: 18500,
     sprite: 'glutton.png',
     damage: [59, 99],   // ❶ 变成数组即可
     cooldown: 3,

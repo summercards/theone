@@ -464,7 +464,7 @@ if (showVictoryPopup) {
     /* 3. 中央插图 */
     const heroImgW = 120, heroImgH = 120;
     const heroImgX = (W - heroImgW) / 2;
-    const heroImgY = titleY + 120;
+    const heroImgY = titleY + 50;
   
     /* === 3-A 对白气泡（在插图头顶） ========================== */
 const dialog = globalThis.victoryDialogText || "";
