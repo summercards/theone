@@ -1,157 +1,168 @@
-const HeroData = require('./data/hero_data.js');
+/* =============================================================
+   js/page_loading.js   —— 启动画面：资源 & 云存档并行加载
+   ============================================================= */
 
-let ctxRef, canvasRef, switchPageFn;
-let progress = 0;
-let loadedCount = 0;
-
-// ① 构建预加载列表：英雄图标
-const preloadList = HeroData.heroes.map(hero => ({
-  key: hero.icon.toLowerCase(),
-  path: `assets/icons/${hero.icon}`
-}));
-
-// ✅ 添加 block 方块贴图
-const blockLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
-blockLetters.forEach(letter => {
-  preloadList.push({
-    key: `block_${letter}`,
-    path: `assets/blocks/${letter}.png`
-  });
-});
-// ✅ 预加载超级方块贴图（S1 / S2 / S3）
-['S1', 'S2', 'S3'].forEach(type => {
-    preloadList.push({
-      key: `super_${type}`,                    // 存到缓存里的索引
-      path: `assets/superblocks/${type.toLowerCase()}.png` // s1.png / s2.png / s3.png
-    });
-  });
-  
-
-// ② 添加 UI 图标（如锁图标、备用图等）
-preloadList.push({ key: 'lock.png', path: 'assets/ui/lock.png' });
-preloadList.push({ key: 'basketball', path: 'assets/effects/basketball.png' });
-preloadList.push({ key: 'bg', path: 'assets/bg.png' });
-const bgCount = 7;  // 假设你最多用到 50 关
-for (let i = 1; i <= bgCount; i++) {
-  const indexStr = String(i).padStart(2, '0');  // 01, 02, ...
-  preloadList.push({
-    key: `scene_bg${indexStr}`,
-    path: `assets/scene/scene-bg${indexStr}.png`
-  });
-}
-preloadList.push({ key: 'hero_window', path: 'assets/ui/hero-window.png' });
-// preloadList.push({ key: 'fallback.png', path: 'assets/ui/fallback.png' }); // 可选占位图
-
-// ③ 创建全局缓存
-globalThis.imageCache = {};
-
-function preloadAssets() {
-  for (const item of preloadList) {
-    const img = wx.createImage();
-    img.src = item.path;
-
-    img.onload = () => {
-      globalThis.imageCache[item.key] = img;
-      loadedCount++;
-      progress = Math.floor((loadedCount / preloadList.length) * 100);
-      drawLoading();
-
-      if (loadedCount === preloadList.length) {
-        setTimeout(() => switchPageFn('home'), 500);
-      }
-    };
-
-    img.onerror = () => {
-      console.error(`❌ 图片加载失败: ${item.path}`);
-      loadedCount++;
-      drawLoading();
-    };
-  }
-}
-
-function initLoadingPage(ctx, switchPage, canvas) {
-  ctxRef = ctx;
-  canvasRef = canvas;
-  switchPageFn = switchPage;
-
-  drawLoading();
-  preloadAssets();
-}
-
-function drawLoading() {
-    const ctx = ctxRef;
-    const w = canvasRef.width;
-    const h = canvasRef.height;
-  
-    // 背景
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, w, h);
-  
-    // 进度条参数
-    const barWidth = w * 0.6;
-    const barHeight = 22;
-    const barX = (w - barWidth) / 2;
-    const barY = h * 0.5;
-    const radius = 10;
-  
-    function drawRoundedRect(x, y, width, height, radius) {
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + width - radius, y);
-      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-      ctx.lineTo(x + width, y + height - radius);
-      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-      ctx.lineTo(x + radius, y + height);
-      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-      ctx.lineTo(x, y + radius);
-      ctx.quadraticCurveTo(x, y, x + radius, y);
-      ctx.closePath();
-    }
-  
-    // 背景条
-    drawRoundedRect(barX, barY, barWidth, barHeight, radius);
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fill();
-  
-    // 填充条（魅红色）
-    const filledWidth = (progress / 100) * barWidth;
-    drawRoundedRect(barX, barY, filledWidth, barHeight, radius);
-    ctx.fillStyle = '#C2185B';
-    ctx.fill();
-  
-    // 边框（加粗 + 蓝紫）
-    drawRoundedRect(barX, barY, barWidth, barHeight, radius);
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#6A5ACD';
-    ctx.stroke();
-  
-    // 百分比文字
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '20px gameFont';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 2;
-    ctx.fillText(`${progress}%`, w / 2, barY + barHeight + 32);
-    ctx.shadowBlur = 0;
-  
-    // 加载文案（大字、加粗、上方靠近进度条）
-    ctx.fillStyle = '#FF3399';
-    ctx.font = 'bold 30px gameFont';
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 3;
-    ctx.fillText('召唤中…', w / 2, barY - 20);
-    ctx.shadowBlur = 0;
-  }
-  
-  
-  
-  
-
-export default {
-  init: initLoadingPage,
-  update: () => {},
-  draw: drawLoading,
-  destroy: () => {},
-  onTouchend: () => {},
-  touchend: () => {}
-};
+   import { loadAll, migrateLocalToCloudOnce } from './utils/cloud_save.js';
+   const HeroData = require('./data/hero_data.js');
+   
+   let ctxRef, canvasRef, switchPageFn;
+   let progress = 0;
+   let loadedCount = 0;
+   
+   /* ---------- ① 构建预加载列表 ---------- */
+   const preloadList = HeroData.heroes.map(hero => ({
+     key : hero.icon.toLowerCase(),
+     path: `assets/icons/${hero.icon}`
+   }));
+   
+   // block 方块贴图
+   ['A','B','C','D','E','F'].forEach(letter => {
+     preloadList.push({
+       key : `block_${letter}`,
+       path: `assets/blocks/${letter}.png`
+     });
+   });
+   // 超级方块贴图
+   ['S1','S2','S3'].forEach(type => {
+     preloadList.push({
+       key : `super_${type}`,
+       path: `assets/superblocks/${type.toLowerCase()}.png`
+     });
+   });
+   
+   // 其他 UI / 场景
+   preloadList.push({ key: 'lock.png', path: 'assets/ui/lock.png' });
+   preloadList.push({ key: 'basketball', path: 'assets/effects/basketball.png' });
+   preloadList.push({ key: 'bg',         path: 'assets/bg.png' });
+   const bgCount = 7;
+   for (let i = 1; i <= bgCount; i++) {
+     const s = String(i).padStart(2,'0');
+     preloadList.push({ key: `scene_bg${s}`, path: `assets/scene/scene-bg${s}.png` });
+   }
+   preloadList.push({ key: 'hero_window', path: 'assets/ui/hero-window.png' });
+   
+   /* ---------- ② 创建全局缓存 ---------- */
+   globalThis.imageCache = {};
+   
+   /* ---------- ③ 资源预加载（返回 Promise） ---------- */
+   function preloadAssets() {
+     return new Promise(resolve => {
+       for (const item of preloadList) {
+         const img = wx.createImage();
+         img.src   = item.path;
+   
+         img.onload  = () => handleFinish(img, item.key, true, resolve);
+         img.onerror = () => handleFinish(img, item.key, false, resolve);
+       }
+     });
+   }
+   
+   function handleFinish(img, key, ok, resolve) {
+     if (ok) globalThis.imageCache[key] = img;
+     loadedCount++;
+     progress = Math.floor((loadedCount / preloadList.length) * 100);
+     drawLoading();
+   
+     if (loadedCount === preloadList.length) {
+       resolve();                       // 全部资源结束（成功 / 失败均算）
+     }
+   }
+   
+   /* ---------- ④ 页面初始化 ---------- */
+   function initLoadingPage(ctx, switchPage, canvas) {
+     ctxRef       = ctx;
+     canvasRef    = canvas;
+     switchPageFn = switchPage;
+   
+     drawLoading();
+   
+     // 并行执行：资源加载 + 云存档
+     const assetPromise = preloadAssets();
+     const cloudPromise = (async () => {
+       try {
+         await loadAll();                 // 云 → 本地
+         await migrateLocalToCloudOnce(); // 首次整体上云
+       } catch (err) {
+         console.error('[cloud] 读取失败', err);
+       }
+     })();
+   
+     Promise.all([assetPromise, cloudPromise]).then(() => {
+       // 留 0.5 秒给玩家看到 100%，再切 Home
+       setTimeout(() => switchPageFn('home'), 500);
+     });
+   }
+   
+   /* ---------- ⑤ 绘制 Loading 画面 ---------- */
+   function drawLoading() {
+     const ctx = ctxRef;
+     const w   = canvasRef.width;
+     const h   = canvasRef.height;
+   
+     ctx.fillStyle = '#000';
+     ctx.fillRect(0, 0, w, h);
+   
+     const barW = w * 0.6;
+     const barH = 22;
+     const barX = (w - barW) / 2;
+     const barY = h * 0.5;
+     const radius = 10;
+   
+     function roundRect(x,y,wid,hei,r) {
+       ctx.beginPath();
+       ctx.moveTo(x+r, y);
+       ctx.lineTo(x+wid-r, y);
+       ctx.quadraticCurveTo(x+wid, y, x+wid, y+r);
+       ctx.lineTo(x+wid, y+hei-r);
+       ctx.quadraticCurveTo(x+wid, y+hei, x+wid-r, y+hei);
+       ctx.lineTo(x+r, y+hei);
+       ctx.quadraticCurveTo(x, y+hei, x, y+hei-r);
+       ctx.lineTo(x, y+r);
+       ctx.quadraticCurveTo(x, y, x+r, y);
+       ctx.closePath();
+     }
+   
+     // 背景条
+     roundRect(barX, barY, barW, barH, radius);
+     ctx.fillStyle = '#1a1a1a';
+     ctx.fill();
+   
+     // 填充条
+     const fillW = (progress / 100) * barW;
+     roundRect(barX, barY, fillW, barH, radius);
+     ctx.fillStyle = '#C2185B';
+     ctx.fill();
+   
+     // 边框
+     roundRect(barX, barY, barW, barH, radius);
+     ctx.lineWidth = 4;
+     ctx.strokeStyle = '#6A5ACD';
+     ctx.stroke();
+   
+     // 百分比文字
+     ctx.fillStyle = '#FFF';
+     ctx.font = '20px gameFont';
+     ctx.textAlign = 'center';
+     ctx.shadowColor = '#000';
+     ctx.shadowBlur = 2;
+     ctx.fillText(`${progress}%`, w/2, barY + barH + 32);
+     ctx.shadowBlur = 0;
+   
+     // 文案
+     ctx.fillStyle = '#FF3399';
+     ctx.font = 'bold 30px gameFont';
+     ctx.shadowColor = '#000';
+     ctx.shadowBlur = 3;
+     ctx.fillText('召唤中…', w/2, barY - 20);
+     ctx.shadowBlur = 0;
+   }
+   
+   /* ---------- ⑥ 对外接口 ---------- */
+   export default {
+     init    : initLoadingPage,
+     update  : () => {},
+     draw    : drawLoading,
+     destroy : () => {},
+     touchend: () => {}
+   };
+   
