@@ -19,6 +19,13 @@ export function initHomePage(ctx, switchPage, canvas) {
   switchPageFn = switchPage;
   canvasRef = canvas;
   createPersistentFireGlow(canvasRef);
+    // 添加背景音乐播放
+    const innerAudioContext = wx.createInnerAudioContext();
+    innerAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
+    innerAudioContext.loop = true;
+    innerAudioContext.autoplay = true;
+    innerAudioContext.play();
+  
   startHomeLoop();
 }
 
