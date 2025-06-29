@@ -1,27 +1,26 @@
-// 云函数：返回 player_stats.maxStage 降序 Top100
+// 云函数：返回 player_saves 中按最高伤害降序的 Top100，并投影昵称 & 头像
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-// ⚠️ 如果你安装的是 wx-server-sdk@latest，Node16 默认是 ESM，需 .default
-const $cloud = cloud.default || cloud;  // 兼容性处理
-const $db    = $cloud.database();
-const _      = $db.command;
-
 exports.main = async () => {
-  // 聚合：把嵌套字段拉平，方便排序 & 前端直接用
-  const res = await $db.collection('player_saves')
+  const result = await db.collection('player_saves')
     .aggregate()
     .project({
-      _id: 0,                       // 不要 _id
-      openid: '$_openid',
-      maxStage: '$player_stats.maxStage',
-      maxDamage: '$player_stats.maxDamage',
-      maxGold:   '$player_stats.maxGold'
+      _id:       0,                         // 不要 _id
+      openid:    '$_openid',                // 用户 openid
+      nick:      '$nick',                   // 微信昵称（已在 cloud_save 写入）
+      avatar:    '$avatar',                 // 微信头像（已在 cloud_save 写入）
+      maxStage:  '$player_stats.maxStage',  // 最远关卡
+      maxDamage: '$player_stats.maxDamage', // 最高伤害
+      maxGold:   '$player_stats.maxGold'    // 最多金币
     })
-    .sort({ maxStage: -1 })         // 降序
-    .limit(100)
+    .sort({ maxDamage: -1 })               // 按最高伤害降序
+    .limit(100)                            // 取前 100
     .end();
 
-  return res.list;
+  return {
+    top:      result.list,
+    // myRank: 在前端计算即可，云函数这里不用额外查 count
+  };
 };
