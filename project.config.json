@@ -39,6 +39,5 @@
     "tabSize": 2
   },
   "cloudfunctionTemplateRoot": "cloudfunctionTemplate/",
-  "simulatorPluginLibVersion": {},
-  "isGameTourist": false
+  "simulatorPluginLibVersion": {}
 }

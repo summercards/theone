@@ -1,5 +1,5 @@
 /* =============================================================
-   js/utils/cloud_save.js — 完整覆盖版（支持昵称 & 头像同步）
+   js/utils/cloud_save.js — 完整覆盖版（支持昵称 & 头像同步 + 变动判断 + 节流上传）
    ============================================================= */
 
    const ENV_ID     = 'cloud1-2g34dr2u6cf677ca';  // <<< 改成你的 envId
@@ -10,6 +10,9 @@
    let pending  = {};
    let timer    = null;
    let OPENID   = null;
+   let lastSaved = {};          // ✅ 缓存每个字段最后一次上传值
+   let lastFlushTime = 0;       // ✅ 节流时间记录
+   const MIN_FLUSH_INTERVAL = 10000; // ✅ 10秒节流间隔（单位 ms，可调整）
    
    /* ---------- 初始化 ---------- */
    export function initCloud () {
@@ -27,7 +30,7 @@
    async function ensureOpenId () {
      if (OPENID) return OPENID;
      const res = await wx.cloud.callFunction({ name: 'login' });
-     OPENID = res.result;  // login 云函数需只返回 openid 字符串
+     OPENID = res.result;
      return OPENID;
    }
    
@@ -41,7 +44,6 @@
      const openid = await ensureOpenId();
      if (!openid) return {};
    
-     // 查询当前用户唯一一条存档
      const res = await db.collection('player_saves')
                          .where({ _openid: openid })
                          .limit(1)
@@ -51,19 +53,16 @@
                            return { data: [] };
                          });
    
-     console.log('[cloud_save] 当前 openid =', openid);
-     console.log('[cloud_save] 查询结果 =', res.data);
-   
-     if (!res.data.length) return {};  // 云端无存档
+     if (!res.data.length) return {};
    
      const doc = res.data[0];
      const save = {};
    
-     // 把除系统字段外的键全部写进本地
      Object.keys(doc).forEach(key => {
-       if (key.startsWith('_')) return;  // 忽略 _id, _openid, etc.
+       if (key.startsWith('_')) return;
        LOCAL_SET(key, doc[key]);
        save[key] = doc[key];
+       lastSaved[key] = doc[key]; // ✅ 初始化缓存
      });
    
      console.log('[cloud_save] 云端数据已回灌到本地');
@@ -71,30 +70,62 @@
    }
    
    /* =============================================================
-      本地 → 云端（防抖 3s）：主力函数
+      本地 → 云端（防抖 + 节流）：主力函数
       ============================================================= */
    export function queueSave (key, val) {
      if (!inited) return;
-     // 保存到 localStorage
+   
+     const prev = lastSaved[key];
+     const isSame = JSON.stringify(prev) === JSON.stringify(val);
+     if (isSame) {
+       console.log(`[cloud_save] 跳过未变化字段：${key}`);
+       return;
+     }
+   
+     lastSaved[key] = val;
      LOCAL_SET(key, val);
-     // 标记待同步
      pending[key] = val;
+   
      if (!timer) timer = setTimeout(flush, 3000);
    }
    
    /* ---------- 专门写入 profile 的辅助函数 ---------- */
    export function setProfile (profile) {
      if (!inited) return;
-     // profile = { nick: '昵称', avatar: '头像URL' }
-     LOCAL_SET('nick', profile.nick);
-     LOCAL_SET('avatar', profile.avatar);
-     pending.nick   = profile.nick;
-     pending.avatar = profile.avatar;
-     if (!timer) timer = setTimeout(flush, 3000);
+   
+     const nickChanged   = JSON.stringify(lastSaved['nick'])   !== JSON.stringify(profile.nick);
+     const avatarChanged = JSON.stringify(lastSaved['avatar']) !== JSON.stringify(profile.avatar);
+   
+     if (nickChanged) {
+       LOCAL_SET('nick', profile.nick);
+       pending.nick = profile.nick;
+       lastSaved['nick'] = profile.nick;
+     }
+   
+     if (avatarChanged) {
+       LOCAL_SET('avatar', profile.avatar);
+       pending.avatar = profile.avatar;
+       lastSaved['avatar'] = profile.avatar;
+     }
+   
+     if ((nickChanged || avatarChanged) && !timer) {
+       timer = setTimeout(flush, 3000);
+     }
    }
    
+   /* ---------- 上传到云端：加入节流判断 ---------- */
    async function flush () {
      timer = null;
+   
+     const now = Date.now();
+     if (now - lastFlushTime < MIN_FLUSH_INTERVAL) {
+       console.log(`[cloud_save] ⚠️ 距上次上传不足 ${MIN_FLUSH_INTERVAL / 1000}s，延后上传`);
+       if (!timer) timer = setTimeout(flush, MIN_FLUSH_INTERVAL);
+       return;
+     }
+   
+     lastFlushTime = now;
+   
      const keys = Object.keys(pending);
      if (!keys.length) return;
    
@@ -106,13 +137,12 @@
      const match = await col.where({ _openid: openid }).limit(1).get();
    
      if (!match.data.length) {
-       // 如果无记录，add 一条
        await col.add({ data: pending });
      } else {
-       // 已有记录，update
        await col.doc(match.data[0]._id).update({ data: pending });
      }
-     console.log('[cloud_save] → 云端 OK 同步字段：', keys);
+   
+     console.log('[cloud_save] ✅ 云端同步成功字段：', keys);
      pending = {};
    }
    
@@ -127,13 +157,17 @@
    
      const exist = await db.collection('player_saves')
                            .where({ _openid: openid }).count();
-     if (exist.total) return;  // 已迁移过
+     if (exist.total) return;
    
      const info = wx.getStorageInfoSync();
      const dump = {};
-     info.keys.forEach(k => { dump[k] = LOCAL_GET(k); });
+     info.keys.forEach(k => {
+       const val = LOCAL_GET(k);
+       dump[k] = val;
+       lastSaved[k] = val;
+     });
    
      await db.collection('player_saves').add({ data: dump });
-     console.log('[cloud_save] 本地数据首次迁移完成');
+     console.log('[cloud_save] 首次整包迁移成功');
    }
    
