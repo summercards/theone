@@ -7,7 +7,7 @@ let heroIntroBtnArea = null;
 let roguelikeBtnArea = null;
 let homeLoopId = null;
 let frameCount = 0;
-
+let bgmAudioContext = null; // 全局背景音乐播放器，避免重复播放
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { shareMyStats } = require('./utils/share_utils.js');
 import { drawAllEffects, updateAllEffects, createFireParticles, createFireGlow, createPersistentFireGlow, removeFireGlowEffect } from './effects_engine.js';
@@ -20,11 +20,13 @@ export function initHomePage(ctx, switchPage, canvas) {
   canvasRef = canvas;
   createPersistentFireGlow(canvasRef);
     // 添加背景音乐播放
-    const innerAudioContext = wx.createInnerAudioContext();
-    innerAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
-    innerAudioContext.loop = true;
-    innerAudioContext.autoplay = true;
-    innerAudioContext.play();
+    if (!bgmAudioContext) {
+      bgmAudioContext = wx.createInnerAudioContext();
+      bgmAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
+      bgmAudioContext.loop = true;
+      bgmAudioContext.autoplay = true;
+      bgmAudioContext.play();
+    }
   
   startHomeLoop();
 }
