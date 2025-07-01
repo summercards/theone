@@ -132,10 +132,10 @@ const HeroData = {
       },
       skill: {
         name: "爆炸咯！",
-        description: "随机将棋盘上的若干方块变成刺客方块（E），每级增加一个",
-        effect: { type: "convertToEBlocks" },
+        description: "随机将棋盘上的若干方块变成刺客方块（E），每3级增加一个",
+        effect: { type: "convertToEBlocks", levelsPerIncrement: 3 },
         cooldown: 3
-      }
+    }
     },
 
     {
@@ -159,10 +159,10 @@ const HeroData = {
       },
       skill: {
         name: "能量共鸣",
-        description: "所有在场英雄的技能条增加 10% + 等级%",
-        effect: { type: "boostAllGauge" },
+        description: "所有在场英雄的技能条增加 6% + 等级%",
+        effect: { type: "boostAllGauge", basePercentage: 6 },
         cooldown: 3
-      }
+    }
       
     },
 
@@ -251,10 +251,10 @@ const HeroData = {
       },
       skill: {
         name: "嗷呜！",
-        effect: { type: "convertToDBlocks", baseCount: 3 },
-        description: "随机将棋盘上的若干非金币方块变成金币方块（D），每级增加一个",
+        description: "随机将棋盘上的若干非金币方块变成金币方块（D），每3级增加一个",
+        effect: { type: "convertToDBlocks", levelsPerIncrement: 3 },
         cooldown: 3
-      }
+    }
     },
 
     {
@@ -331,10 +331,10 @@ const HeroData = {
       },
       skill: {
         name: "寒冰侵蚀",
-        description: "随机将棋盘上的若干方块变成寒冰方块（F），每级增加一个",
-        effect: { type: "convertToFBlocks" },
+        description: "随机将棋盘上的若干方块变成寒冰方块（F），每3级增加一个",
+        effect: { type: "convertToFBlocks", levelsPerIncrement: 3 },
         cooldown: 3
-      }
+    }
     },
     
     {
@@ -502,14 +502,15 @@ const HeroData = {
       },
       skill: {
         name: "歌唱吧！",
-        description: "为所有在场英雄随机提升30~40%技能槽，每升一级+1%。",
+        description: "为所有在场英雄随机提升20~25%技能槽，每升一级+1%",
         effect: {
-          type: "randomBoostAllGauge",
-          baseMin: 30,
-          baseMax: 40
+            type: "randomBoostAllGauge",
+            baseMin: 20,
+            baseMax: 25,
+            incrementPerLevel: 1
         },
         cooldown: 3
-      }
+    }
     },
     {
       id: 'hero019',
