@@ -41,6 +41,18 @@ const HERO_PER_PAGE = 15;                                   // 每页 15
 
 const lockIconImg = wx.createImage();   // 锁图标
 lockIconImg.src   = 'assets/ui/lock.png';
+let clickSound = null;
+let clickedKey = null;
+let clickAnimationFrame = 0;
+
+function playClickSound() {
+  if (!clickSound) {
+    clickSound = wx.createInnerAudioContext();
+    clickSound.src = 'sounds/click.mp3';
+  }
+  clickSound.stop();
+  clickSound.play();
+}
 
 // ======================= 运行时状态 =======================
 let selectedHeroes = [null, null, null, null, null];
@@ -171,7 +183,11 @@ function onTouch(e) {
   if (!e.changedTouches || !e.changedTouches[0]) return;
   const { clientX: x, clientY: y } = e.changedTouches[0];
   if (btnBackRect && hit(x, y, btnBackRect)) {
-    return switchPageFn('home');
+    playClickSound();
+    clickedKey = 'back';
+    clickAnimationFrame = 0;
+    setTimeout(() => switchPageFn('home'), 180);
+    return;
   }
 
   console.log('[DEBUG] 用户触摸了坐标：', x, y);
@@ -249,10 +265,18 @@ function onTouch(e) {
 
   /* ---------- 翻页按钮 ---------- */
   if (hit(x, y, btnPrevRect) && pageIndex > 0) {
-    pageIndex--; return render();
+    playClickSound();
+    clickedKey = 'prev';
+    clickAnimationFrame = 0;
+    pageIndex--; render();
+    return;
   }
   if (hit(x, y, btnNextRect) && pageIndex < TOTAL_PAGES - 1) {
-    pageIndex++; return render();
+    playClickSound();
+    clickedKey = 'next';
+    clickAnimationFrame = 0;
+    pageIndex++; render();
+    return;
   }
 
   /* ---------- 升级按钮显示开关 ---------- */
@@ -448,22 +472,28 @@ for (const { hero } of iconRects) {
   /* ---------- 确认按钮 ---------- */
   const confirmRect = globalThis.confirmRect;
   if (hit(x, y, confirmRect)) {
-    // 检查是否至少有一个出战英雄
     const hasHero = selectedHeroes.some(id => id !== null);
     if (!hasHero) {
-      wx.showToast({
-        title: '至少需要一名勇者',
-        icon: 'none'
-      });
+      wx.showToast({ title: '至少需要一名勇者', icon: 'none' });
       return;
     }
   
-    wx.setStorageSync('unlockedSlots', unlockedSlots);  // 保存解锁状态
+    playClickSound();                // ✅ 播放点击音效
+    clickedKey = 'confirm';          // ✅ 触发动画缩放
+    clickAnimationFrame = 0;
+  
+    wx.setStorageSync('unlockedSlots', unlockedSlots);
     wx.setStorageSync('selectedHeroes', selectedHeroes);
-    getLastLevel((level) => {
-      switchPageFn('game', { level });
-    });
+  
+    setTimeout(() => {               // ✅ 稍等180ms后切页面，让动画有时间播放
+      getLastLevel((level) => {
+        switchPageFn('game', { level });
+      });
+    }, 180);
+  
+    return;
   }
+  
   
 }
 function tryUnlockSlot(index) {
@@ -536,6 +566,20 @@ function hit(px, py, r) {
 
 // ======================= 渲染 =============================
 function render() {
+  if (clickedKey) {
+    clickAnimationFrame++;
+    if (clickAnimationFrame > 10) {
+      clickedKey = null;
+      clickAnimationFrame = 0;
+    }
+  }
+
+  const scaleBtn = (key) =>
+  clickedKey === key
+    ? 1.0 + 0.1 * Math.sin((clickAnimationFrame / 10) * Math.PI)
+    : 1.0;
+
+
     const ctx = ctxRef;
     const canvas = canvasRef;
     const layoutRects = [];
@@ -740,8 +784,16 @@ const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
  btnPrevRect = { x: PAD_X,             y: btnY, width: BTN, height: BTN };
  btnNextRect = { x: canvas.width - PAD_X - BTN, y: btnY, width: BTN, height: BTN };
 
-  ctx.fillStyle = pageIndex > 0 ? '#9c275d' : '#300';
-  drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 8, true, false);
+ const scalePrev = scaleBtn('prev');
+ ctx.save();
+ ctx.translate(btnPrevRect.x + btnPrevRect.width / 2, btnPrevRect.y + btnPrevRect.height / 2);
+ ctx.scale(scalePrev, scalePrev);
+ ctx.translate(-btnPrevRect.width / 2, -btnPrevRect.height / 2);
+ ctx.fillStyle = pageIndex > 0 ? '#9c275d' : '#300';
+ drawRoundedRect(ctx, 0, 0, btnPrevRect.width, btnPrevRect.height, 8, true, false);
+ drawText(ctx, '<', btnPrevRect.width / 2, btnPrevRect.height / 2, 'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
+ ctx.restore();
+ 
   drawText(ctx, '<', btnPrevRect.x + btnPrevRect.width / 2, btnPrevRect.y + btnPrevRect.height / 2,
   'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
 
@@ -775,7 +827,15 @@ const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
                     align: 'center',
                     baseline: 'middle'
                 });
-                
+ // ✅ 获取当前关卡等级（用于按钮显示）
+let level = 1;
+try {
+  const stored = wx.getStorageSync('lastLevel');
+  level = parseInt(stored || '1');
+  if (!level || level < 1) level = 1;
+} catch (e) {
+  level = 1;
+}               
 
   // 确认按钮
 // ✅ 将确认按钮 Y 坐标与左侧“升级按钮”对齐
@@ -792,26 +852,21 @@ confirmRect = avoidOverlap(confirmRect, layoutRects);
 layoutRects.push(confirmRect);
 globalThis.confirmRect = confirmRect;
 const confirmX = confirmRect.x;
+const scaleConfirm = scaleBtn('confirm');
+ctx.save();
+ctx.translate(confirmRect.x + confirmRect.width / 2, confirmRect.y + confirmRect.height / 2);
+ctx.scale(scaleConfirm, scaleConfirm);
+ctx.translate(-confirmRect.width / 2, -confirmRect.height / 2);
 ctx.fillStyle = '#6d2c91';
-drawRoundedRect(ctx, confirmX, confirmY, ICON * 3, ICON * 1.0, 28, true, false);
-let level = 1;
-try {
-  const stored = wx.getStorageSync('lastLevel');
-  level = parseInt(stored || '1');
-  if (!level || level < 1) level = 1;
-} catch (e) {
-  level = 1;
-}
-
-drawStyledText(ctx, `进入第${level}关`,
-  confirmX + ICON * 1.5,
-  confirmY + ICON * 0.5, {
-    font: 'bold 20px IndieFlower',
-    fill: '#f8d6ff',
-    //stroke: '#000',
-    align: 'center',
-    baseline: 'middle'
+drawRoundedRect(ctx, 0, 0, confirmRect.width, confirmRect.height, 28, true, false);
+drawStyledText(ctx, `进入第${level}关`, confirmRect.width / 2, confirmRect.height / 2, {
+  font: 'bold 20px IndieFlower', fill: '#f8d6ff', align: 'center', baseline: 'middle'
 });
+ctx.restore();
+
+
+
+
 
 
 
@@ -841,11 +896,18 @@ drawStyledText(ctx, `进入第${level}关`,
 
 // 返回按钮（左上角）
 btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
+const scaleBack = scaleBtn('back');
+ctx.save();
+ctx.translate(btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2);
+ctx.scale(scaleBack, scaleBack);
+ctx.translate(-btnBackRect.width / 2, -btnBackRect.height / 2);
 ctx.fillStyle = '#5e3a7d';
-drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRect.height, 6, true, false);
-drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, {
+drawRoundedRect(ctx, 0, 0, btnBackRect.width, btnBackRect.height, 6, true, false);
+drawStyledText(ctx, '返回', btnBackRect.width / 2, btnBackRect.height / 2, {
   font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle'
 });
+ctx.restore();
+
 const { updateAllEffects, drawAllEffects } = require('./effects_engine.js');
 // 所有 UI 元素之后
 drawUnlockDialog(ctx, canvas);

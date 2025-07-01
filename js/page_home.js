@@ -7,44 +7,94 @@ let heroIntroBtnArea = null;
 let roguelikeBtnArea = null;
 let homeLoopId = null;
 let frameCount = 0;
-let bgmAudioContext = null; // 全局背景音乐播放器，避免重复播放
+let bgmAudioContext = null;
+let clickSound = null;
+let fireFrameCounter = 0;
+let clickedButton = null;
+let clickAnimationFrame = 0;
+let pageExiting = false;
+
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { shareMyStats } = require('./utils/share_utils.js');
-import { drawAllEffects, updateAllEffects, createFireParticles, createFireGlow, createPersistentFireGlow, removeFireGlowEffect } from './effects_engine.js';
+import {
+  drawAllEffects, updateAllEffects, createFireParticles,
+  createPersistentFireGlow, removeFireGlowEffect
+} from './effects_engine.js';
 import { hasDefeatedBoss2 } from './data/monster_state.js';
-let fireFrameCounter = 0;
 
 export function initHomePage(ctx, switchPage, canvas) {
   ctxRef = ctx;
   switchPageFn = switchPage;
   canvasRef = canvas;
+  pageExiting = false;
   createPersistentFireGlow(canvasRef);
-    // 添加背景音乐播放
-    if (!bgmAudioContext) {
-      bgmAudioContext = wx.createInnerAudioContext();
-      bgmAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
-      bgmAudioContext.loop = true;
-      bgmAudioContext.autoplay = true;
-      bgmAudioContext.play();
-    }
-  
+
+  if (!bgmAudioContext) {
+    bgmAudioContext = wx.createInnerAudioContext();
+    bgmAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
+    bgmAudioContext.loop = true;
+    bgmAudioContext.autoplay = true;
+    bgmAudioContext.play();
+  }
+
+  if (!clickSound) {
+    clickSound = wx.createInnerAudioContext();
+    clickSound.src = 'sounds/click.mp3';
+  }
+
   startHomeLoop();
 }
 
+function playClickSound() {
+  if (clickSound) {
+    clickSound.stop();
+    clickSound.play();
+  }
+}
+
 function drawHomeUI() {
+  if (pageExiting) return;
+
   const btnWidth = 160;
   const btnHeight = 50;
   const x = (canvasRef.width - btnWidth) / 2;
   const yEnter = canvasRef.height - 240;
   const yRoguelike = yEnter + 80;
 
-  const scaledEnterW = btnWidth;
-  const scaledEnterH = btnHeight;
-  const offsetX = x;
-  const offsetYEnter = yEnter;
+  if (clickedButton) {
+    clickAnimationFrame++;
+    if (clickAnimationFrame > 10) {
+      pageExiting = true;
+      cancelAnimationFrame(homeLoopId);
+      homeLoopId = null;
+      removeFireGlowEffect();
 
-  const scaledRogueW = btnWidth;
-  const scaledRogueH = btnHeight;
+      const cb = clickedButton;
+      clickedButton = null;
+      clickAnimationFrame = 0;
+
+      if (cb === 'share') {
+        pageExiting = false;
+        shareMyStats();
+      } else {
+        switchPageFn(cb);
+      }
+      return;
+    }
+  }
+
+  const scaleBtn = (key) => clickedButton === key ? 1.0 + 0.1 * Math.sin((clickAnimationFrame / 10) * Math.PI) : 1.0;
+
+  const scaleEnter = scaleBtn('heroSelect');
+  const scaledEnterW = btnWidth * scaleEnter;
+  const scaledEnterH = btnHeight * scaleEnter;
+  const offsetX = (canvasRef.width - scaledEnterW) / 2;
+  const offsetYEnter = yEnter - (scaledEnterH - btnHeight) / 2;
+
+  const scaleRogue = scaleBtn('roguelike');
+  const scaledRogueW = btnWidth * scaleRogue;
+  const scaledRogueH = btnHeight * scaleRogue;
+  const offsetYRogue = yRoguelike - (scaledRogueH - btnHeight) / 2;
 
   const bgImg = globalThis.imageCache['bg'];
   if (bgImg && bgImg.complete) {
@@ -76,26 +126,24 @@ function drawHomeUI() {
   ctxRef.fillStyle = '#b3134a';
   drawRoundedRect(ctxRef, offsetX, offsetYEnter, scaledEnterW, scaledEnterH, 20);
   ctxRef.fill();
-  drawStyledText(ctxRef, '魅影旅店', x + btnWidth / 2, yEnter + btnHeight / 2, {
+  drawStyledText(ctxRef, '魅影旅店', canvasRef.width / 2, offsetYEnter + scaledEnterH / 2, {
     font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
   });
 
   const unlocked = hasDefeatedBoss2();
   ctxRef.save();
-  ctxRef.globalAlpha = unlocked ? 1.0 : 0.3; // 变灰显示
+  ctxRef.globalAlpha = unlocked ? 1.0 : 0.3;
   ctxRef.fillStyle = '#4B3B74';
-  drawRoundedRect(ctxRef, offsetX, yRoguelike, scaledRogueW, scaledRogueH, 20);
+  drawRoundedRect(ctxRef, offsetX, offsetYRogue, scaledRogueW, scaledRogueH, 20);
   ctxRef.fill();
-  drawStyledText(ctxRef, '魔界森林', x + btnWidth / 2, yRoguelike + btnHeight / 2, {
+  drawStyledText(ctxRef, '魔界森林', canvasRef.width / 2, offsetYRogue + scaledRogueH / 2, {
     font: 'bold 22px IndieFlower', fill: '#CCEEFF', stroke: '#000'
   });
   ctxRef.restore();
-  
-  // ✅ 只有解锁时才启用点击区域
+
   roguelikeBtnArea = unlocked
-    ? { x: offsetX, y: yRoguelike, width: scaledRogueW, height: scaledRogueH }
+    ? { x: offsetX, y: yRoguelike, width: btnWidth, height: btnHeight }
     : null;
-  
 
   const smallBtnWidth = 100;
   const smallBtnHeight = 40;
@@ -104,35 +152,34 @@ function drawHomeUI() {
   const baseX = (canvasRef.width - totalWidth) / 2;
   const btnY = canvasRef.height - 80;
 
+  const drawSmallBtn = (label, x, key, color, textColor) => {
+    const scale = scaleBtn(key);
+    ctxRef.fillStyle = color;
+    drawRoundedRect(ctxRef, x - (smallBtnWidth * (scale - 1)) / 2, btnY - (smallBtnHeight * (scale - 1)) / 2,
+      smallBtnWidth * scale, smallBtnHeight * scale, 12);
+    ctxRef.fill();
+    drawStyledText(ctxRef, label, x + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
+      font: 'bold 16px IndieFlower', fill: textColor, stroke: '#000'
+    });
+  };
+
   const xRank = baseX;
-  ctxRef.fillStyle = '#6d2c91';
-  drawRoundedRect(ctxRef, xRank, btnY, smallBtnWidth, smallBtnHeight, 12);
-  ctxRef.fill();
-  drawStyledText(ctxRef, '排行榜', xRank + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
-    font: 'bold 16px IndieFlower', fill: '#f8d6ff', stroke: '#000'
-  });
+  const xShare = baseX + smallBtnWidth + spacing;
+  const xIntro = baseX + (smallBtnWidth + spacing) * 2;
+
+  drawSmallBtn('排行榜', xRank, 'ranking', '#6d2c91', '#f8d6ff');
   rankingBtnArea = { x: xRank, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 
-  const xShare = baseX + smallBtnWidth + spacing;
-  ctxRef.fillStyle = '#7d3f98';
-  drawRoundedRect(ctxRef, xShare, btnY, smallBtnWidth, smallBtnHeight, 12);
-  ctxRef.fill();
-  drawStyledText(ctxRef, '分享', xShare + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
-    font: 'bold 16px IndieFlower', fill: '#fcd5d5', stroke: '#000'
-  });
+  drawSmallBtn('分享', xShare, 'share', '#7d3f98', '#fcd5d5');
   shareBtnArea = { x: xShare, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 
-  const xIntro = baseX + (smallBtnWidth + spacing) * 2;
-  ctxRef.fillStyle = '#9c275d';
-  drawRoundedRect(ctxRef, xIntro, btnY, smallBtnWidth, smallBtnHeight, 12);
-  ctxRef.fill();
-  drawStyledText(ctxRef, '英雄介绍', xIntro + smallBtnWidth / 2, btnY + smallBtnHeight / 2, {
-    font: 'bold 16px IndieFlower', fill: '#ffe3e3', stroke: '#000'
-  });
+  drawSmallBtn('英雄介绍', xIntro, 'heroIntro', '#9c275d', '#ffe3e3');
   heroIntroBtnArea = { x: xIntro, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
 }
 
 function onTouch(e) {
+  if (pageExiting) return;
+
   const touch = e.changedTouches[0];
   const xTouch = touch.clientX;
   const yTouch = touch.clientY;
@@ -144,46 +191,47 @@ function onTouch(e) {
   const yRoguelike = yEnter + 80;
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= yEnter && yTouch <= yEnter + btnHeight) {
-    removeFireGlowEffect();
-    setTimeout(() => switchPageFn('heroSelect'), 150);
+    playClickSound();
+    clickedButton = 'heroSelect';
+    clickAnimationFrame = 0;
     return;
   }
 
   if (xTouch >= x && xTouch <= x + btnWidth &&
-    yTouch >= yRoguelike && yTouch <= yRoguelike + btnHeight) {
-  if (hasDefeatedBoss2()) {
-    removeFireGlowEffect();
-    setTimeout(() => switchPageFn('roguelike'), 150);
-  } else {
-    wx.showToast?.({
-      title: '您还未探索到该地区',
-      icon: 'none'
-    });
-  }
-  return;
-}
-
-  if (rankingBtnArea &&
-      xTouch >= rankingBtnArea.x && xTouch <= rankingBtnArea.x + rankingBtnArea.width &&
-      yTouch >= rankingBtnArea.y && yTouch <= rankingBtnArea.y + rankingBtnArea.height) {
-    removeFireGlowEffect();
-    setTimeout(() => switchPageFn('ranking'), 150);
+      yTouch >= yRoguelike && yTouch <= yRoguelike + btnHeight) {
+    if (hasDefeatedBoss2()) {
+      playClickSound();
+      clickedButton = 'roguelike';
+      clickAnimationFrame = 0;
+    } else {
+      wx.showToast?.({
+        title: '您还未探索到该地区',
+        icon: 'none'
+      });
+    }
     return;
   }
 
-  if (shareBtnArea &&
-      xTouch >= shareBtnArea.x && xTouch <= shareBtnArea.x + shareBtnArea.width &&
-      yTouch >= shareBtnArea.y && yTouch <= shareBtnArea.y + shareBtnArea.height) {
-    removeFireGlowEffect();
-    setTimeout(() => shareMyStats(), 150);
+  const inArea = (area) => xTouch >= area.x && xTouch <= area.x + area.width && yTouch >= area.y && yTouch <= area.y + area.height;
+
+  if (rankingBtnArea && inArea(rankingBtnArea)) {
+    playClickSound();
+    clickedButton = 'ranking';
+    clickAnimationFrame = 0;
     return;
   }
 
-  if (heroIntroBtnArea &&
-      xTouch >= heroIntroBtnArea.x && xTouch <= heroIntroBtnArea.x + heroIntroBtnArea.width &&
-      yTouch >= heroIntroBtnArea.y && yTouch <= heroIntroBtnArea.y + heroIntroBtnArea.height) {
-    removeFireGlowEffect();
-    setTimeout(() => switchPageFn('heroIntro'), 150);
+  if (shareBtnArea && inArea(shareBtnArea)) {
+    playClickSound();
+    clickedButton = 'share';
+    clickAnimationFrame = 0;
+    return;
+  }
+
+  if (heroIntroBtnArea && inArea(heroIntroBtnArea)) {
+    playClickSound();
+    clickedButton = 'heroIntro';
+    clickAnimationFrame = 0;
     return;
   }
 }
@@ -193,7 +241,9 @@ function startHomeLoop() {
   function loop() {
     updateAllEffects();
     drawHomeUI();
-    homeLoopId = requestAnimationFrame(loop);
+    if (!pageExiting) {
+      homeLoopId = requestAnimationFrame(loop);
+    }
   }
   loop();
 }
@@ -204,6 +254,7 @@ function destroyHomePage() {
     homeLoopId = null;
   }
   removeFireGlowEffect();
+  pageExiting = true;
 }
 
 export function updateHomePage() {}
