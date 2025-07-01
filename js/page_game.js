@@ -101,6 +101,13 @@ import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
 import { getMonster, getMonsterDamage, markBossDefeated } from './data/monster_state.js';
+
+function isHeroUnlocked(heroId) {
+  const all = wx.getStorageSync('unlockedHeroes') || [];
+  return all.includes(heroId);
+}
+
+
 /* ======== 英雄连招节流用状态 ======== */
 let pendingHeroBurst   = false;   // 是否排队等待播放
 let skillsActive = 0;   // 当前还在播放的英雄技能数量
@@ -1728,7 +1735,14 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
       if (btn && x >= btn.x && x <= btn.x + btn.width &&
                  y >= btn.y && y <= btn.y + btn.height) {
         showVictoryPopup = false;
-        globalThis.victoryDialogText = null;   // 清掉上一次对白
+
+    // ✅ 清除胜利弹窗的临时状态，防止下一关残留
+    globalThis.victoryDialogText   = null;
+    globalThis.levelRewardsHeroId  = null;
+    globalThis.rewardHeroIconRect  = null;
+    globalThis.levelRewards        = [];
+    globalThis.heroLevelUps        = [];
+
         gaugeCount = 0;        // 只清操作计数
         currentLevel = currentLevel + 1; // ✅ 明确用本地 currentLevel 推进
         const config = LevelConfigs[currentLevel] || {};
@@ -2206,7 +2220,7 @@ if (currentLevel === 2) {
   heroId = 'hero016';
 }
 
-if (heroId) {
+if (heroId && !isHeroUnlocked(heroId)) {
   if (typeof unlockHero === 'function') unlockHero(heroId);
   globalThis.levelRewardsHeroId = heroId;
 }
