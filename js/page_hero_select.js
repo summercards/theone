@@ -45,6 +45,17 @@ let clickSound = null;
 let clickedKey = null;
 let clickAnimationFrame = 0;
 
+let flipSound = null;
+
+function playFlipSound() {
+  if (!flipSound) {
+    flipSound = wx.createInnerAudioContext();
+    flipSound.src = 'sounds/page_flip.mp3'; // ✅ 使用你上传的音效
+  }
+  flipSound.stop();
+  flipSound.play();
+}
+
 function playClickSound() {
   if (!clickSound) {
     clickSound = wx.createInnerAudioContext();
@@ -265,14 +276,14 @@ function onTouch(e) {
 
   /* ---------- 翻页按钮 ---------- */
   if (hit(x, y, btnPrevRect) && pageIndex > 0) {
-    playClickSound();
+    playFlipSound();          // ✅ 替换成新音效
     clickedKey = 'prev';
     clickAnimationFrame = 0;
     pageIndex--; render();
     return;
   }
   if (hit(x, y, btnNextRect) && pageIndex < TOTAL_PAGES - 1) {
-    playClickSound();
+    playFlipSound();          // ✅ 替换成新音效
     clickedKey = 'next';
     clickAnimationFrame = 0;
     pageIndex++; render();

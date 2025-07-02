@@ -29,13 +29,20 @@ export function initHomePage(ctx, switchPage, canvas) {
   pageExiting = false;
   createPersistentFireGlow(canvasRef);
 
-  if (!bgmAudioContext) {
-    bgmAudioContext = wx.createInnerAudioContext();
-    bgmAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
-    bgmAudioContext.loop = true;
-    bgmAudioContext.autoplay = true;
-    bgmAudioContext.play();
+  if (bgmAudioContext) {
+    try {
+      bgmAudioContext.stop();
+      bgmAudioContext.destroy();
+    } catch (e) {}
   }
+  bgmAudioContext = wx.createInnerAudioContext();
+  bgmAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
+  bgmAudioContext.loop = true;
+  bgmAudioContext.autoplay = true;
+  bgmAudioContext.play();
+  globalThis.bgmAudioContext = bgmAudioContext;
+  
+  
 
   if (!clickSound) {
     clickSound = wx.createInnerAudioContext();

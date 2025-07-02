@@ -1,3 +1,7 @@
+const pageFlipAudio = wx.createInnerAudioContext();
+pageFlipAudio.src = 'sounds/page_flip.mp3';
+pageFlipAudio.obeyMuteSwitch = false; // 可选：静音模式下仍播放
+
 // js/page_hero_intro.js
 const HeroData = require('./data/hero_data.js');
 const { HeroState, getRequiredExpForLevel } = require('./data/hero_state.js');
@@ -35,13 +39,16 @@ function touchend(e) {
   }
 
   if (btnPrevRect && hit(x, y, btnPrevRect) && pageIndex > 0) {
+    pageFlipAudio.play();
     pageIndex--;
     return render();
   }
   if (btnNextRect && hit(x, y, btnNextRect) && (pageIndex + 1) * HEROES_PER_PAGE < HeroData.heroes.length) {
+    pageFlipAudio.play();
     pageIndex++;
     return render();
   }
+  
   if (btnBackRect && hit(x, y, btnBackRect)) {
     return switchPageFn('home');
   }

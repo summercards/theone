@@ -7,6 +7,7 @@ const VictoryDialogLines = [
   "钱袋子变鼓了，心也跟着鼓起来！",
   "回到旅店，召集更多的同伴吧!"
 ];
+let soundPlayed = false; // ← 添加这一行
 let comboTextPos   = null;   // 最近一次画 Combo 飘字的位置
 let gaugeCenterPos = null;   // 攻击槽中心位置
 let comboCounter = 0;
@@ -101,6 +102,15 @@ import { getLogs } from './utils/battle_log.js';
 import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
 import { getMonster, getMonsterDamage, markBossDefeated } from './data/monster_state.js';
+
+function playSound(name) {
+  if (!wx.createInnerAudioContext) return;
+
+  const sound = wx.createInnerAudioContext();
+  sound.src = `sounds/${name}.mp3`;
+  sound.obeyMuteSwitch = false;  // 允许静音状态播放
+  sound.play();
+}
 
 function isHeroUnlocked(heroId) {
   const all = wx.getStorageSync('unlockedHeroes') || [];
@@ -248,6 +258,22 @@ function drawBackground() {
   
 
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
+
+  // 停止主页 BGM（如果存在）
+if (globalThis.bgmAudioContext) {
+  try {
+    globalThis.bgmAudioContext.stop();
+    globalThis.bgmAudioContext.destroy();
+  } catch (e) {}
+  globalThis.bgmAudioContext = null;
+}
+const gameBgm = wx.createInnerAudioContext();
+gameBgm.src = 'sounds/bgm/game_bgm.mp3';
+gameBgm.loop = true;
+gameBgm.autoplay = true;
+gameBgm.play();
+globalThis.bgmAudioContext = gameBgm;  // 覆盖全局
+
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
     wx.setStorageSync('lastLevel', currentLevel.toString());
@@ -1276,6 +1302,7 @@ function checkAndClearMatches (returnColors = false) {
   
   const superBlockSpots = [];
   let clearedCount   = 0;
+  let soundPlayed = false; // ✅ 新增
   const colorCounter = {};                      // {A:3, B:1 …}
   const toClear      = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
 
@@ -1400,6 +1427,10 @@ if (letter === 'B') {
       // ✅ 彩色粒子效果
   
       colorCounter[letter] = (colorCounter[letter] || 0) + 1;
+      if (!soundPlayed) {
+        playSound('block_clear', 0.3);  // ✅ 播放一次 + 调低音量
+        soundPlayed = true;
+      }
       gridData[r][c] = null;
       clearedCount++;
     }
@@ -1468,6 +1499,7 @@ if (letter === 'B') {
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
     earnedGold = getMonsterGold();
+    playSound('coin_gain');
        addCoins(earnedGold);
        goldPopTime       = Date.now();
        displayedGold     = getSessionCoins();
@@ -1889,6 +1921,7 @@ if (btn &&
 
 
 function handleSwap(src, dst) {
+  playSound('block_move'); // ← 添加在这里
   const temp = gridData[dst.row][dst.col];
   gridData[dst.row][dst.col] = gridData[src.row][src.col];
   gridData[src.row][src.col] = temp;
@@ -1977,6 +2010,15 @@ function handleSwap(src, dst) {
 
 
 function destroyGamePage() {
+
+  if (globalThis.bgmAudioContext) {
+    try {
+      globalThis.bgmAudioContext.stop();
+      globalThis.bgmAudioContext.destroy();
+    } catch (e) {}
+    globalThis.bgmAudioContext = null;
+  }
+  
   // ✅ 解绑触摸事件，避免重复绑定或内存泄漏
   wx.offTouchStart(onTouch);
   wx.offTouchEnd(onTouchend);
@@ -2161,6 +2203,7 @@ function startAttackEffect(dmg) {
       
     // 飞弹到达 ⇒ 怪物掉血 & 受击闪
     dealDamage(pendingDamage, { allowKill: true });
+    playSound('monster_hit');
     createMonsterBounce(); // ✅ 添加弹性缩放动画
     createExplosion(endX, endY);                // 爆点可复用现有效果
     monsterHitFlashTime = Date.now();
@@ -2282,6 +2325,7 @@ function monsterRetaliate() {
 
   showDamageText(dmg, floatX, floatY);
   takeDamage(dmg);
+  playSound('player_hurt');
   createShake?.(300, 4);
   createMonsterAttackFlash();
   createMonsterBounce();
