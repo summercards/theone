@@ -7,7 +7,8 @@ const VictoryDialogLines = [
   "钱袋子变鼓了，心也跟着鼓起来！",
   "回到旅店，召集更多的同伴吧!"
 ];
-let soundPlayed = false; // ← 添加这一行
+
+
 let comboTextPos   = null;   // 最近一次画 Combo 飘字的位置
 let gaugeCenterPos = null;   // 攻击槽中心位置
 let comboCounter = 0;
@@ -34,6 +35,15 @@ let earnedGold = 0;
 let levelJustCompleted = 0;
 let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
 let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
+
+let exitingGame = false;        // ☆ 新增：返回主页时置 true
+
+function haltGame() {           // ☆ 统一熔断函数
+  exitingGame      = true;      // ① 标记退出
+  clearingRunning  = false;     // ② 立即停掉棋盘连锁
+  pendingHeroBurst = false;     // ③ 清空等待中的连招
+  heroBurstRunning = false;     // ④ 如果正播连招，也立刻视为结束
+}
 
 const LevelConfigs = {
     1: { gridSize: 5, allowedBlocks: ['A', 'D', 'F'] },
@@ -131,6 +141,12 @@ let gaugeFlashTime = 0;          // 0 表示不闪烁
 let pendingDamage = 0;          // 等待打到怪物的数值
 let monsterHitFlashTime = 0;    // 怪物受击闪白计时
 
+/*  ================= 辅助函数：胜利时立即熔断后台循环 ================== */
+function lockForVictory () {
+  clearingRunning  = false;   // 停掉棋盘连锁 / 掉落
+  pendingHeroBurst = false;   // 清掉等待中的连招
+  heroBurstRunning = false;   // 正在播放的连招也标记结束
+}
 
 /* === BlockConfig 派生工具映射 ================================= */
 const BLOCK_ROLE_MAP   = Object.fromEntries(
@@ -276,6 +292,7 @@ globalThis.bgmAudioContext = gameBgm;  // 覆盖全局
 
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
+    haltGame();                               // ☆ 立刻熔断后台循环
     wx.setStorageSync('lastLevel', currentLevel.toString());
     globalThis.expGainedThisRound = 0;
   ctxRef = ctx;
@@ -1508,6 +1525,7 @@ if (letter === 'B') {
 
     
        showVictoryPopup = true;
+       lockForVictory();      // ★ 新增：锁死后续异步流程
        return;            // 暂停游戏流，等待玩家点击“下一关”
   }
   else {
@@ -1625,7 +1643,11 @@ function processClearAndDrop() {
     };
   
     const loop = () => {
-      setTimeout(() => {
+         if (showVictoryPopup) {        // ★ 胜利弹窗时直接熔断
+           clearingRunning = false;
+           return;
+         }
+         setTimeout(() => {
         dropBlocks();
         drawGame();
   
@@ -2079,6 +2101,7 @@ function startHeroBurst(dmg) {
   }
   
   function tryStartHeroBurst() {
+    if (showVictoryPopup) return;      // ★ 胜利时禁止再开连招
     if (pendingHeroBurst && !heroBurstRunning && !clearingRunning) {
       pendingHeroBurst = false;
       const heroes = getSelectedHeroes();
@@ -2277,6 +2300,7 @@ globalThis.victoryDialogText =
 
             // ✅ 胜利弹窗
             showVictoryPopup = true;
+            lockForVictory();      // ★ 新增：锁死后续异步流程
             popupGoldDisplayed = 0;
             popupGoldStartTime = Date.now();
           
