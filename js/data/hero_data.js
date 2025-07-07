@@ -364,7 +364,7 @@ const HeroData = {
     },
     {
       id: "hero014",
-      name: "夜影之箭",
+      name: "夜影",
       icon: "archer3.png",
       role: "游侠",
       rarity: "SSR",
@@ -394,7 +394,7 @@ const HeroData = {
     },
     {
       id: "hero015",
-      name: "星辉法皇",
+      name: "星法皇",
       icon: "mage3.png",
       role: "法师",
       rarity: "UR",

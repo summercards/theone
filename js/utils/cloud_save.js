@@ -53,7 +53,12 @@
                            return { data: [] };
                          });
    
-     if (!res.data.length) return {};
+                         if (!res.data.length) {
+                          console.warn('[cloud_save] 云端无存档，清空本地数据');
+                          wx.clearStorageSync();              // ✅ 清空本地
+                          isMarkedDeleted = true;            // ✅ 防止本地存档再次上传
+                          return {};
+                        }
    
      const doc = res.data[0];
      const save = {};
