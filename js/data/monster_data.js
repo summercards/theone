@@ -87,7 +87,7 @@ const foodMonsters = [
       name: foodMonsters[i],
       maxHp: 3200 + i * 200,
       sprite: `${foodSprites[i]}.png`,
-      damage: [20 + i * 5, 30 + i * 5],
+      damage: [30 + i * 5, 50 + i * 5],
       cooldown: 2,
       gold: 10 + lv * 2,
       spriteSize: 120,          // 容器大小保持120不变
@@ -102,7 +102,7 @@ const foodMonsters = [
     name: '暴食者',
     maxHp: 18500,
     sprite: 'glutton.png',
-    damage: [59, 99],   // ❶ 变成数组即可
+    damage: [89, 129],   // ❶ 变成数组即可
     cooldown: 3,
     gold: 60,
     isBoss: true,
@@ -132,7 +132,7 @@ const envyMonsters = [
       sprite: `${envySprites[i]}.png`,
       damage: [35 + i * 10, 50 + i * 10],
       cooldown: 3,
-      gold: 15 + lv * 2,
+      gold: 150 + lv * 2,
       spriteSize: 120,
       spriteScale: envyScales[i] // 👈 新增
     }));
@@ -142,11 +142,11 @@ monsters.push(createMonster({
   id: 20,
   level: 20,
   name: '镜中君主',
-  maxHp: 16000,
+  maxHp: 160000,
   sprite: 'jingzhongjunzhu.png',
   damage: [169, 199],   // ❶ 变成数组即可
   cooldown: 4,
-  gold: 100,
+  gold: 3000,
   isBoss: true
 }));
 
@@ -168,11 +168,11 @@ const greedMonsters = [
       id: lv,
       level: lv,
       name: greedMonsters[i],
-      maxHp: 3000 + i * 200,
+      maxHp: 30000 + i * 200,
       sprite: `${greedSprites[i]}.png`,
-      damage: 100 + i * 10,
+      damage: 220 + i * 10,
       cooldown: 3,
-      gold: 20 + lv * 2,
+      gold: 200 + lv * 2,
       spriteSize: 120,
       spriteScale: greedScales[i] // 👈 新增
     }));
@@ -183,11 +183,11 @@ monsters.push(createMonster({
   id: 30,
   level: 30,
   name: '贪欲之王',
-  maxHp: 68000,
+  maxHp: 268000,
   sprite: 'tanyuzhiwang.png',
-  damage: 350,
+  damage: [330, 389],   // ❶ 变成数组即可
   cooldown: 4,
-  gold: 120,
+  gold: 6000,
   isBoss: true
 }));
 
@@ -226,7 +226,7 @@ const wrathMonsters = [
       sprite: `${wrathSprites[i]}.png`,   // 👈 新贴图命名
       damage: 140 + i * 10,
       cooldown: 3,
-      gold: 25 + lv * 2,
+      gold: 285 + lv * 2,
       spriteSize: 120,
       spriteScale: wrathScales[i]         // 👈 新增缩放字段
     }));
@@ -236,11 +236,11 @@ monsters.push(createMonster({
   id: 40,
   level: 40,
   name: '狂怒化身',
-  maxHp: 120000,
+  maxHp: 820000,
   sprite: 'kuangnuhuashen.png',
-  damage: 380,
+  damage: [389, 469],   // ❶ 变成数组即可
   cooldown: 4,
-  gold: 140,
+  gold: 18000,
   isBoss: true
 }));
 // ------------------------------------------------------------
@@ -270,7 +270,7 @@ const slothMonsters = [
       sprite: `${slothSprites[i]}.png`,
       damage: 160 + i * 10,
       cooldown: 4,
-      gold: 30 + lv * 2,
+      gold: 330 + lv * 2,
       spriteSize: 120,
       spriteScale: slothScales[i]
     }));
@@ -283,9 +283,9 @@ monsters.push(createMonster({
   name: '千年沉眠',
   maxHp: 222000,
   sprite: 'qiannianchenmian.png',
-  damage: 400,
+  damage: [389, 529],   // ❶ 变成数组即可
   cooldown: 5,
-  gold: 160,
+  gold: 56000,
   isBoss: true
 }));
 // ------------------------------------------------------------
@@ -311,11 +311,11 @@ const prideMonsters = [
       id: lv,
       level: lv,
       name: prideMonsters[i],
-      maxHp: 16000 + i * 300,
+      maxHp: 36000 + i * 1300,
       sprite: `${prideSprites[i]}.png`,
       damage: 180 + i * 10,
       cooldown: 4,
-      gold: 35 + lv * 2,
+      gold: 535 + lv * 2,
       spriteSize: 120,
       spriteScale: prideScales[i]
     }));
@@ -326,11 +326,11 @@ monsters.push(createMonster({
   id: 60,
   level: 60,
   name: '光辉圣裁',
-  maxHp: 24000,
+  maxHp: 524000,
   sprite: 'guanghuishengcai.png',
-  damage: 420,
+  damage: [589, 729],   // ❶ 变成数组即可
   cooldown: 5,
-  gold: 180,
+  gold: 18000,
   isBoss: true
 }));
 // ------------------------------------------------------------
@@ -360,7 +360,7 @@ const lustMonsters = [
       sprite: `${lustSprites[i]}.png`,
       damage: 200 + i * 10,
       cooldown: 4,
-      gold: 40 + lv * 2,
+      gold: 640 + lv * 2,
       spriteSize: 120,
       spriteScale: lustScales[i]
     }));
@@ -371,11 +371,11 @@ monsters.push(createMonster({
   id: 70,
   level: 70,
   name: '红莲女皇',
-  maxHp: 1226000,
+  maxHp: 10226000,
   sprite: 'hongliannvhuang.png',
-  damage: 450,
+  damage: [989, 1129],   // ❶ 变成数组即可
   cooldown: 5,
-  gold: 200,
+  gold: 80000,
   isBoss: true
 }));
 
@@ -388,11 +388,11 @@ for (let i = 0; i < 7; i++) {
     id: 71 + i,
     level: 71 + i,
     name: `${src.name} (再临)`,
-    maxHp: Math.floor(src.maxHp * 1.2),
+    maxHp: Math.floor(src.maxHp * 5.2),
     sprite: src.sprite,
-    damage: Math.floor(src.skill.damage * 1.2),
+    damage: Math.floor(src.skill.damage * 5.2),
     cooldown: src.skill.cooldown,
     isBoss: true,
-    gold: Math.round(src.gold * 1.2)
+    gold: Math.round(src.gold * 3.2)
   }));
 }

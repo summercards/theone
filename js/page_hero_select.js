@@ -751,7 +751,8 @@ ctx.restore();
 
   // 英雄池头像区域
   const startIdx = pageIndex * HERO_PER_PAGE;
-  const rawHeroes = HeroData.heroes.slice(startIdx, startIdx + HERO_PER_PAGE);
+  const rawHeroes = HeroData.heroes.filter(h => !h.hidden).slice(startIdx, startIdx + HERO_PER_PAGE);
+
   const pageHeroes = rawHeroes.map(h => h ? new HeroState(h.id) : null);
   while (pageHeroes.length < HERO_PER_PAGE) pageHeroes.push(null);
 
