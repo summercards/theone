@@ -578,7 +578,6 @@ if (dialog) {
       ctx.fillText(popupGoldText, W / 2, goldY);
       // ✅ 显示经验奖励
 const expY = goldY + 30;
-console.log('[弹窗] 当前经验显示值：', globalThis.expGainedThisRound);
 
 const expGained = globalThis.expGainedThisRound || 0;
 const popupExpText = `获得经验：+${expGained}`;
@@ -619,6 +618,17 @@ ctx.fillText(popupExpText, W / 2, expY);
     ctx.font = '18px sans-serif';
     ctx.fillText(`解锁新英雄：${realName}`, W / 2, iconY + iconSize + 28);
   
+    /* ★★★ 英雄技能描述 ★★★ */
+const skillDesc = fullHero?.skill?.description || '';
+if (skillDesc) {
+  ctx.fillStyle   = '#CCCCCC';          // 淡灰色，别盖住标题
+  ctx.font        = '14px sans-serif';
+  ctx.textAlign   = 'center';
+  ctx.textBaseline= 'top';
+  ctx.fillText(skillDesc, W / 2, iconY + iconSize + 52);
+}
+/* ★★★★★★★★★★★★★★★ */
+
     // 🌟 记录点击热区供触控逻辑使用
     globalThis.rewardHeroIconRect = {
       x: iconX,
@@ -1708,7 +1718,7 @@ if (comboCounter > 0) {
     setTimeout(() => {
       attackGaugeDamage += bonus;
       damagePopTime = Date.now();                 // 数字弹跳
-    }, 250);
+    }, 150);
   } else {
     attackGaugeDamage += bonus;                   // 找不到坐标就直接加
     damagePopTime = Date.now();
@@ -1722,7 +1732,7 @@ if (comboCounter > 0) {
                   drawGame();
                   clearingRunning = false;
                   tryStartHeroBurst();
-                }, 1200);
+                }, 400);
   
 
               }

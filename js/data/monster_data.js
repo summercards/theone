@@ -87,7 +87,7 @@ const foodMonsters = [
       name: foodMonsters[i],
       maxHp: 3200 + i * 200,
       sprite: `${foodSprites[i]}.png`,
-      damage: [30 + i * 5, 50 + i * 5],
+      damage: [18 + i * 5, 35 + i * 5],
       cooldown: 2,
       gold: 10 + lv * 2,
       spriteSize: 120,          // 容器大小保持120不变
