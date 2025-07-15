@@ -1,7 +1,7 @@
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
 let unlockedSlots = [true, true, true, true, true]; // 第1个槽位默认解锁
 let lastAdTime = 0; // 上次点击时间戳
-const AD_COOLDOWN = 30 * 1000; // 30秒冷却，单位毫秒
+const AD_COOLDOWN = 3 * 60 * 1000; // 3 分钟，单位毫秒
 let showUpgradeButtons = false;
 let showDialog = true;
 let dialogInterval = null; // ✅ 放到最顶层作用域
@@ -313,50 +313,37 @@ if (hit(x, y, globalThis.adBtnRect)) {
 
   globalThis.lastAdTime = now; // 记录点击时间
 
-  // ✅ 当前为模拟广告播放流程，开发阶段使用
-  // ✅ 正式发布前可替换为 wx.createRewardedVideoAd 逻辑（见下方注释）
-  wx.showModal({
-    title: '🎁 免费金币',
-    content: '观看一段广告可获得100金币，是否继续？',
-    confirmText: '观看完成',
-    cancelText: '取消',
-    success(res) {
-      if (res.confirm) {
-        const coins = getTotalCoins();
-        wx.setStorageSync('totalCoins', coins + 5000);
-        wx.showToast({ title: '金币 +5000', icon: 'success' });
-        render();
-      } else {
-        wx.showToast({ title: '观看未完成', icon: 'none' });
-      }
-    }
-  });
+  const isDevTools = wx.getSystemInfoSync().platform === 'devtools';
 
-  /*
-  // ✅ 正式上线请使用真实广告 API 替换上方模拟逻辑：
-  const videoAd = wx.createRewardedVideoAd({ adUnitId: 'your-real-ad-id' });
+  if (isDevTools) {
+    // ✅ 开发工具中自动模拟成功分享
+    const coins = getTotalCoins();
+    wx.setStorageSync('totalCoins', coins + 5000);
+    wx.showToast({ title: '[模拟] 分享成功，金币 +5000', icon: 'success' });
+    render();
+    return;
+  }
 
-  videoAd.onError(err => {
-    wx.showToast({ title: '广告加载失败', icon: 'none' });
-  });
+  // ✅ 真机分享逻辑
+  wx.showShareMenu({ withShareTicket: false }); // 确保支持分享
 
-  videoAd.load().then(() => videoAd.show())
-    .catch(() => wx.showToast({ title: '广告展示失败', icon: 'none' }));
-
-  videoAd.onClose(res => {
-    if (res && res.isEnded) {
+  wx.shareAppMessage({
+    title: '快来召唤你的勇者保卫魔界！',
+    imageUrl: 'assets/ui/share_banner.png', // 你项目中的分享图路径
+    success() {
       const coins = getTotalCoins();
-      wx.setStorageSync('totalCoins', coins + 100);
-      wx.showToast({ title: '金币 +100', icon: 'success' });
+      wx.setStorageSync('totalCoins', coins + 5000);
+      wx.showToast({ title: '分享成功，金币 +5000', icon: 'success' });
       render();
-    } else {
-      wx.showToast({ title: '观看未完成', icon: 'none' });
+    },
+    fail() {
+      wx.showToast({ title: '分享失败，请稍后再试', icon: 'none' });
     }
   });
-  */
 
   return;
 }
+
 
 
   /* ---------- 英雄头像区 ---------- */
@@ -876,35 +863,29 @@ drawStyledText(ctx, `进入第${level}关`, confirmRect.width / 2, confirmRect.h
 });
 ctx.restore();
 
+// === 分享得金币按钮 ===
+let adBtnRect = {
+  x: canvas.width - PAD_X - ICON * 1.2,
+  y: toggleY,
+  width: ICON * 1.2,
+  height: ICON * 0.8
+};
+adBtnRect = avoidOverlap(adBtnRect, layoutRects);
+layoutRects.push(adBtnRect);
 
+ctx.fillStyle = '#9c275d';
+drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
+drawStyledText(ctx, '分享得金币',
+  adBtnRect.x + adBtnRect.width / 2,
+  adBtnRect.y + adBtnRect.height / 2, {
+    font: 'bold 18px IndieFlower',
+    fill: '#ffe3e3',
+    align: 'center',
+    baseline: 'middle'
+});
 
+globalThis.adBtnRect = adBtnRect;
 
-
-
-
-  // 广告按钮
-  // // 广告按钮（已隐藏）
-// let adBtnRect = {
-//   x: canvas.width - PAD_X - ICON * 1.2,
-//   y: toggleY,
-//   width: ICON * 1.2,
-//   height: ICON * 0.8
-// };
-// adBtnRect = avoidOverlap(adBtnRect, layoutRects);
-// layoutRects.push(adBtnRect);
-
-// ctx.fillStyle = '#9c275d';
-// drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
-// drawStyledText(ctx, '看广告得金币',
-// adBtnRect.x + adBtnRect.width / 2,
-// adBtnRect.y + adBtnRect.height / 2, {
-//   font: 'bold 18px IndieFlower',
-//   fill: '#ffe3e3',
-//   align: 'center',
-//   baseline: 'middle'
-// });
-
-// globalThis.adBtnRect = adBtnRect;
 
 // 返回按钮（左上角）
 btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
