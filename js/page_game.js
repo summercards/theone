@@ -287,6 +287,7 @@ const gameBgm = wx.createInnerAudioContext();
 gameBgm.src = 'sounds/bgm/game_bgm.mp3';
 gameBgm.loop = true;
 gameBgm.autoplay = true;
+gameBgm.volume = 0.3; // 👈 降低音量到 50%
 gameBgm.play();
 globalThis.bgmAudioContext = gameBgm;  // 覆盖全局
 

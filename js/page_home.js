@@ -39,7 +39,9 @@ export function initHomePage(ctx, switchPage, canvas) {
   bgmAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
   bgmAudioContext.loop = true;
   bgmAudioContext.autoplay = true;
+  bgmAudioContext.volume = 0.3; // 降低音量到原来的50%
   bgmAudioContext.play();
+  
   globalThis.bgmAudioContext = bgmAudioContext;
   
   
