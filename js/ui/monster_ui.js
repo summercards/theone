@@ -162,7 +162,7 @@ drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
   ctx.textAlign = 'center';
   ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 8);
 
-  const nameY = y - 16;
+  const nameY = y - 35;
   ctx.font = 'bold 18px IndieFlower, sans-serif';
   ctx.lineWidth = 2;
   ctx.strokeStyle = '#000';

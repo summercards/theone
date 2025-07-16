@@ -610,7 +610,7 @@ ctx.fillText(popupExpText, W / 2, expY);
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText('点击加入队伍', W / 2, iconY + iconSize + 4);
+    ctx.fillText('已加入队伍', W / 2, iconY + iconSize + 4);
   
     // ⬇️ 显示正确的英雄名称（自动读取）
     const fullHero = HeroData.getHeroById(hero.id);
@@ -628,16 +628,7 @@ if (skillDesc) {
   ctx.textBaseline= 'top';
   ctx.fillText(skillDesc, W / 2, iconY + iconSize + 52);
 }
-/* ★★★★★★★★★★★★★★★ */
 
-    // 🌟 记录点击热区供触控逻辑使用
-    globalThis.rewardHeroIconRect = {
-      x: iconX,
-      y: iconY,
-      width: iconSize,
-      height: iconSize,
-      heroId: hero.id
-    };
   }
   
   
@@ -2298,9 +2289,20 @@ if (currentLevel === 2) {
 }
 
 if (heroId && !isHeroUnlocked(heroId)) {
-  if (typeof unlockHero === 'function') unlockHero(heroId);
-  globalThis.levelRewardsHeroId = heroId;
-}
+    if (typeof unlockHero === 'function') unlockHero(heroId);
+    globalThis.levelRewardsHeroId = heroId;          // 用于弹窗展示
+  
+    /* ⭐️ 自动加入出战栏 —— 复用原点击逻辑 */
+    const team     = wx.getStorageSync('selectedHeroes') || [null, null, null, null, null];
+    const emptyIdx = team.findIndex(id => !id);
+    if (emptyIdx >= 0) {
+      team[emptyIdx] = heroId;
+      wx.setStorageSync('selectedHeroes', team);
+      setSelectedHeroes(team);
+    }
+    /* ------------------------------------------------------- */
+  }
+  
 
 
 globalThis.levelRewards = levelRewardTexts;
