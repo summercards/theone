@@ -1,6 +1,8 @@
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
 let unlockedSlots = [true, true, true, true, true]; // 第1个槽位默认解锁
 let lastAdTime = 0; // 上次点击时间戳
+let shareCountToday = 0;
+let lastShareDate = '';
 const AD_COOLDOWN = 3 * 60 * 1000; // 3 分钟，单位毫秒
 let showUpgradeButtons = false;
 let showDialog = true;
@@ -305,44 +307,46 @@ if (typeof globalThis.lastAdTime === 'undefined') {
 const AD_COOLDOWN = 30 * 1000; // 30秒冷却时间
 
 if (hit(x, y, globalThis.adBtnRect)) {
-  const now = Date.now();
-  if (now - globalThis.lastAdTime < AD_COOLDOWN) {
-    wx.showToast({ title: '请稍后再试', icon: 'none' });
-    return;
-  }
-
-  globalThis.lastAdTime = now; // 记录点击时间
-
-  const isDevTools = wx.getSystemInfoSync().platform === 'devtools';
-
-  if (isDevTools) {
-    // ✅ 开发工具中自动模拟成功分享
+    const now = Date.now();
+    const todayStr = new Date().toDateString();
+  
+    // 每天首次点击，重置计数器
+    if (lastShareDate !== todayStr) {
+      lastShareDate = todayStr;
+      shareCountToday = 0;
+    }
+  
+    // 超过每日5次
+    if (shareCountToday >= 5) {
+      wx.showToast({ title: '今日分享已达5次上限', icon: 'none' });
+      return;
+    }
+  
+    // 冷却中
+    if (now - lastAdTime < AD_COOLDOWN) {
+      wx.showToast({ title: '冷却中，请稍后再试', icon: 'none' });
+      return;
+    }
+  
+    // === 满足条件：立刻发金币 ===
+    lastAdTime = now;
+    shareCountToday++;
+  
     const coins = getTotalCoins();
     wx.setStorageSync('totalCoins', coins + 5000);
-    wx.showToast({ title: '[模拟] 分享成功，金币 +5000', icon: 'success' });
+    wx.showToast({ title: '金币 +5000', icon: 'success' });
     render();
+  
+    // === 弹出分享界面（可选，但不影响奖励）===
+    wx.showShareMenu({ withShareTicket: false });
+    wx.shareAppMessage({
+      title: '快来召唤你的勇者保卫魔界！',
+      imageUrl: 'assets/ui/share_banner.png'
+    });
+  
     return;
   }
-
-  // ✅ 真机分享逻辑
-  wx.showShareMenu({ withShareTicket: false }); // 确保支持分享
-
-  wx.shareAppMessage({
-    title: '快来召唤你的勇者保卫魔界！',
-    imageUrl: 'assets/ui/share_banner.png', // 你项目中的分享图路径
-    success() {
-      const coins = getTotalCoins();
-      wx.setStorageSync('totalCoins', coins + 5000);
-      wx.showToast({ title: '分享成功，金币 +5000', icon: 'success' });
-      render();
-    },
-    fail() {
-      wx.showToast({ title: '分享失败，请稍后再试', icon: 'none' });
-    }
-  });
-
-  return;
-}
+  
 
 
 
