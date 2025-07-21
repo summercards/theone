@@ -85,11 +85,11 @@ const foodMonsters = [
       id: lv,
       level: lv,
       name: foodMonsters[i],
-      maxHp: 3200 + i * 200,
+      maxHp: 2200 + i * 160,
       sprite: `${foodSprites[i]}.png`,
       damage: [18 + i * 5, 35 + i * 5],
       cooldown: 2,
-      gold: 10 + lv * 2,
+      gold: 18 + lv * 2,
       spriteSize: 120,          // 容器大小保持120不变
       spriteScale: foodScales[i] // 👈 新增字段，控制内部贴图缩放
     }));
@@ -132,7 +132,7 @@ const envyMonsters = [
       sprite: `${envySprites[i]}.png`,
       damage: [35 + i * 10, 50 + i * 10],
       cooldown: 3,
-      gold: 150 + lv * 2,
+      gold: 190 + lv * 2,
       spriteSize: 120,
       spriteScale: envyScales[i] // 👈 新增
     }));
@@ -142,11 +142,11 @@ monsters.push(createMonster({
   id: 20,
   level: 20,
   name: '镜中君主',
-  maxHp: 160000,
+  maxHp: 136000,
   sprite: 'jingzhongjunzhu.png',
   damage: [169, 199],   // ❶ 变成数组即可
   cooldown: 4,
-  gold: 3000,
+  gold: 3800,
   isBoss: true
 }));
 
@@ -172,7 +172,7 @@ const greedMonsters = [
       sprite: `${greedSprites[i]}.png`,
       damage: 220 + i * 10,
       cooldown: 3,
-      gold: 200 + lv * 2,
+      gold: 270 + lv * 2,
       spriteSize: 120,
       spriteScale: greedScales[i] // 👈 新增
     }));
@@ -187,7 +187,7 @@ monsters.push(createMonster({
   sprite: 'tanyuzhiwang.png',
   damage: [330, 389],   // ❶ 变成数组即可
   cooldown: 4,
-  gold: 6000,
+  gold: 6900,
   isBoss: true
 }));
 
@@ -226,7 +226,7 @@ const wrathMonsters = [
       sprite: `${wrathSprites[i]}.png`,   // 👈 新贴图命名
       damage: 140 + i * 10,
       cooldown: 3,
-      gold: 285 + lv * 2,
+      gold: 385 + lv * 2,
       spriteSize: 120,
       spriteScale: wrathScales[i]         // 👈 新增缩放字段
     }));
@@ -240,7 +240,7 @@ monsters.push(createMonster({
   sprite: 'kuangnuhuashen.png',
   damage: [389, 469],   // ❶ 变成数组即可
   cooldown: 4,
-  gold: 18000,
+  gold: 28000,
   isBoss: true
 }));
 // ------------------------------------------------------------
@@ -270,7 +270,7 @@ const slothMonsters = [
       sprite: `${slothSprites[i]}.png`,
       damage: 160 + i * 10,
       cooldown: 4,
-      gold: 330 + lv * 2,
+      gold: 380 + lv * 2,
       spriteSize: 120,
       spriteScale: slothScales[i]
     }));
