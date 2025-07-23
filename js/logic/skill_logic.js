@@ -435,57 +435,63 @@ export function applySkillEffect(hero, effect, context) {
     }
 
     case "convertToEBlocks": {
-      const pageGame = (() => {
-        try {
-          return require("../page_game.js");
-        } catch {
-          return {};
-        }
-      })();
-
-
-      const { createPopEffect } = require("../effects_engine.js");
-      const grid = context.gridData ?? pageGame.gridData ?? globalThis.gridData;
-      const startX = context.__gridStartX ?? globalThis.__gridStartX ?? 0;
-      const startY = context.__gridStartY ?? globalThis.__gridStartY ?? 0;
-      const blockSize = context.__blockSize ?? globalThis.__blockSize ?? 48;
+        const pageGame = (() => {
+          try {
+            return require("../page_game.js");
+          } catch {
+            return {};
+          }
+        })();
       
-
-      if (!Array.isArray(grid)) {
-        context.log("技能失败：未检测到棋盘");
-        break;
-      }
-
-      // 收集所有非E方块位置
-      const candidates = [];
-      for (let r = 0; r < grid.length; r++) {
-        for (let c = 0; c < grid[r].length; c++) {
-          if (grid[r][c] && grid[r][c] !== 'E') {
-            candidates.push({ r, c });
+        const { createPopEffect } = require("../effects_engine.js");
+        const grid = context.gridData ?? pageGame.gridData ?? globalThis.gridData;
+        const startX = context.__gridStartX ?? globalThis.__gridStartX ?? 0;
+        const startY = context.__gridStartY ?? globalThis.__gridStartY ?? 0;
+        const blockSize = context.__blockSize ?? globalThis.__blockSize ?? 48;
+      
+        if (!Array.isArray(grid)) {
+          context.log("技能失败：未检测到棋盘");
+          break;
+        }
+      
+        // ✅ 找到所有非 E 方块
+        const candidates = [];
+        for (let r = 0; r < grid.length; r++) {
+          for (let c = 0; c < grid[r].length; c++) {
+            if (grid[r][c] && grid[r][c] !== 'E') {
+              candidates.push({ r, c });
+            }
           }
         }
+      
+        // ✅ 正确的方块数量计算逻辑
+        const baseCount = 3; // 初始为3个
+        const levelsPer = effect.levelsPerIncrement || 3;
+        const level = hero.level ?? 1;
+        const extra = Math.floor((level - 1) / levelsPer);
+        const count = baseCount + extra;
+      
+        // ✅ 打乱并取前 count 个
+        const shuffled = candidates.sort(() => Math.random() - 0.5);
+        const selected = shuffled.slice(0, count);
+      
+        // ✅ 设置为 E 方块
+        for (const { r, c } of selected) {
+          grid[r][c] = 'E';
+          const x = startX + c * blockSize + blockSize / 2;
+          const y = startY + r * blockSize + blockSize / 2;
+          createPopEffect(x, y, blockSize, 'E');
+        }
+      
+        context.log(`${hero.name} 将 ${selected.length} 个方块变成了刺客方块（E）`);
+      
+        try {
+          (context.drawGame ?? pageGame.drawGame)?.();
+        } catch {}
+      
+        break;
       }
-
-      // 随机打乱，选出 N 个目标
-      const count = 2 + (hero.level - 1);
-      const shuffled = candidates.sort(() => Math.random() - 0.5);
-      const selected = shuffled.slice(0, count);
-
-      for (const { r, c } of selected) {
-        grid[r][c] = 'E';
-        const x = startX + c * blockSize + blockSize / 2;
-        const y = startY + r * blockSize + blockSize / 2;
-        createPopEffect(x, y, blockSize, 'E');
-      }
-
-      context.log(`${hero.name} 将 ${selected.length} 个方块变成了刺客方块（E）`);
-
-      try {
-        (context.drawGame ?? pageGame.drawGame)?.();
-
-      } catch {}
-      break;
-    }
+      
 
     case "boostAllGauge": {
       const percent = 10 + (hero.level - 1); // 每级 +1%

@@ -779,7 +779,7 @@ globalThis.layoutRects = layoutRects;
   // 翻页按钮
 
  // 向下再挪 12px；若想更低调，把 12 改更大
- const PAGING_SPACING = 70;  // ← 你可以改成 30、50 等更紧凑或更宽松
+ const PAGING_SPACING = 100;  // ← 你可以改成 30、50 等更紧凑或更宽松
 const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
 
  // 按钮缩小到 ICON 的 0.6 倍
@@ -1092,7 +1092,7 @@ const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
         // 设置按钮文字和颜色
         const displayText = isMax ? '满级' : `${level * 100}金`;
         const bgColor = isMax ? '#9B59B6' : '#FFD700';
-        const textColor = '#FFF';
+        const textColor = '#2E003E';
       
         ctx.font = 'bold 12px IndieFlower';
         ctx.textBaseline = 'middle';
