@@ -8,6 +8,17 @@
    let ctxRef, canvasRef, switchPageFn;
    let progress = 0;
    let loadedCount = 0;
+   let tipText = ''; // 当前加载页面显示的小贴士
+   
+   // ---------- 小贴士内容（“小贴士：”为固定前缀） ----------
+   const tips = [
+     '超级方块直接点击施放！',
+     '部分英雄的技能可以清除特殊障碍！',
+     '尝试不同的英雄配对吧',
+     '不同英雄搭配，策略翻倍！',
+     '多留意每步操作，节省步数才是王道！',
+     '连锁越多，伤害越高！',
+   ];
    
    /* ---------- ① 构建预加载列表 ---------- */
    const preloadList = HeroData.heroes.map(hero => ({
@@ -74,6 +85,7 @@
      canvasRef    = canvas;
      switchPageFn = switchPage;
    
+     tipText = '小贴士：' + tips[Math.floor(Math.random() * tips.length)]; // 只随机一次
      drawLoading();
    
      // 并行执行：资源加载 + 云存档
@@ -146,6 +158,15 @@
      ctx.shadowColor = '#000';
      ctx.shadowBlur = 2;
      ctx.fillText(`${progress}%`, w/2, barY + barH + 32);
+     ctx.shadowBlur = 0;
+   
+     // 显示固定小贴士（只随机一次）
+     ctx.fillStyle = '#FFD700';
+     ctx.font = '18px gameFont';
+     ctx.textAlign = 'center';
+     ctx.shadowColor = '#000';
+     ctx.shadowBlur = 2;
+     ctx.fillText(tipText, w / 2, barY - 60);
      ctx.shadowBlur = 0;
    
      // 文案
