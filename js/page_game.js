@@ -8,7 +8,8 @@ const VictoryDialogLines = [
   "回到旅店，召集更多的同伴吧!"
 ];
 
-
+let lastRemainSteps = 5;   // 上一次绘制时的剩余步数
+let stepChangeTime  = 0;   // 最近一次数值变化的时间戳(ms)
 let comboTextPos   = null;   // 最近一次画 Combo 飘字的位置
 let gaugeCenterPos = null;   // 攻击槽中心位置
 let comboCounter = 0;
@@ -951,14 +952,29 @@ globalThis.backToHomeBtn = {
     const remainSteps = Math.max(0, totalSteps - gaugeCount);
     const pct         = remainSteps / totalSteps;           // 0~1
   
-    /* === ① 圆环位置计算 ==================================== */
-    const radius  = 22;                 // 缩小一点，和头像高度协调
-    const lineW   = 5;
-    const gap     = 14;                 // 圆环与第一个头像的水平间隔
-    const cx      = startXHero - radius - gap;     // 头像栏最左侧
-    const cy      = topMargin + iconSize / 2;      // 与头像垂直居中
+    /* === A. 记录变化，用于弹跳 === */
+    if (remainSteps !== lastRemainSteps) {
+      lastRemainSteps = remainSteps;
+      stepChangeTime  = Date.now();                         // 触发弹跳
+    }
   
-    /* === ② 绘制 ============================================ */
+    /* === B. 计算缩放因子 (0.3 s) === */
+    let scale = 1;                                          // 默认不放大
+    const bounceDur = 300;                                  // 300 ms
+    const dt = Date.now() - stepChangeTime;
+    if (dt < bounceDur) {
+      const p = dt / bounceDur;                             // 0 → 1
+      scale = 1 + 0.4 * Math.sin(p * Math.PI);              // 40 % 弹幅
+    }
+  
+    /* === ① 圆环位置 ======================================= */
+    const radius  = 22;
+    const lineW   = 5;
+    const gap     = 14;                                     // 圆环与第 1 个头像间距
+    const cx      = startXHero - radius - gap;
+    const cy      = topMargin + iconSize / 2;
+  
+    /* === ② 绘制圆环 ====================================== */
     ctxRef.save();
   
     // a) 背圈
@@ -968,33 +984,41 @@ globalThis.backToHomeBtn = {
     ctxRef.arc(cx, cy, radius, 0, Math.PI * 2);
     ctxRef.stroke();
   
-    // b) 进度环
-/* === 紫粉渐变：顶部亮粉 → 底部深紫 === */
-const grad = ctxRef.createLinearGradient(cx, cy - radius, cx, cy + radius);
-grad.addColorStop(0,  '#ff66cc');   // 亮粉
-grad.addColorStop(1,  '#6a278b');   // 深紫
-ctxRef.strokeStyle = grad;
-
+    // b) 进度环（紫粉渐变）
+    const grad = ctxRef.createLinearGradient(cx, cy - radius, cx, cy + radius);
+    grad.addColorStop(0, '#ff66cc');                        // 亮粉
+    grad.addColorStop(1, '#6a278b');                        // 深紫
     ctxRef.strokeStyle = grad;
     ctxRef.beginPath();
     ctxRef.arc(
       cx, cy, radius,
-      -Math.PI / 2,                      // 从 12 点钟方向开始
-      -Math.PI / 2 + Math.PI * 2 * pct,  // 逆时针收缩
+      -Math.PI / 2,                                         // 12 点方向
+      -Math.PI / 2 + Math.PI * 2 * pct,                     // 逆时针收缩
       false
     );
     ctxRef.stroke();
   
-    // c) 中央数字
-    ctxRef.font         = 'bold 18px sans-serif';
-    ctxRef.fillStyle    = '#ffffff';
-    ctxRef.textAlign    = 'center';
-    ctxRef.textBaseline = 'middle';
-    ctxRef.fillText(remainSteps, cx, cy);
+ /* === ③ 数字（更粗更大 + 弹跳） =========================== */
+ctxRef.save();
+ctxRef.translate(cx, cy);
+ctxRef.scale(scale, scale);
+
+/* 1) 字体：900 权重 + 26 px 更大字号 */
+ctxRef.font         = '900 26px "Roboto Mono", "SFMono-Regular", Menlo, monospace';
+ctxRef.textAlign    = 'center';
+ctxRef.textBaseline = 'middle';
+
+/* 2) 描边＋填充，让数字更立体 */
+ctxRef.lineWidth    = 2.5;
+ctxRef.strokeStyle  = '#000000';
+ctxRef.strokeText(remainSteps.toString(), 0, 0);
+
+ctxRef.fillStyle    = '#ffffff';
+ctxRef.fillText(remainSteps.toString(), 0, 0);
+
+ctxRef.restore();
   
-    ctxRef.restore();
-  
-    /* === ③ 把圆环加入 layoutRects，避免后续 UI 遮挡（可选） ==== */
+    /* === ④ layoutRects（可选：避免遮挡） ================= */
     layoutRects.push({
       x: cx - radius - lineW,
       y: cy - radius - lineW,
