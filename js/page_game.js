@@ -945,43 +945,64 @@ globalThis.backToHomeBtn = {
   height: btnBackSize
 };
 
-/* --- 操作计数展示（底部居中・仅数字） --- */
+/* --- 🆕 行动倒计时：圆环 + 步数（挪到头像左侧） ------------ */
 {
-  const countDown  = Math.max(0, 5 - gaugeCount);
-  const countText  = `${countDown}`;
+    const totalSteps  = 5;                                  // 总步数
+    const remainSteps = Math.max(0, totalSteps - gaugeCount);
+    const pct         = remainSteps / totalSteps;           // 0~1
+  
+    /* === ① 圆环位置计算 ==================================== */
+    const radius  = 22;                 // 缩小一点，和头像高度协调
+    const lineW   = 5;
+    const gap     = 14;                 // 圆环与第一个头像的水平间隔
+    const cx      = startXHero - radius - gap;     // 头像栏最左侧
+    const cy      = topMargin + iconSize / 2;      // 与头像垂直居中
+  
+    /* === ② 绘制 ============================================ */
+    ctxRef.save();
+  
+    // a) 背圈
+    ctxRef.lineWidth   = lineW;
+    ctxRef.strokeStyle = '#3e2653';
+    ctxRef.beginPath();
+    ctxRef.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctxRef.stroke();
+  
+    // b) 进度环
+/* === 紫粉渐变：顶部亮粉 → 底部深紫 === */
+const grad = ctxRef.createLinearGradient(cx, cy - radius, cx, cy + radius);
+grad.addColorStop(0,  '#ff66cc');   // 亮粉
+grad.addColorStop(1,  '#6a278b');   // 深紫
+ctxRef.strokeStyle = grad;
 
-  /* ① 字体与位置 */
-  const fontSize   = 25;
-  ctxRef.font         = `bold ${fontSize}px sans-serif`;
-  ctxRef.textAlign    = 'center';
-  ctxRef.textBaseline = 'middle';
-
-  const countX = canvasRef.width / 2;
-  const countY = __gridStartY + __blockSize * gridSize + 18;
-
-  /* ② 尺寸：再长一点 */
-  const padX  = 36;          // ← 左右留白加大，条更细长
-  const padY  = 5;           // 上下留白
-  const txtW  = ctxRef.measureText(countText).width;
-  const boxW  = txtW + padX * 2;
-  const boxH  = fontSize + padY * 2;
-  const boxX  = countX - boxW / 2;
-  const boxY  = countY - boxH / 2;
-  const radius = boxH / 2;   // 圆角＝高度一半
-
-  /* ③ 底色 + 描边 */
-  ctxRef.fillStyle   = '#3e2653';       // 暖深灰
-  drawRoundedRect(ctxRef, boxX, boxY, boxW, boxH, radius, true, false);
-
-  ctxRef.lineWidth   = 3;
-  ctxRef.strokeStyle = '#751b50';       // 与棋盘外框同色
-  drawRoundedRect(ctxRef, boxX, boxY, boxW, boxH, radius, false, true);
-
-  /* ④ 文字（纯白，无描边） */
-  ctxRef.fillStyle = '#FFFFFF';
-  ctxRef.fillText(countText, countX, countY);
-}
-
+    ctxRef.strokeStyle = grad;
+    ctxRef.beginPath();
+    ctxRef.arc(
+      cx, cy, radius,
+      -Math.PI / 2,                      // 从 12 点钟方向开始
+      -Math.PI / 2 + Math.PI * 2 * pct,  // 逆时针收缩
+      false
+    );
+    ctxRef.stroke();
+  
+    // c) 中央数字
+    ctxRef.font         = 'bold 18px sans-serif';
+    ctxRef.fillStyle    = '#ffffff';
+    ctxRef.textAlign    = 'center';
+    ctxRef.textBaseline = 'middle';
+    ctxRef.fillText(remainSteps, cx, cy);
+  
+    ctxRef.restore();
+  
+    /* === ③ 把圆环加入 layoutRects，避免后续 UI 遮挡（可选） ==== */
+    layoutRects.push({
+      x: cx - radius - lineW,
+      y: cy - radius - lineW,
+      width:  (radius + lineW) * 2,
+      height: (radius + lineW) * 2
+    });
+  }
+  
 
 
 
