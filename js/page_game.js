@@ -7,7 +7,7 @@ const VictoryDialogLines = [
   "钱袋子变鼓了，心也跟着鼓起来！",
   "回到旅店，召集更多的同伴吧!"
 ];
-
+let pendingGaugeAttack = false;   // 正在等待 0.5 s 计时器
 let lastRemainSteps = 5;   // 上一次绘制时的剩余步数
 let stepChangeTime  = 0;   // 最近一次数值变化的时间戳(ms)
 let comboTextPos   = null;   // 最近一次画 Combo 飘字的位置
@@ -2047,19 +2047,27 @@ function handleSwap(src, dst) {
         }
       }
    
-      if (gaugeCount >= 5) {
-        gaugeFlashTime      = Date.now();
-        pendingHeroBurst    = true;           // 标记排队播放连招
-        pendingBurstDamage  = attackGaugeDamage;
+      if (gaugeCount >= 5 && !pendingGaugeAttack) {
+        pendingGaugeAttack = true;           // 锁
       
-        gaugeCount = 9999;                    // 依旧锁死，UI 显示 0
+        gaugeFlashTime = Date.now();         // 立即闪光
       
-        // 2 秒后只启动英雄连招，不再清零计数
+        // 0.5 s 后轰怪
         setTimeout(() => {
-          tryStartHeroBurst();
-        }, 2000);
+          startAttackEffect(attackGaugeDamage);
+      
+          // 清空所有英雄能量
+          const heroes = getSelectedHeroes();
+          heroes.forEach((_, idx) => setCharge(idx, 0));
+      
+          pendingGaugeAttack = false;        // 解锁
+        }, 500);
+      
+        // ★ 不再调用 tryStartHeroBurst，也不 set gaugeCount = 9999
+        //    如需额外保险，可在这里把 gaugeCount 重置为 0，
+        //    或在 startAttackEffect 末尾处理。
       }
-
+      
       
       
       processClearAndDrop();

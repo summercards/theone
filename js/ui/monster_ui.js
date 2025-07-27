@@ -94,7 +94,7 @@ export function drawMonsterSprite(ctx, canvas) {
   }
 
   const BAR_W = 280;
-  const BAR_H = 12;
+  const BAR_H = 22;
   const BAR_OFFSET_Y = 18;
   const barX = (canvas.width - BAR_W) / 2;
   const barY = y + SPR_H + BAR_OFFSET_Y;
@@ -121,7 +121,7 @@ grad.addColorStop(1, '#f2091f');   // 饱和紫罗兰
   ctx.fillStyle = grad;
   drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
   ctx.strokeStyle = '#0,0,0,0.4)';  // 或使用 rgba(0,0,0,0.4) 更柔和
-ctx.lineWidth = 1.2;
+ctx.lineWidth = 4.2;
 drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
 
 
@@ -160,7 +160,7 @@ drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
   ctx.fillStyle = '#ffe7ef';
   ctx.font = 'bold 14px IndieFlower, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 8);
+  ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 10);
 
   const nameY = y - 35;
   ctx.font = 'bold 18px IndieFlower, sans-serif';
