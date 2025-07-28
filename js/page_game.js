@@ -916,7 +916,7 @@ ctxRef.strokeText(goldText, 26, 116);
 
 // 🎯 填充
 ctxRef.fillStyle = '#FFD700';
-ctxRef.fillText(goldText, 26, 116);
+ctxRef.fillText(goldText, 26, 70);
 /* ============================================== */
 
 
@@ -968,9 +968,9 @@ globalThis.backToHomeBtn = {
     }
   
     /* === ① 圆环位置 ======================================= */
-    const radius  = 22;
-    const lineW   = 5;
-    const gap     = 14;                                     // 圆环与第 1 个头像间距
+    const radius  = 16;   // 原来是 22，缩小一点
+    const lineW   = 3;    // 原来是 5
+    const gap     = 10;   // 缩短和头像的间距                               // 圆环与第 1 个头像间距
     const cx      = startXHero - radius - gap;
     const cy      = topMargin + iconSize / 2;
   
@@ -1009,7 +1009,7 @@ ctxRef.textAlign    = 'center';
 ctxRef.textBaseline = 'middle';
 
 /* 2) 描边＋填充，让数字更立体 */
-ctxRef.lineWidth    = 2.5;
+ctxRef.lineWidth    = 2;
 ctxRef.strokeStyle  = '#000000';
 ctxRef.strokeText(remainSteps.toString(), 0, 0);
 
@@ -1492,7 +1492,7 @@ if (letter === 'B') {
   
       colorCounter[letter] = (colorCounter[letter] || 0) + 1;
       if (!soundPlayed) {
-        playSound('block_clear', 0.3);  // ✅ 播放一次 + 调低音量
+        playSound('block_clear', 0.1);  // ✅ 播放一次 + 调低音量
         soundPlayed = true;
       }
       gridData[r][c] = null;

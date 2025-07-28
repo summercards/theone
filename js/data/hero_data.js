@@ -7,6 +7,7 @@ const HeroData = {
       icon: "swordsman.png",
       role: "战士",
       rarity: "R",
+      maxCharge: 150, // ← 新增能量上限字段
       hireCost: 20,         // ✅ 新增字段
       locked: false,          // ← 默认已解锁
       unlockCost: 0,
@@ -33,6 +34,7 @@ const HeroData = {
       icon: "mage.png",
       role: "法师",
       rarity: "R",
+      maxCharge: 250, // ← 新增能量上限字段
       hireCost: 20,         // ✅ 新增字段
       locked: true,
       hp: 35, // ✅ 新增
@@ -58,6 +60,7 @@ const HeroData = {
       name: "阿紫",
       icon: "archer.png",
       role: "游侠",
+      maxCharge: 120, // ← 新增能量上限字段
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
       locked: true,           // ← 现在锁定
@@ -89,6 +92,7 @@ const HeroData = {
       name: "旺财",
       icon: "knight.png",
       role: "坦克",
+      maxCharge: 180, // ← 新增能量上限字段
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
       hp: 90, // ✅ 新增
@@ -116,6 +120,7 @@ const HeroData = {
       name: "鼠鼠",
       icon: "assassin.png",
       role: "刺客",
+      maxCharge: 210, // ← 新增能量上限字段
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
       hp: 50, // ✅ 新增
@@ -143,6 +148,7 @@ const HeroData = {
       name: "小蘑菇",
       icon: "priest.png",
       role: "辅助",
+      maxCharge: 110, // ← 新增能量上限字段
       rarity: "R",
       hireCost: 20,         // ✅ 新增字段
       hp: 32, // ✅ 新增
@@ -171,6 +177,7 @@ const HeroData = {
       name: "地狱吼",
       icon: "swordsman2.png",
       role: "战士",
+      maxCharge: 210, // ← 新增能量上限字段
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
       hp: 96, // ✅ 新增
@@ -211,6 +218,7 @@ const HeroData = {
       name: "塞尔达",
       icon: "archer2.png",
       role: "游侠",
+      maxCharge: 160, // ← 新增能量上限字段
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
       hp: 64, // ✅ 新增
@@ -237,6 +245,7 @@ const HeroData = {
       name: "来福",
       icon: "mage2.png",
       role: "坦克",
+      maxCharge: 250, // ← 新增能量上限字段
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
       hp: 98, // ✅ 新增
@@ -263,6 +272,7 @@ const HeroData = {
       name: "小画师",
       icon: "tank2.png",
       role: "法师",
+      maxCharge: 110, // ← 新增能量上限字段
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
       hp: 79, // ✅ 新增
@@ -289,6 +299,7 @@ const HeroData = {
       name: "影刃",
       icon: "assassin2.png",
       role: "刺客",
+      maxCharge: 130, // ← 新增能量上限字段
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
       hp: 82, // ✅ 新增
@@ -317,6 +328,7 @@ const HeroData = {
       name: "冰魔女",
       icon: "priest2.png",
       role: "辅助",
+      maxCharge: 190, // ← 新增能量上限字段
       rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
       hp: 33, // ✅ 新增
@@ -344,6 +356,7 @@ const HeroData = {
       name: "狮子",
       icon: "swordsman3.png",
       role: "战士",
+      maxCharge: 100, // ← 新增能量上限字段
       rarity: "SR",
       hireCost: 20,         // ✅ 新增字段
       hp: 68, // ✅ 新增
@@ -373,6 +386,7 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       hp: 58, // ✅ 新增
       locked: true,
+      maxCharge: 136, // ← 新增能量上限字段
       unlockCost: 50000,
       attributes: { physical: 11, magical: 7 },
       level: 1,
@@ -400,6 +414,7 @@ const HeroData = {
       icon: "mage3.png",
       role: "法师",
       rarity: "UR",
+      maxCharge: 250, // ← 新增能量上限字段
       hireCost: 20,         // ✅ 新增字段
       hp: 47, // ✅ 新增
       locked: true,
@@ -428,6 +443,7 @@ const HeroData = {
       name: "坤坤",
       icon: "tank3.png",
       role: "坦克",
+      maxCharge: 100, // ← 新增能量上限字段
       rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
       hp: 180, // ✅ 新增
@@ -461,6 +477,7 @@ const HeroData = {
       icon: "assassin3.png",
       role: "刺客",
       rarity: "UR",
+      maxCharge: 180, // ← 新增能量上限字段
       hireCost: 20,         // ✅ 新增字段
       hp: 30, // ✅ 新增
       locked: true,
@@ -490,6 +507,7 @@ const HeroData = {
       name: "米酷酱",
       icon: "priest3.png",
       role: "辅助",
+      maxCharge: 130, // ← 新增能量上限字段
       rarity: "SSR",
       hireCost: 20,         // ✅ 新增字段
       hp: 62, // ✅ 新增
@@ -521,6 +539,7 @@ const HeroData = {
       icon: 'icon_king.png',  // 图标可自定义
       role: '坦克',
       rarity: 'SSR',
+      maxCharge: 210, // ← 新增能量上限字段
       level: 1,
       exp: 0,
       locked: true,

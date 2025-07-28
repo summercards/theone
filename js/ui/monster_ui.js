@@ -121,7 +121,7 @@ grad.addColorStop(1, '#f2091f');   // 饱和紫罗兰
   ctx.fillStyle = grad;
   drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
   ctx.strokeStyle = '#0,0,0,0.4)';  // 或使用 rgba(0,0,0,0.4) 更柔和
-ctx.lineWidth = 4.2;
+ctx.lineWidth = 1.2;
 drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
 
 
@@ -160,7 +160,7 @@ drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
   ctx.fillStyle = '#ffe7ef';
   ctx.font = 'bold 14px IndieFlower, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 10);
+  ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 12);
 
   const nameY = y - 35;
   ctx.font = 'bold 18px IndieFlower, sans-serif';
