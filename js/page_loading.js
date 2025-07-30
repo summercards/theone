@@ -34,7 +34,7 @@
      });
    });
    // 超级方块贴图
-   ['S1','S2','S3'].forEach(type => {
+   ['S1','S2','S3','S4','S5','S6'].forEach(type => {
      preloadList.push({
        key : `super_${type}`,
        path: `assets/superblocks/${type.toLowerCase()}.png`

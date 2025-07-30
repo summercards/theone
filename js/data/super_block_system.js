@@ -5,6 +5,9 @@ const SUPER_UNLOCK_LEVEL = {
     S1: 5,   // 第 5 关 / 层起可用
     S2: 15,  // 第 15 关 / 层起可用
     S3: 25,  // 第 25 关 / 层起可用
+    S4: 11,   // 金箱子 Gold
+    S5: 11,   // 银箱子 Silver
+    S6: 11,   // 铜箱子 Bronze
   };
   // ──────────────────────────────────────────
   
@@ -28,7 +31,7 @@ function getSuperTexture(type) {
     return (globalThis.imageCache && globalThis.imageCache[`super_${type}`]) || null;
   }
   // 外部若有用到可继续保留
-  const SUPER_TYPES = ['S1', 'S2', 'S3'];
+  const SUPER_TYPES = Object.keys(SUPER_UNLOCK_LEVEL);
   
   const SuperBlockSystem = {
     /* 判定是否为超级方块 */
@@ -38,7 +41,7 @@ function getSuperTexture(type) {
   
     /* 返回当前关卡 / 楼层已解锁的 S 方块列表 */
     unlockedSuperTypes(level) {
-      return ['S1', 'S2', 'S3'].filter((t) => level >= SUPER_UNLOCK_LEVEL[t]);
+        return SUPER_TYPES.filter(t => level >= SUPER_UNLOCK_LEVEL[t]);
     },
   
     /* 随机 1 个已解锁的 S 方块；若还未解锁返回 null */
@@ -73,7 +76,10 @@ render(ctx, x, y, width, height, type = 'S1') {
           ctx.save();
         
           // 根据类型给不同色光，也可固定白色
-          const glowMap = { S1: '#FFB04D', S2: '#66CCFF', S3: '#C785FF' };
+          const glowMap = {
+              S1:'#FFB04D', S2:'#66CCFF', S3:'#C785FF',
+              S4:'#FFD700', S5:'#C0C0C0', S6:'#CD7F32',  // 金/银/铜
+            };
           ctx.shadowBlur  = width * 0.18;                 // 羽化半径，≈宝石 18% 大小
           ctx.shadowColor = glowMap[type] || '#FFFFFF';   // 发光颜色
         
@@ -110,7 +116,7 @@ render(ctx, x, y, width, height, type = 'S1') {
       ctx.font = `bold ${Math.floor(width * 0.6)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const displayMap = { S1: '★', S2: '⚡', S3: '☢' };
+      const displayMap = { S1:'★', S2:'⚡', S3:'☢', S4:'金', S5:'银', S6:'铜' };
       ctx.fillText(displayMap[type] || 'S', centerX, centerY);
     }
   
@@ -126,10 +132,9 @@ render(ctx, x, y, width, height, type = 'S1') {
       const centerY = globalThis.__gridStartY + row * blockSize + blockSize / 2;
   
       const colorMap = {
-        S1: '#FF4444',
-        S2: '#3EC0FF',
-        S3: '#B478F1',
-      };
+          S1:'#FF4444', S2:'#3EC0FF', S3:'#B478F1',
+          S4:'#FFD700', S5:'#C0C0C0', S6:'#CD7F32',
+        };
       const color = colorMap[type] || '#FFD700';
   
       createShake(500, 6);
@@ -207,7 +212,7 @@ render(ctx, x, y, width, height, type = 'S1') {
             }
           }
           break;
-  
+
         case 'S3': // 全图随机 10%
           for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
@@ -220,6 +225,18 @@ render(ctx, x, y, width, height, type = 'S1') {
             }
           }
           break;
+
+                            /* ——— 下面是占位效果，下一步再细化 ——— */
+                            case 'S4': // 金箱子
+                            case 'S5': // 银箱子
+                            case 'S6': // 铜箱子
+                              createFloatingText(
+                                centerX, centerY,
+                                type==='S4'?'金箱子':type==='S5'?'银箱子':'铜箱子',
+                                colorMap[type]
+                              );
+                              // ⚠️ 目前不清消任何格子；后续再补真实技能
+                              break;
       }
   
       // 把自身清空
