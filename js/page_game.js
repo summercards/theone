@@ -61,6 +61,7 @@ const LevelConfigs = {
 
 
 // === 变更：把另外两个特效工具也引进来
+import { createLootChest } from './effects_engine.js';
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
 import { renderBlockC } from './block_effects/block_C.js';
@@ -2285,7 +2286,10 @@ function startAttackEffect(dmg) {
     createMonsterBounce(); // ✅ 添加弹性缩放动画
     createExplosion(endX, endY);                // 爆点可复用现有效果
     monsterHitFlashTime = Date.now();
-
+// 飞弹爆炸 → 生成一个宝箱从怪物飞向攻击槽
+const chestEndX = canvasRef.width / 2;
+const chestEndY = __gridStartY - 40;        // 伤害数字正上方
+createLootChest(endX, endY, chestEndX, chestEndY);
     // 飘字
   // 🎯 根据伤害值动态设定颜色和大小
 const color = pendingDamage > 10000 ? '#FFFF00'

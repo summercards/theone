@@ -33,6 +33,7 @@
        path: `assets/blocks/${letter}.png`
      });
    });
+   
    // 超级方块贴图
    ['S1','S2','S3','S4','S5','S6'].forEach(type => {
      preloadList.push({
@@ -41,10 +42,19 @@
      });
    });
    
+   // 📦LootChest ─ 三种随机宝箱贴图（s4-s6，对应 superblocks 4-6）
+   ['s4','s5','s6'].forEach((fname, idx) => {          // 📦LootChest
+     preloadList.push({                                // 📦LootChest
+       key : `loot_chest_${idx}`,                      // 0 / 1 / 2
+       path: `assets/superblocks/${fname}.png`         // 📦LootChest (修正路径)
+     });                                               // 📦LootChest
+   });                                                 // 📦LootChest
+   
    // 其他 UI / 场景
-   preloadList.push({ key: 'lock.png', path: 'assets/ui/lock.png' });
+   preloadList.push({ key: 'lock.png',   path: 'assets/ui/lock.png' });
    preloadList.push({ key: 'basketball', path: 'assets/effects/basketball.png' });
    preloadList.push({ key: 'bg',         path: 'assets/bg.png' });
+   
    const bgCount = 7;
    for (let i = 1; i <= bgCount; i++) {
      const s = String(i).padStart(2,'0');
@@ -54,6 +64,7 @@
    
    /* ---------- ② 创建全局缓存 ---------- */
    globalThis.imageCache = {};
+   globalThis.imageCache.lootChests = [];          // 📦LootChest
    
    /* ---------- ③ 资源预加载（返回 Promise） ---------- */
    function preloadAssets() {
@@ -69,7 +80,15 @@
    }
    
    function handleFinish(img, key, ok, resolve) {
-     if (ok) globalThis.imageCache[key] = img;
+     if (ok) {
+       globalThis.imageCache[key] = img;
+       // 📦LootChest ─ 把宝箱贴图同时写入数组，方便随机索引
+       if (key.startsWith('loot_chest_')) {               // 📦LootChest
+         const idx = Number(key.split('_').pop());        // 📦LootChest
+         globalThis.imageCache.lootChests[idx] = img;     // 📦LootChest
+       }                                                  // 📦LootChest
+     }
+   
      loadedCount++;
      progress = Math.floor((loadedCount / preloadList.length) * 100);
      drawLoading();

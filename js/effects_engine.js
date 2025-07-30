@@ -1,3 +1,5 @@
+
+
 import { drawRoundedRect } from './utils/canvas_utils.js'; // ✅ 添加这一行
 import { getMonster } from './data/monster_state.js';
 // effects_engine.js  ★★★ 完整可用基线 ★★★
@@ -14,7 +16,37 @@ export function updateAllEffects() {
     if (e.type === 'particle' && e.life <= 0) effects.splice(i, 1);
   }
 }
+/* === 📦LootChest: 创建抛物线宝箱 ======================= */
+/* === 📦LootChest: 创建抛物线宝箱（带随机范围） ======================= */
+export function createLootChest(x0, y0, x1, y1, duration = 600) {
 
+    /* ---------- 可微调的随机参数 ---------- */
+    const START_JITTER = 18;          // 起点 ±18px 的小方形内随机
+    const DEST_HORIZONTAL_RANGE = 150;// 终点横向 ±150px（≈5 个头像总宽）
+    const DEST_VERTICAL_RANGE   = 20; // 终点纵向 ±20px
+  
+    /* ---------- ① 起点随机 ---------- */
+    x0 += (Math.random() - 0.5) * START_JITTER * 2;
+    y0 += (Math.random() - 0.5) * START_JITTER * 2;
+  
+    /* ---------- ② 终点随机 ---------- */
+    x1 += (Math.random() - 0.5) * DEST_HORIZONTAL_RANGE * 2;
+    y1 += (Math.random() - 0.5) * DEST_VERTICAL_RANGE * 2;
+  
+    /* ---------- ③ 入列 ---------- */
+    const variants = globalThis.imageCache.lootChests;
+    const idx = Math.floor(Math.random() * variants.length);   // 0 ~ 2
+  
+    effects.push({
+      type: 'loot_chest',
+      idx,            // 记录选中的宝箱贴图索引
+      x0, y0, x1, y1,
+      startTime: Date.now(),
+      duration
+    });
+  }
+  
+  
 export function drawAllEffects(ctx, canvas) {
   const now = Date.now();
   const remove = [];
@@ -485,6 +517,29 @@ else if (e.type === 'proj') {
         ctx.fillStyle = 'rgba(255,0,0,0.4)';
         drawRoundedRect(ctx, hpBar.x - 2, hpBar.y - 2, hpBar.width + 4, hpBar.height + 4, 8, true, false);
         ctx.restore();
+      }
+      else if (e.type === 'loot_chest') {            // 📦LootChest
+        const img = globalThis.imageCache.lootChests?.[e.idx];
+        if (!img || !img.complete) return;           // 图片还没加载好
+      
+        if (e.landed) {                              // ★落地后：直接画静止
+          ctx.drawImage(img, e.x1 - 24, e.y1 - 24, 48, 48);
+          return;                                    // 别进删除逻辑
+        }
+      
+        // ★飞行中：抛物线插值
+        const t = now - e.startTime;
+        const p = Math.min(1, t / e.duration);
+      
+        const cx = (e.x0 + e.x1) / 2;                // 二次贝塞尔控制点
+        const peakY = Math.min(e.y0, e.y1) - 120;    // 抬高 120 像素
+        const x = (1 - p) * (1 - p) * e.x0 + 2 * (1 - p) * p * cx + p * p * e.x1;
+        const y = (1 - p) * (1 - p) * e.y0 + 2 * (1 - p) * p * peakY + p * p * e.y1;
+      
+        ctx.drawImage(img, x - 24, y - 24, 48, 48);
+      
+        if (p >= 1) e.landed = true;                 // ★到站：改状态，不删
+        return;                                      // 跳过统一 remove
       }
       
       else if (e.type === 'charge_glow') {
