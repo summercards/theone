@@ -61,6 +61,8 @@ const LevelConfigs = {
 
 
 // === 变更：把另外两个特效工具也引进来
+import { clearLootChests /* … */ } from './effects_engine.js';
+
 import { createLootChest } from './effects_engine.js';
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
@@ -288,10 +290,15 @@ if (globalThis.bgmAudioContext) {
 const gameBgm = wx.createInnerAudioContext();
 gameBgm.src = 'sounds/bgm/game_bgm.mp3';
 gameBgm.loop = true;
-gameBgm.autoplay = true;
-gameBgm.volume = 0.3; // 👈 降低音量到 50%
-gameBgm.play();
-globalThis.bgmAudioContext = gameBgm;  // 覆盖全局
+gameBgm.obeyMuteSwitch = false;
+
+const muted = (wx.getStorageSync('musicMuted') === true) || !!globalThis.isMusicMuted;
+gameBgm.autoplay = !muted;
+gameBgm.volume = muted ? 0 : 0.3;
+if (!muted) gameBgm.play();
+
+globalThis.bgmAudioContext = gameBgm;
+
 
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
@@ -1837,7 +1844,7 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
       if (btn && x >= btn.x && x <= btn.x + btn.width &&
                  y >= btn.y && y <= btn.y + btn.height) {
         showVictoryPopup = false;
-
+        clearLootChests();      // ✨ 彻底移除上局宝箱
     // ✅ 清除胜利弹窗的临时状态，防止下一关残留
     globalThis.victoryDialogText   = null;
     globalThis.levelRewardsHeroId  = null;
@@ -2098,6 +2105,7 @@ function destroyGamePage() {
   }
   
   // ✅ 解绑触摸事件，避免重复绑定或内存泄漏
+  clearLootChests();         // <<<<<< 新增
   wx.offTouchStart(onTouch);
   wx.offTouchEnd(onTouchend);
 
@@ -2367,6 +2375,7 @@ globalThis.victoryDialogText =
 
             // ✅ 胜利弹窗
             showVictoryPopup = true;
+            clearLootChests();           // <<<<<< 新增
             lockForVictory();      // ★ 新增：锁死后续异步流程
             popupGoldDisplayed = 0;
             popupGoldStartTime = Date.now();

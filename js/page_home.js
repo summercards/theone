@@ -5,6 +5,7 @@ let rankingBtnArea = null;
 let shareBtnArea = null;
 let heroIntroBtnArea = null;
 let roguelikeBtnArea = null;
+let musicToggleBtnArea = null;
 let homeLoopId = null;
 let frameCount = 0;
 let bgmAudioContext = null;
@@ -13,6 +14,31 @@ let fireFrameCounter = 0;
 let clickedButton = null;
 let clickAnimationFrame = 0;
 let pageExiting = false;
+let isMuted = wx.getStorageSync('musicMuted') === true;   // 读取持久化的静音状态
+globalThis.isMusicMuted = isMuted;                         // 进程内共享
+const MUSIC_VOL = 0.3;
+
+function applyMuteState() {
+  const ctx = globalThis.bgmAudioContext;
+  if (!ctx) return;
+  try {
+    if (isMuted) {
+      ctx.volume = 0;
+      ctx.pause();
+    } else {
+      ctx.volume = MUSIC_VOL;
+      ctx.play();
+    }
+  } catch (_) {}
+}
+
+function setMuted(next) {
+  isMuted = !!next;
+  wx.setStorageSync('musicMuted', isMuted);
+  globalThis.isMusicMuted = isMuted;
+  applyMuteState();
+}
+
 
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
 const { shareMyStats } = require('./utils/share_utils.js');
@@ -38,13 +64,13 @@ export function initHomePage(ctx, switchPage, canvas) {
   bgmAudioContext = wx.createInnerAudioContext();
   bgmAudioContext.src = 'sounds/bgm/further_compressed_bgm.mp3';
   bgmAudioContext.loop = true;
-  bgmAudioContext.autoplay = true;
-  bgmAudioContext.volume = 0.3; // 降低音量到原来的50%
-  bgmAudioContext.play();
+  bgmAudioContext.obeyMuteSwitch = false;                 // 只受我们自定义开关控制
+  bgmAudioContext.autoplay = !isMuted;
+  bgmAudioContext.volume = isMuted ? 0 : MUSIC_VOL;
+  if (!isMuted) bgmAudioContext.play();
   
+
   globalThis.bgmAudioContext = bgmAudioContext;
-  
-  
 
   if (!clickSound) {
     clickSound = wx.createInnerAudioContext();
@@ -184,6 +210,24 @@ function drawHomeUI() {
 
   drawSmallBtn('英雄介绍', xIntro, 'heroIntro', '#9c275d', '#ffe3e3');
   heroIntroBtnArea = { x: xIntro, y: btnY, width: smallBtnWidth, height: smallBtnHeight };
+
+  // 🎵 音乐开关按钮绘制（右上角）
+  const iconSize = 36;
+  const padding = 12;
+  const iconX = padding;
+  const iconY = padding;
+  musicToggleBtnArea = { x: iconX, y: iconY, width: iconSize, height: iconSize };
+
+  ctxRef.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctxRef.beginPath();
+  ctxRef.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, Math.PI * 2);
+  ctxRef.fill();
+
+  ctxRef.fillStyle = '#fff';
+  ctxRef.font = 'bold 20px sans-serif';
+  ctxRef.textAlign = 'center';
+  ctxRef.textBaseline = 'middle';
+  ctxRef.fillText(isMuted ? '🔇' : '🎵', iconX + iconSize / 2, iconY + iconSize / 2);
 }
 
 function onTouch(e) {
@@ -198,6 +242,16 @@ function onTouch(e) {
   const x = (canvasRef.width - btnWidth) / 2;
   const yEnter = canvasRef.height - 240;
   const yRoguelike = yEnter + 80;
+
+  const inArea = (area) => xTouch >= area.x && xTouch <= area.x + area.width && yTouch >= area.y && yTouch <= area.y + area.height;
+
+  // 音乐按钮点击
+// 音乐按钮点击
+if (musicToggleBtnArea && inArea(musicToggleBtnArea)) {
+    setMuted(!isMuted);   // 统一入口：写存储 + 写全局 + 实际应用
+    return;
+  }
+  
 
   if (xTouch >= x && xTouch <= x + btnWidth && yTouch >= yEnter && yTouch <= yEnter + btnHeight) {
     playClickSound();
@@ -220,8 +274,6 @@ function onTouch(e) {
     }
     return;
   }
-
-  const inArea = (area) => xTouch >= area.x && xTouch <= area.x + area.width && yTouch >= area.y && yTouch <= area.y + area.height;
 
   if (rankingBtnArea && inArea(rankingBtnArea)) {
     playClickSound();

@@ -45,7 +45,12 @@ export function createLootChest(x0, y0, x1, y1, duration = 600) {
       duration
     });
   }
-  
+  // effects_engine.js
+export function clearLootChests () {
+    for (let i = effects.length - 1; i >= 0; i--) {
+      if (effects[i].type === 'loot_chest') effects.splice(i, 1);
+    }
+  }
   
 export function drawAllEffects(ctx, canvas) {
   const now = Date.now();
