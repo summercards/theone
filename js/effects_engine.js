@@ -21,9 +21,9 @@ export function updateAllEffects() {
 export function createLootChest(x0, y0, x1, y1, duration = 600) {
 
     /* ---------- 可微调的随机参数 ---------- */
-    const START_JITTER = 18;          // 起点 ±18px 的小方形内随机
-    const DEST_HORIZONTAL_RANGE = 150;// 终点横向 ±150px（≈5 个头像总宽）
-    const DEST_VERTICAL_RANGE   = 20; // 终点纵向 ±20px
+    const START_JITTER = 15;          // 起点 ±18px 的小方形内随机
+    const DEST_HORIZONTAL_RANGE = 120;// 终点横向 ±150px（≈5 个头像总宽）
+    const DEST_VERTICAL_RANGE   = 1; // 终点纵向 ±20px
   
     /* ---------- ① 起点随机 ---------- */
     x0 += (Math.random() - 0.5) * START_JITTER * 2;

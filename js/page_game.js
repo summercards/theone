@@ -2286,10 +2286,7 @@ function startAttackEffect(dmg) {
     createMonsterBounce(); // ✅ 添加弹性缩放动画
     createExplosion(endX, endY);                // 爆点可复用现有效果
     monsterHitFlashTime = Date.now();
-// 飞弹爆炸 → 生成一个宝箱从怪物飞向攻击槽
-const chestEndX = canvasRef.width / 2;
-const chestEndY = __gridStartY - 40;        // 伤害数字正上方
-createLootChest(endX, endY, chestEndX, chestEndY);
+
     // 飘字
   // 🎯 根据伤害值动态设定颜色和大小
 const color = pendingDamage > 10000 ? '#FFFF00'

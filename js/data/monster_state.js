@@ -1,6 +1,6 @@
 // js/data/monster_state.js
 import { monsters } from './monster_data.js';
-
+import { createLootChest } from '../effects_engine.js';   // 📦LootChest
 let currentLevel = 1;
 let monster = null;
 let turnCounter = 0;
@@ -36,20 +36,44 @@ export function getMonster() {
   return monster;
 }
 
-export function dealDamage(amount, { allowKill = false } = {}) {
-  if (!monster) return 0;
-
-  const nextHP = monster.hp - amount;
-
-  // 非终结伤害不能击杀
-  if (!allowKill && nextHP <= 0) {
-    monster.hp = 1;
-  } else {
-    monster.hp = Math.max(0, nextHP);
+/* ============================================================
+   伤害结算：任何一次调用都会掉落 1 只宝箱
+   ============================================================ */
+   export function dealDamage(amount, { allowKill = false } = {}) {
+    if (!monster) return 0;
+  
+    /* ---------- A. 正常扣血 ---------- */
+    const nextHP = monster.hp - amount;
+    if (!allowKill && nextHP <= 0) {
+      monster.hp = 1;
+    } else {
+      monster.hp = Math.max(0, nextHP);
+    }
+  
+    /* ---------- B. 生成宝箱 ---------- */
+    if (amount > 0 && globalThis.canvasRef && globalThis.imageCache?.lootChests?.length) { // 📦Loot
+      try {
+        const canvas = globalThis.canvasRef;
+  
+        /* 起点：怪物中心附近 ±18px */
+        const sx = canvas.width / 2 + (Math.random() - 0.5) * 36;
+        const sy = globalThis.__gridStartY - 200 + (Math.random() - 0.5) * 36;
+  
+        /* 终点：整条头像栏随机 */
+        const heroBarW = 5 * 48 + 4 * 12;                    // 5 头像 + 4 间隔
+        const ex = (canvas.width - heroBarW) / 2 + Math.random() * heroBarW;
+        
+        const ey = globalThis.__gridStartY - 80 + 48 + -160      // ▼ 基准改到头像下
+                  + (Math.random() - 0.5) * 20;                //   再 ±10px 抖动
+        createLootChest(sx, sy, ex, ey, 650);                      // 0.65 s 抛物
+      } catch (err) {
+        console.warn('[LootChest] 生成失败', err);
+      }
+    }
+  
+    return monster.hp;
   }
-
-  return monster.hp;
-}
+  
 
 
 export function isMonsterDead() {
