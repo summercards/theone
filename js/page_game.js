@@ -595,14 +595,50 @@ ctx.fillStyle = '#7CF2FF';
 ctx.font = 'bold 20px sans-serif';
 ctx.fillText(popupExpText, W / 2, expY);
   
-    /* 5. 其他奖励文本 */
-    const rewards = globalThis.levelRewards || [];
-    const rewardStartY = goldY + 32;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '18px sans-serif';
-    rewards.forEach((txt, i) => {
-      ctx.fillText(txt, W / 2, rewardStartY + i * 28);
-    });
+/* 5. 奖励文本 & 宝箱展示（图标排版） ----------------------- */
+const rewards = globalThis.levelRewards || [];
+let afterRewardY = goldY + 32;     // 记录当前 Y，后面还要用
+
+// 5-A. 先画纯文字奖励（如果有别的奖励行）
+ctx.fillStyle = '#FFFFFF';
+ctx.font = '18px sans-serif';
+rewards.forEach((txt, i) => {
+  ctx.fillText(txt, W / 2, afterRewardY + i * 28);
+});
+afterRewardY += rewards.length * 28;   // 更新 Y 基准
+
+// 5-B. 再画宝箱 —— 先把掉落索引按 0→2 排序（S1→S3）
+const chestIdxArr = (globalThis.chestDropsThisRound || [])
+                    .slice()
+                    .sort((a, b) => a - b);
+
+if (chestIdxArr.length) {
+  const boxW = W * 0.74;           // 绿色框宽度（可微调）
+  const icon = 40;                 // 单个宝箱图标边长
+  const gap  = 8;                  // 图标间距
+  const perRow = Math.floor((boxW - gap) / (icon + gap));   // 每行能放几个
+  const rows   = Math.ceil(chestIdxArr.length / perRow);
+  const boxH   = rows * icon + (rows + 1) * gap;
+
+  const boxX = (W - boxW) / 2;
+  const boxY = afterRewardY + 12;  // 留一点缓冲
+  ctx.strokeStyle = '#00FF00';
+  ctx.lineWidth   = 2;
+  drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 8, false, true);
+
+  chestIdxArr.forEach((idx, i) => {
+    const row = Math.floor(i / perRow);
+    const col = i % perRow;
+    const x = boxX + gap + col * (icon + gap);
+    const y = boxY + gap + row * (icon + gap);
+    const img = globalThis.imageCache.lootChests?.[idx];
+    if (img?.complete) ctx.drawImage(img, x, y, icon, icon);
+  });
+
+  afterRewardY = boxY + boxH;      // 记录绿色框底部，后面用
+}
+/* --------------------------------------------------------- */
+
   // ✅ 如果有奖励英雄，则绘制头像并记录可点击区域
   if (globalThis.levelRewardsHeroId) {
     const HeroState = require('./data/hero_state.js').HeroState;
@@ -2017,6 +2053,7 @@ function handleSwap(src, dst) {
           fx.gridExpandTurnsLeft--;
     
           if (fx.gridExpandTurnsLeft <= 0) {
+            globalThis.currentChestStats = {};   // { '宝箱1': 3, '宝箱2': 1, … }
             globalThis.gridSize = 6;
             initGrid();
             drawGame();
@@ -2337,6 +2374,13 @@ showDamageText(pendingDamage, endX, endY + 50);
 // ✅ 添加关卡奖励英雄（例如每隔几关解锁新英雄）
 const levelRewardTexts = [];
 
+// === 把宝箱统计转成文本行 =======================
+Object.entries(globalThis.currentChestStats || {}).forEach(([name, cnt]) => {
+    levelRewardTexts.push(`${name} ×${cnt}`);
+  });
+  globalThis.currentChestStats = {};      // 用完就清空，防止带到下一关
+  // ===============================================
+
 let heroId = null;
 if (currentLevel === 2) {
   heroId = 'hero002';
@@ -2491,6 +2535,7 @@ function resetSessionState () {
     pendingDamage = 0;
     playerActionCounter = 0;
     resetCharges();        // ★ 普通关只需要清蓄力，不清英雄
+    globalThis.currentChestStats = {};   // ★ 清空上一关统计
   }
   
 

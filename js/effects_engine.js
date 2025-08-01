@@ -37,6 +37,15 @@ export function createLootChest(x0, y0, x1, y1, duration = 600) {
     const variants = globalThis.imageCache.lootChests;
     const idx = Math.floor(Math.random() * variants.length);   // 0 ~ 2
   
+    // === 记录统计 =========================
+const key = `宝箱${idx + 1}`;               // 友好的类型名，可换成自己喜欢的
+globalThis.currentChestStats = globalThis.currentChestStats || {};
+globalThis.currentChestStats[key] = (globalThis.currentChestStats[key] || 0) + 1;
+
+globalThis.chestDropsThisRound = globalThis.chestDropsThisRound || [];
+globalThis.chestDropsThisRound.push(idx);   // idx 为 0-based，下标越小＝S1
+// ======================================
+
     effects.push({
       type: 'loot_chest',
       idx,            // 记录选中的宝箱贴图索引
