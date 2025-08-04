@@ -29,6 +29,7 @@ let dragStartY = 0;        // 记录滑动起点 Y
 /* ---------- 胜利弹窗宝箱点击用 ---------- */
 globalThis.victoryChestRects  = [];   // 记录每只宝箱的矩形
 globalThis.victoryChestOpened = [];   // 标记宝箱是否已开
+globalThis.victoryChestLoot    = [];     // ★ 清空上一关掉落
 // 开箱后具体掉落显示用（与宝箱索引一一对应）
 const { rollLoot } = require('./loot_tables.js');   // 引入
 
@@ -651,21 +652,25 @@ chestIdxArr.forEach((idx, i) => {
     const img    = imgArr?.[idx];
     if (img?.complete) ctx.drawImage(img, x, y, iconSize, iconSize);
   
-// ⑤ 若已开，画 Emoji 图标 + 数量
+// ⑤ 已开宝箱 ➜ 画 Emoji + 数量（贴紧一起）
 if (opened && globalThis.victoryChestLoot[i]) {
     const { icon: emoji, qty } = globalThis.victoryChestLoot[i];
   
-    // 图标
-    ctx.font        = '28px sans-serif';      // Emoji 大小
+    /* 1️⃣ 画 Emoji —— 让它垂直居中，再轻微往上提一点点 */
+    ctx.font        = '28px sans-serif';       // Emoji 大小
     ctx.textAlign   = 'center';
-    ctx.textBaseline= 'bottom';
-    ctx.fillText(emoji, x + iconSize / 2, y - 4);
+    ctx.textBaseline= 'middle';
+    ctx.fillText(emoji,
+                 x + iconSize / 2,
+                 y + iconSize / 2 - 4);        // -4 可调，往上提
   
-    // 数量
+    /* 2️⃣ 画数量 —— 紧贴 Emoji 下方 10px */
     ctx.font        = '18px sans-serif';
     ctx.textBaseline= 'top';
     ctx.fillStyle   = '#FFFFFF';
-    ctx.fillText(`×${qty}`, x + iconSize / 2, y - 2);
+    ctx.fillText(`×${qty}`,
+                 x + iconSize / 2,
+                 y + iconSize / 2 + 6);        // +6 可调，往下挪
   }
   
 
@@ -1954,6 +1959,12 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
                  y >= btn.y && y <= btn.y + btn.height) {
         showVictoryPopup = false;
         clearLootChests();      // ✨ 彻底移除上局宝箱
+        // ——— 清空上一关宝箱全部临时状态 ———
+globalThis.victoryChestRects   = [];
+globalThis.victoryChestOpened  = [];
+globalThis.victoryChestLoot    = [];
+globalThis.chestDropsThisRound = [];
+
     // ✅ 清除胜利弹窗的临时状态，防止下一关残留
     globalThis.victoryDialogText   = null;
     globalThis.levelRewardsHeroId  = null;
@@ -2204,24 +2215,33 @@ function handleSwap(src, dst) {
 }
 
 
-function destroyGamePage() {
+function destroyGamePage () {
 
-  if (globalThis.bgmAudioContext) {
-    try {
-      globalThis.bgmAudioContext.stop();
-      globalThis.bgmAudioContext.destroy();
-    } catch (e) {}
-    globalThis.bgmAudioContext = null;
+    /* 1. 停止并销毁 BGM */
+    if (globalThis.bgmAudioContext) {
+      try {
+        globalThis.bgmAudioContext.stop();
+        globalThis.bgmAudioContext.destroy();
+      } catch (e) {}
+      globalThis.bgmAudioContext = null;
+    }
+  
+    /* 2. 清除所有关卡临时特效 / 掉落数组 */
+    clearLootChests();                       // 移除画面上残留宝箱动画
+  
+    globalThis.victoryChestRects   = [];
+    globalThis.victoryChestOpened  = [];
+    globalThis.chestDropsThisRound = [];
+    globalThis.victoryChestLoot    = [];     // ★ 关键：清掉上一关掉落
+  
+    /* 3. 解绑触摸事件，防止重复绑定或内存泄漏 */
+    wx.offTouchStart(onTouch);
+    wx.offTouchEnd(onTouchend);
+  
+    /* 4. 结算本局获得的金币 */
+    commitSessionCoins();
   }
   
-  // ✅ 解绑触摸事件，避免重复绑定或内存泄漏
-  clearLootChests();         // <<<<<< 新增
-  wx.offTouchStart(onTouch);
-  wx.offTouchEnd(onTouchend);
-
-  // ✅ 结算金币
-  commitSessionCoins();
-}
 export { expandGridTo };  // ✅ 添加这行
 
   export default {
@@ -2233,10 +2253,13 @@ export { expandGridTo };  // ✅ 添加这行
     destroy: destroyGamePage
   };
 
+
 /**
  * 依次播放 5 个英雄技能并在尾声结算伤害
  * @param {number} dmg - 进入连招前累计的攻击槽伤害
  */
+
+
 function startHeroBurst(dmg) {
     heroBurstRunning = true;
   
@@ -2603,8 +2626,11 @@ function resetSessionState () {
     attackGaugeDamage = 0;
     pendingDamage = 0;
     playerActionCounter = 0;
-    resetCharges();        // ★ 普通关只需要清蓄力，不清英雄
-    globalThis.currentChestStats = {};   // ★ 清空上一关统计
+    resetCharges();
+    globalThis.currentChestStats = {};          // 清掉统计
+    globalThis.victoryChestRects  = [];
+    globalThis.victoryChestOpened = [];
+    globalThis.victoryChestLoot   = [];
   }
   
 
