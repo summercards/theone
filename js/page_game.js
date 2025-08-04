@@ -26,7 +26,12 @@ let heroLevelUps = [];           // 本关升级信息，供弹窗读取
 let touchStart = null;     // 记录起始格子位置
 let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
-
+/* ---------- 胜利弹窗宝箱点击用 ---------- */
+globalThis.victoryChestRects  = [];   // 记录每只宝箱的矩形
+globalThis.victoryChestOpened = [];   // 标记宝箱是否已开
+// 开箱后具体掉落显示用（与宝箱索引一一对应）
+globalThis.victoryChestLoot = [];      // 例：["金币 ×120", "钻石 ×1", …]
+/* --------------------------------------- */
 let showGameOver = false;     // 是否触发失败弹窗
 let victoryHeroLoaded = false;
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
@@ -625,15 +630,49 @@ if (chestIdxArr.length) {
   ctx.strokeStyle = '#00FF00';
   ctx.lineWidth   = 2;
   drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 8, false, true);
-
-  chestIdxArr.forEach((idx, i) => {
+/* ---------- 画宝箱（按 S1→S3 排序） ---------- */
+chestIdxArr.forEach((idx, i) => {
+    // ① 计算摆放坐标
     const row = Math.floor(i / perRow);
     const col = i % perRow;
-    const x = boxX + gap + col * (icon + gap);
-    const y = boxY + gap + row * (icon + gap);
-    const img = globalThis.imageCache.lootChests?.[idx];
+    const x   = boxX + gap + col * (icon + gap);
+    const y   = boxY + gap + row * (icon + gap);
+  
+    // ② 记录矩形，供点击检测
+    if (!globalThis.victoryChestRects[i]) {
+      globalThis.victoryChestRects[i] = { x, y, w: icon, h: icon };
+    }
+  
+    // ③ 根据是否已开挑贴图
+    const opened = globalThis.victoryChestOpened[i];          // undefined→false
+    const imgArr = opened ? globalThis.imageCache.lootChestOpen
+                          : globalThis.imageCache.lootChests;
+    const img    = imgArr?.[idx];
     if (img?.complete) ctx.drawImage(img, x, y, icon, icon);
+  
+    // ④ 已开宝箱画 ✓
+    /* ⑤ 若已开，则把掉落文字画在宝箱上方 */
+if (opened && globalThis.victoryChestLoot[i]) {
+    ctx.fillStyle   = '#FFD700';             // 金黄色，按需换色
+    ctx.font        = '18px sans-serif';
+    ctx.textAlign   = 'center';
+    ctx.textBaseline= 'bottom';
+    ctx.fillText(globalThis.victoryChestLoot[i],
+                 x + icon / 2,               // 水平居中
+                 y - 6);                     // 稍微顶一下，避免贴着宝箱
+  }
+    if (opened) {
+      ctx.fillStyle   = '#FFF';
+      ctx.font        = '22px sans-serif';
+      ctx.textAlign   = 'center';
+      ctx.textBaseline= 'middle';
+      ctx.fillText('✓', x + icon / 2, y + icon / 2 + 2);
+    }
   });
+  /* --------------------------------------------- */
+  
+  afterRewardY = boxY + boxH;   // 记录绿色框底部，后面用
+  
 
   afterRewardY = boxY + boxH;      // 记录绿色框底部，后面用
 }
@@ -1377,7 +1416,30 @@ function animateSwap(src, dst, callback, rollback = false) {
 }
 
 function onTouch(e) {
-  if (showGameOver || showVictoryPopup) return; // ✅ 游戏结束/胜利，不允许开始滑动
+/* ====== 胜利弹窗：宝箱命中检测 ====== */
+if (showVictoryPopup) {
+    const t    = e.touches[0];
+    const xPos = t.clientX;          // 如果你有 dpiScale，用 t.clientX * dpiScale
+    const yPos = t.clientY;
+  
+    const rects  = globalThis.victoryChestRects;
+    const opened = globalThis.victoryChestOpened;
+  
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (r && !opened[i] &&
+          xPos >= r.x && xPos <= r.x + r.w &&
+          yPos >= r.y && yPos <= r.y + r.h) {
+  
+        openVictoryChest(i);   // 开箱
+        drawGame();            // 立即刷新
+        return;                // 事件到此为止
+      }
+    }
+    return;                    // 点到弹窗其它地方
+  }
+  /* =================================== */
+  
 
   const touch = e.changedTouches[0];
   const xTouch = touch.clientX;
@@ -1839,7 +1901,32 @@ if (comboCounter > 0) {
     return false;
   }
   
+/* 开宝箱：随机掉落并加入奖励列表 */
+function openVictoryChest(idx) {
+    globalThis.victoryChestOpened[idx] = true;        // 标记已开
+  
+    // ① 根据宝箱类型决定掉落
+    const chestType = globalThis.chestDropsThisRound[idx]; // 0=S1,1=S2,2=S3
+    const lootTable = [
+      [{ name:'金币',     min:80,  max:150 },
+       { name:'药水',     min:1,   max:2   }],
+      [{ name:'钻石',     min:1,   max:3   },
+       { name:'英雄碎片', min:2,   max:4   }],
+      [{ name:'稀有装备', min:1,   max:1   }]
+    ];
+    const cand = lootTable[chestType];
+    const sel  = cand[Math.floor(Math.random()*cand.length)];
+    const qty  = sel.min + Math.floor(Math.random()*(sel.max-sel.min+1));
+  
+    // ② 写进弹窗奖励列表
+    globalThis.victoryChestLoot[idx] = `${sel.name} ×${qty}`;   // 记录到对应宝箱
+  
+    // ③ TODO：真正加进背包 / 播音效
+    // addItem(sel.name, qty);
+    // playSound('chest_open');
+  }
 
+  
 export function updateGamePage() {
   updateAllEffects();
 }
