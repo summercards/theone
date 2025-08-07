@@ -7,6 +7,7 @@ const VictoryDialogLines = [
   "钱袋子变鼓了，心也跟着鼓起来！",
   "回到旅店，召集更多的同伴吧!"
 ];
+const { addItem } = require('./data/inventory.js');
 let pendingGaugeAttack = false;   // 正在等待 0.5 s 计时器
 let lastRemainSteps = 5;   // 上一次绘制时的剩余步数
 let stepChangeTime  = 0;   // 最近一次数值变化的时间戳(ms)
@@ -1911,6 +1912,7 @@ function openVictoryChest(idx) {
 
   const chestType = globalThis.chestDropsThisRound[idx]; // 0/1/2
   const loot      = rollLoot(chestType);                 // {icon,name,qty}
+  addItem(loot);        // ★ 将掉落写入背包
 
   // 存到数组，让绘制循环能拿到
   globalThis.victoryChestLoot[idx] = loot;

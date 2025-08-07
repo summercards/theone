@@ -168,7 +168,7 @@ const greedMonsters = [
       id: lv,
       level: lv,
       name: greedMonsters[i],
-      maxHp: 30000 + i * 200,
+      maxHp: 3000 + i * 200,
       sprite: `${greedSprites[i]}.png`,
       damage: 220 + i * 10,
       cooldown: 3,

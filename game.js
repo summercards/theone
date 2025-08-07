@@ -1,7 +1,7 @@
 /* =============================================================
    game.js   —— 入口脚本（已精简云存档逻辑）
    ============================================================= */
-
+   import PageBackpack   from './js/page_backpack.js';
    import {
     initCloud,
     queueSave
@@ -38,7 +38,8 @@
     roguelike:  RoguelikeGame,
     game:       PageGame,
     heroIntro:  PageHeroIntro,
-    ranking:    PageRanking
+    ranking:    PageRanking,
+    backpack:   PageBackpack     // ★ 新增
   };
   
   let currentPageName   = 'home';
