@@ -24,7 +24,7 @@ function save() {
  */
 function addItem(loot) {
   if (!loot) return;
-  const found = bag.find(it => it.name === loot.name);
+  const found = bag.find(it => it.id === loot.id);   // 用 id 作为唯一键
   if (found) {
     found.qty += loot.qty;   // 叠堆同名物品
   } else {

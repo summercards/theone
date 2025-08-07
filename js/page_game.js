@@ -32,7 +32,7 @@ globalThis.victoryChestRects  = [];   // 记录每只宝箱的矩形
 globalThis.victoryChestOpened = [];   // 标记宝箱是否已开
 globalThis.victoryChestLoot    = [];     // ★ 清空上一关掉落
 // 开箱后具体掉落显示用（与宝箱索引一一对应）
-const { rollLoot } = require('./loot_tables.js');   // 引入
+const { rollLoot } = require('./data/loot_tables.js');   // 引入
 
 globalThis.victoryChestLoot = [];   // 与宝箱索引一一对应，用来存抽到的 {icon,qty}
 
@@ -1912,9 +1912,6 @@ function openVictoryChest(idx) {
 
   const chestType = globalThis.chestDropsThisRound[idx]; // 0/1/2
   const loot      = rollLoot(chestType);                 // {icon,name,qty}
-  addItem(loot);        // ★ 将掉落写入背包
-
-  // 存到数组，让绘制循环能拿到
   globalThis.victoryChestLoot[idx] = loot;
 }
   
