@@ -20,6 +20,8 @@ let __blockSize = 0;
 let __gridStartX = 0;
 let __gridStartY = 0;
 let popupGoldDisplayed = 0; // 用于胜利弹窗中金币滚动显示
+let chestGoldEarned        = 0; // 本关累计：宝箱金币
+let popupChestGoldDisplayed = 0; // 弹窗里滚动用的数字
 let displayedGold = 0; // 当前动画显示的金币
 let popupGoldStartTime = 0; // ⏱ 胜利弹窗金币滚动起始时间
 let playerActionCounter = 0;
@@ -579,21 +581,20 @@ if (dialog) {
       ctx.drawImage(globalThis.victoryHeroImage, heroImgX, heroImgY, heroImgW, heroImgH);
     }
   
-    /* 4. 金币奖励 */
-    const goldY = heroImgY + heroImgH + 24;
-    if (popupGoldDisplayed < earnedGold) {
-        const diff = earnedGold - popupGoldDisplayed;
-        popupGoldDisplayed += Math.ceil(diff * 0.1); // ✨ 更慢滚动（从 0.2 降为 0.1）
-      } else {
-        popupGoldDisplayed = earnedGold;
-      }
-      
-      const popupGoldText = `获得金币：+${popupGoldDisplayed}`;
-      ctx.fillStyle = '#FFD700';
-      ctx.font = 'bold 20px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillText(popupGoldText, W / 2, goldY);
+/* 4. 宝箱金币奖励（只统计宝箱） */
+const goldY = heroImgY + heroImgH + 24;
+if (popupChestGoldDisplayed < chestGoldEarned) {
+  const diff = chestGoldEarned - popupChestGoldDisplayed;
+  popupChestGoldDisplayed += Math.ceil(diff * 0.1);   // 滚动动画
+} else {
+  popupChestGoldDisplayed = chestGoldEarned;
+}
+const popupGoldText = `宝箱金币：+${popupChestGoldDisplayed}`;
+ctx.fillStyle = '#FFD700';
+ctx.font = 'bold 20px sans-serif';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'alphabetic';
+ctx.fillText(popupGoldText, W / 2, goldY);
       // ✅ 显示经验奖励
 const expY = goldY + 30;
 
@@ -630,9 +631,7 @@ if (chestIdxArr.length) {
 
   const boxX = (W - boxW) / 2;
   const boxY = afterRewardY + 12;  // 留一点缓冲
-  ctx.strokeStyle = '#00FF00';
-  ctx.lineWidth   = 2;
-  drawRoundedRect(ctx, boxX, boxY, boxW, boxH, 8, false, true);
+
 /* ---------- 画宝箱（按 S1→S3 排序） ---------- */
 chestIdxArr.forEach((idx, i) => {
     // ① 计算摆放坐标
@@ -1913,6 +1912,11 @@ function openVictoryChest(idx) {
   const chestType = globalThis.chestDropsThisRound[idx]; // 0/1/2
   const loot      = rollLoot(chestType);                 // {icon,name,qty}
   globalThis.victoryChestLoot[idx] = loot;
+  if (loot.name === '金币' || loot.icon === '💰') {
+    chestGoldEarned += loot.qty;  // ① 统计到关卡累计
+    addCoins(loot.qty);           // ② HUD 数字同步增加
+    goldPopTime = Date.now();     // ③ 触发跳字动画（可选）
+  }
 }
   
 
@@ -2630,6 +2634,8 @@ function resetSessionState () {
     globalThis.victoryChestRects  = [];
     globalThis.victoryChestOpened = [];
     globalThis.victoryChestLoot   = [];
+    chestGoldEarned        = 0;
+popupChestGoldDisplayed = 0;
   }
   
 

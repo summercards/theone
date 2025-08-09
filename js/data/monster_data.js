@@ -128,7 +128,7 @@ const envyMonsters = [
       id: lv,
       level: lv,
       name: envyMonsters[i],
-      maxHp: 2200 + i * 150,
+      maxHp: 4200 + i * 150,
       sprite: `${envySprites[i]}.png`,
       damage: [35 + i * 10, 50 + i * 10],
       cooldown: 3,
@@ -168,7 +168,7 @@ const greedMonsters = [
       id: lv,
       level: lv,
       name: greedMonsters[i],
-      maxHp: 3000 + i * 200,
+      maxHp: 5000 + i * 200,
       sprite: `${greedSprites[i]}.png`,
       damage: 220 + i * 10,
       cooldown: 3,
@@ -236,7 +236,7 @@ monsters.push(createMonster({
   id: 40,
   level: 40,
   name: '狂怒化身',
-  maxHp: 820000,
+  maxHp: 420000,
   sprite: 'kuangnuhuashen.png',
   damage: [389, 469],   // ❶ 变成数组即可
   cooldown: 4,
@@ -281,7 +281,7 @@ monsters.push(createMonster({
   id: 50,
   level: 50,
   name: '千年沉眠',
-  maxHp: 222000,
+  maxHp: 852000,
   sprite: 'qiannianchenmian.png',
   damage: [389, 529],   // ❶ 变成数组即可
   cooldown: 5,
@@ -326,7 +326,7 @@ monsters.push(createMonster({
   id: 60,
   level: 60,
   name: '光辉圣裁',
-  maxHp: 524000,
+  maxHp: 1024000,
   sprite: 'guanghuishengcai.png',
   damage: [589, 729],   // ❶ 变成数组即可
   cooldown: 5,
@@ -371,7 +371,7 @@ monsters.push(createMonster({
   id: 70,
   level: 70,
   name: '红莲女皇',
-  maxHp: 10226000,
+  maxHp: 29226000,
   sprite: 'hongliannvhuang.png',
   damage: [989, 1129],   // ❶ 变成数组即可
   cooldown: 5,

@@ -44,7 +44,7 @@ function settle(entry) {
 /* ---------- 掉落表 ---------- */
 export const CHEST_LOOT = {
   basic: [
-    { id:'coin',         weight:60, qty:[20,60] },
+    { id:'coin',         weight:60, qty:[20,30] },
     { id:'potion_small', weight:30 },
     { id:'hero_shard',   weight:10 }
   ],
@@ -55,7 +55,7 @@ export const CHEST_LOOT = {
     { id:'hero_shard',   weight:10 }
   ],
   gold: [
-    { id:'coin',          weight:30, qty:[120,240] },
+    { id:'coin',          weight:30, qty:[320,840] },
     { id:'potion_big',    weight:25 },
     { id:'scroll_meteor', weight:20 },
     { id:'hero_shard',    weight:15 },
