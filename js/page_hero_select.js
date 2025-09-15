@@ -7,6 +7,11 @@ const AD_COOLDOWN = 3 * 60 * 1000; // 3 分钟，单位毫秒
 let showUpgradeButtons = false;
 let showDialog = true;
 let dialogInterval = null; // ✅ 放到最顶层作用域
+// ======== 排序状态 ========
+// 0: 按职业类型；1: 按稀有度；2: 按等级；3: 按名称
+let sortMode = 0;
+let sortBtnRect = null;
+const sortLabels = ['类型', '品质', '等级', '名称'];
 import { updatePlayerStats } from './utils/player_stats.js';  // 顶部添加
 // 🗨️ 随机台词池（酒馆NPC）
 const barDialogLines = [
@@ -87,6 +92,39 @@ function getAvailableHeroes() {
         id: instanceId
       };
       list.push(heroObj);
+    }
+  });
+  // === 根据排序模式对列表排序 ===
+  const getRarityRank = (hero) => {
+    // 捕获英雄使用 rarityTier (white/green/blue/purple/yellow/gold)，否则使用基础 rarity (SSR/SR/R)
+    const tierOrder = { white: 1, green: 2, blue: 3, purple: 4, yellow: 5, gold: 6 };
+    if (hero.rarityTier) {
+      return tierOrder[hero.rarityTier] || 0;
+    }
+    // 基础英雄使用 R/SR/SSR 排序
+    const baseOrder = { R: 1, SR: 2, SSR: 3 };
+    return baseOrder[hero.rarity] || 0;
+  };
+  const getHeroLevel = (hero) => {
+    try {
+      const stored = wx.getStorageSync('heroProgress');
+      const instanceData = stored?.[hero.id];
+      if (instanceData && typeof instanceData.level === 'number') return instanceData.level;
+    } catch (e) {}
+    return hero.level || 1;
+  };
+  list.sort((a, b) => {
+    switch (sortMode) {
+      case 0: // 类型：职业
+        return String(a.role).localeCompare(String(b.role), 'zh-CN');
+      case 1: // 品质：稀有度，从高到低
+        return getRarityRank(b) - getRarityRank(a);
+      case 2: // 等级：从高到低
+        return getHeroLevel(b) - getHeroLevel(a);
+      case 3:
+      default:
+        // 名称：按名称
+        return String(a.name).localeCompare(String(b.name), 'zh-CN');
     }
   });
   return list;
@@ -258,6 +296,13 @@ let ctxRef, canvasRef, switchPageFn;
 function onTouch(e) {
   if (!e.changedTouches || !e.changedTouches[0]) return;
   const { clientX: x, clientY: y } = e.changedTouches[0];
+  // —— 排序按钮 ——
+  if (sortBtnRect && hit(x, y, sortBtnRect)) {
+    playClickSound();
+    sortMode = (sortMode + 1) % sortLabels.length;
+    // 重新渲染以应用新的排序
+    return render();
+  }
   if (btnBackRect && hit(x, y, btnBackRect)) {
     playClickSound();
     clickedKey = 'back';
@@ -798,6 +843,18 @@ for (let i = 0; i < 5; i++) {
   const poolStartY = selectedY + ICON + 50;// 英雄池更贴出战区
   drawText(ctx, '英雄池', PAD_X, poolStartY - 30,
            '16px IndieFlower', '#DCC6F0', 'left', 'top');
+  // 绘制排序按钮：位于英雄池标题右侧
+  const sortW = 64;
+  const sortH = 28;
+  const sortX = canvas.width - PAD_X - sortW;
+  const sortY = poolStartY - 38;
+  sortBtnRect = { x: sortX, y: sortY, width: sortW, height: sortH };
+  ctx.fillStyle = '#9c275d';
+  drawRoundedRect(ctx, sortX, sortY, sortW, sortH, 6, true, false);
+  // 按钮文字为当前排序方式
+  const label = sortLabels[sortMode] || '排序';
+  drawText(ctx, label, sortX + sortW / 2, sortY + sortH / 2,
+           '12px IndieFlower', '#ffe3e3', 'center', 'middle');
 
 // === 英雄池包裹框 ===
 const poolCols = 5;
@@ -1092,7 +1149,15 @@ function drawIcon(ctx, hero, x, y, size = ICON, isFromPool = false) {
       // 捕捉到的英雄使用 rarityTier (white/green/blue)，否则使用基础稀有度 (SSR/SR/R)
       let frameColor;
       if (hero.rarityTier) {
-        const m = { white: '#FFFFFF', green: '#00FF00', blue: '#00BFFF' };
+        // 捕捉到的英雄使用新稀有度映射，包括紫色、黄色、金色
+        const m = {
+          white: '#FFFFFF',
+          green: '#00FF00',
+          blue:  '#00BFFF',
+          purple: '#C71585',
+          yellow: '#FFC107',
+          gold:  '#FFD700'
+        };
         frameColor = m[hero.rarityTier] || '#FFFFFF';
       } else {
         const m = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' };
