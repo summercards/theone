@@ -33,18 +33,44 @@ export function createLootChest(x0, y0, x1, y1, duration = 600) {
     x1 += (Math.random() - 0.5) * DEST_HORIZONTAL_RANGE * 2;
     y1 += (Math.random() - 0.5) * DEST_VERTICAL_RANGE * 2;
   
-    /* ---------- ③ 入列 ---------- */
+    /* ---------- ③ 入列：根据当前敌人的稀有度决定宝箱类型 ---------- */
     const variants = globalThis.imageCache.lootChests;
-    const idx = Math.floor(Math.random() * variants.length);   // 0 ~ 2
-  
-    // === 记录统计 =========================
-const key = `宝箱${idx + 1}`;               // 友好的类型名，可换成自己喜欢的
-globalThis.currentChestStats = globalThis.currentChestStats || {};
-globalThis.currentChestStats[key] = (globalThis.currentChestStats[key] || 0) + 1;
+    let idx;
+    try {
+      const mon = typeof getMonster === 'function' ? getMonster() : null;
+      const rarity = mon?.rarityTier || 'white';
+      const rand = Math.random();
+      if (rarity === 'white') {
+        // 白色敌人只能掉落普通宝箱
+        idx = 0;
+      } else if (rarity === 'green') {
+        // 绿色敌人只能掉落普通或银宝箱，金箱禁掉
+        // 80% 普通、20% 银
+        idx = rand < 0.8 ? 0 : 1;
+      } else {
+        // 蓝色及以上敌人可以掉落三种宝箱
+        // 60% 普通，30% 银，10% 金
+        if (rand < 0.6) idx = 0;
+        else if (rand < 0.9) idx = 1;
+        else idx = 2;
+      }
+      // 若 variants 少于对应索引数量，回退到最大索引范围内
+      if (!variants || idx >= variants.length) {
+        idx = Math.min(idx, (variants?.length || 1) - 1);
+      }
+    } catch (err) {
+      // 回退随机
+      idx = Math.floor(Math.random() * (variants?.length || 1));
+    }
 
-globalThis.chestDropsThisRound = globalThis.chestDropsThisRound || [];
-globalThis.chestDropsThisRound.push(idx);   // idx 为 0-based，下标越小＝S1
-// ======================================
+    // === 记录统计 =========================
+    const key = `宝箱${idx + 1}`;               // 友好的类型名，可换成自己喜欢的
+    globalThis.currentChestStats = globalThis.currentChestStats || {};
+    globalThis.currentChestStats[key] = (globalThis.currentChestStats[key] || 0) + 1;
+
+    globalThis.chestDropsThisRound = globalThis.chestDropsThisRound || [];
+    globalThis.chestDropsThisRound.push(idx);   // idx 为 0-based，下标越小＝S1
+    // ======================================
 
     effects.push({
       type: 'loot_chest',

@@ -79,11 +79,14 @@ function captureMonsterAsHero(mon) {
         const attrs = baseHero && baseHero.attributes ? { ...baseHero.attributes } : {};
         const hpVal = baseHero && typeof baseHero.hp === 'number' ? baseHero.hp : 100;
         prog[instanceId] = {
-          level: 1,
+          // 捕捉后保持当前敌人等级
+          level: mon?.level ?? 1,
           exp: 0,
           attributes: attrs,
           locked: false,
-          hp: hpVal
+          hp: hpVal,
+          // 保存稀有度信息，便于成长曲线使用
+          rarity: mon?.rarityTier || 'white'
         };
         wx.setStorageSync('heroProgress', prog);
       } catch (e) {
@@ -197,9 +200,17 @@ function endBattleAfterCapture(capturedMonster) {
     displayedGold = getSessionCoins();
     levelJustCompleted = currentLevel;
     // 计算经验，根据捕捉敌人的等级决定
-    const level = capturedMonster?.level ?? (mon?.level ?? 1);
-    const isBoss = capturedMonster?.isBoss ?? (mon?.isBoss ?? false);
-    const exp   = Math.floor(level * 5 + 10 + (isBoss ? 50 : 0));
+    // 使用怪物自身携带的经验值
+    let exp;
+    if (capturedMonster && typeof capturedMonster.exp === 'number') {
+      exp = capturedMonster.exp;
+    } else if (mon && typeof mon.exp === 'number') {
+      exp = mon.exp;
+    } else {
+      const level = capturedMonster?.level ?? (mon?.level ?? 1);
+      const isBoss = capturedMonster?.isBoss ?? (mon?.isBoss ?? false);
+      exp = Math.floor(level * 5 + 10 + (isBoss ? 50 : 0));
+    }
     globalThis.expGainedThisRound = exp;
     if (typeof rewardExpToHeroes === 'function') {
       rewardExpToHeroes(exp);
@@ -866,6 +877,24 @@ if (opened && globalThis.victoryChestLoot[i]) {
   /* --------------------------------------------- */
   
   afterRewardY = boxY + boxH;   // 记录绿色框底部，后面用
+
+  /* ---------- 绘制“开启全部宝箱”按钮 ---------- */
+  const allBtnW = 160;
+  const allBtnH = 40;
+  const allBtnX = (W - allBtnW) / 2;
+  const allBtnY = afterRewardY + 12;
+  // 按钮底色及文字
+  ctx.fillStyle = '#5A3E8D';
+  drawRoundedRect(ctx, allBtnX, allBtnY, allBtnW, allBtnH, 8, true, false);
+  ctx.fillStyle = '#F3E9DB';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('开启全部宝箱', allBtnX + allBtnW / 2, allBtnY + allBtnH / 2);
+  // 记录按钮区域供点击检测
+  globalThis.victoryOpenAllArea = { x: allBtnX, y: allBtnY, width: allBtnW, height: allBtnH };
+  // 更新 afterRewardY 以便后续元素排版
+  afterRewardY = allBtnY + allBtnH;
  
 }
 /* --------------------------------------------------------- */
@@ -1020,8 +1049,22 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
     ctx.restore();
   
     // === 品质边框 ===
-    const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' }[hero.rarity] || '#FFF';
-    ctx.strokeStyle = rarityColor;
+    // 捕获/稀有度英雄使用 rarityTier (white/green/blue)，否则回退到基础稀有度 (SSR/SR/R)
+    const rarityTier = hero.rarityTier || null;
+    let borderColor;
+    if (rarityTier) {
+      const tierColorMap = {
+        white: '#FFFFFF',
+        green: '#00FF00',
+        blue:  '#00BFFF'
+      };
+      borderColor = tierColorMap[rarityTier] || '#FFFFFF';
+    } else {
+      // 原英雄稀有度映射，保持旧配色
+      const rarityMap = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' };
+      borderColor = rarityMap[hero.rarity] || '#FFFFFF';
+    }
+    ctx.strokeStyle = borderColor;
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, offsetX, offsetY, scaledSize, scaledSize, r, false, true);
   
@@ -2119,6 +2162,38 @@ function openVictoryChest(idx) {
     goldPopTime = Date.now();     // ③ 触发跳字动画（可选）
   }
 }
+
+/*
+ * 一键开启所有宝箱：逐个依次开启未打开的宝箱。
+ * 调用该函数后会按顺序触发 openVictoryChest，并自动更新奖励显示。
+ */
+function openAllChests() {
+  if (!Array.isArray(globalThis.victoryChestOpened)) return;
+  // 如果已经在自动开启中，则忽略
+  if (globalThis.openingAllChests) return;
+  globalThis.openingAllChests = true;
+  const total = globalThis.victoryChestOpened.length;
+  let delay = 0;
+  for (let i = 0; i < total; i++) {
+    if (!globalThis.victoryChestOpened[i]) {
+      // 使用闭包记住当前索引
+      ((idx) => {
+        setTimeout(() => {
+          openVictoryChest(idx);
+          if (idx === total - 1) {
+            globalThis.openingAllChests = false;
+          }
+          drawGame();
+        }, delay);
+      })(i);
+      delay += 300; // 每 300ms 开一个
+    }
+  }
+  // 如果所有宝箱都已开完，也立即重置状态
+  if (delay === 0) {
+    globalThis.openingAllChests = false;
+  }
+}
   
 
   
@@ -2132,6 +2207,15 @@ function onTouchend(e) {
 
   const x = touch.clientX;
   const y = touch.clientY;
+  // ✅ 胜利弹窗期间：点击开启全部宝箱按钮
+  if (showVictoryPopup && globalThis.victoryOpenAllArea) {
+    const area = globalThis.victoryOpenAllArea;
+    if (x >= area.x && x <= area.x + area.width &&
+        y >= area.y && y <= area.y + area.height) {
+      openAllChests();
+      return; // 避免继续处理其他按钮
+    }
+  }
 // ✅ 点击奖励英雄头像 → 自动加入空出战栏
 const icon = globalThis.rewardHeroIconRect;
 if (icon && x >= icon.x && x <= icon.x + icon.width &&
@@ -2684,14 +2768,17 @@ showDamageText(pendingDamage, endX, endY + 50);
             displayedGold = getSessionCoins();
             levelJustCompleted = currentLevel;
           
-            // ✅ 经验逻辑（统一写在这里）
-            const monster = loadMonster(currentLevel);  // 或 getMonster()
-            const level = monster?.level ?? 1;
-            const isBoss = monster?.isBoss ?? false;
-            const exp = Math.floor(level * 5 + 10 + (isBoss ? 50 : 0));
-          
-            globalThis.expGainedThisRound = exp;       // ✅ 设置给弹窗读取
-            rewardExpToHeroes(exp);                    // 分发经验
+            // ✅ 经验逻辑：根据已击败怪物的经验
+            const currentMonster = typeof getMonster === 'function' ? getMonster() : null;
+            const exp = currentMonster?.exp ?? (function(){
+              const lv = currentMonster?.level ?? 1;
+              const isBoss = currentMonster?.isBoss ?? false;
+              return Math.floor(lv * 5 + 10 + (isBoss ? 50 : 0));
+            })();
+            globalThis.expGainedThisRound = exp;
+            if (typeof rewardExpToHeroes === 'function') {
+              rewardExpToHeroes(exp);
+            }
  
 
 // ✅ 添加关卡奖励英雄（例如每隔几关解锁新英雄）
@@ -2833,6 +2920,7 @@ function resetSessionState () {
     globalThis.victoryChestRects  = [];
     globalThis.victoryChestOpened = [];
     globalThis.victoryChestLoot   = [];
+    globalThis.victoryOpenAllArea = null;
     chestGoldEarned        = 0;
 popupChestGoldDisplayed = 0;
   }

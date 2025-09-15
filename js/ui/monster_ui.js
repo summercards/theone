@@ -94,30 +94,7 @@ export function drawMonsterSprite(ctx, canvas) {
     ctx.restore();
   }
 
-  // 绘制怪物品质边框以区分稀有度
-  try {
-    const baseId = (monster.heroId || '').split('_')[0];
-    const baseHero = HeroData.getHeroById ? HeroData.getHeroById(baseId) : null;
-    const rarity = baseHero?.rarity || 'R';
-    const colorMap = {
-      N: '#B0B0B0',
-      R: '#4CAF50',      // 绿色
-      SR: '#2196F3',     // 蓝色
-      SSR: '#9C27B0',    // 紫色
-      UR: '#FF9800'      // 橙色
-    };
-    const frameColor = colorMap[rarity] || '#FFFFFF';
-    const framePadding = 6;
-    const frameX = x - framePadding;
-    const frameY = y - framePadding;
-    const frameW = SPR_W + framePadding * 2;
-    const frameH = SPR_H + framePadding * 2;
-    ctx.strokeStyle = frameColor;
-    ctx.lineWidth = 4;
-    drawRoundedRect(ctx, frameX, frameY, frameW, frameH, 12, false, true);
-  } catch (err) {
-    console.warn('绘制品质边框失败', err);
-  }
+  // 取消绘制品质边框，稀有度通过名称颜色区分
 
   const BAR_W = 280;
   const BAR_H = 22;
@@ -191,8 +168,15 @@ drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
   const nameY = y - 35;
   ctx.font = 'bold 18px IndieFlower, sans-serif';
   ctx.lineWidth = 2;
+  // 根据稀有度设置名称颜色
+  const rarityColors = {
+    white: '#FFFFFF',
+    green: '#00FF00',
+    blue:  '#00BFFF'
+  };
+  const nameColor = rarityColors[monster.rarityTier] || '#FFFFFF';
   ctx.strokeStyle = '#000';
   ctx.strokeText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = nameColor;
   ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
 }

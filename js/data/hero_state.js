@@ -6,6 +6,8 @@ const { createHeroLevelUpEffect } = require('../effects_engine.js');
 // ========================================================
 // 单个英雄的运行时状态
 // ========================================================
+const MAX_LEVEL = 50;
+
 class HeroState {
   constructor(id) {
     // 支持实例化派生ID（如 hero001_xxxxx），通过下划线前缀匹配原型
@@ -34,6 +36,9 @@ class HeroState {
 
     // ✅ 新增 HP（注意顺序必须在 saved 定义之后）
     this.hp = saved?.hp ?? base.hp ?? 100;
+
+    // 📌 捕捉得到的英雄可能带有稀有度，用于自定义成长曲线
+    this.rarityTier = saved?.rarity || base.rarityTier || null;
 
     const rawAttrs = saved?.attributes ?? { ...base.attributes };
     const heroName = base.name ?? "未知英雄";
@@ -75,7 +80,8 @@ class HeroState {
 
   gainExp(amount) {
     this.exp += amount;
-    while (this.level < 15) {
+    // 当积累的经验达到升级需求时循环升级，直到达到上限
+    while (this.level < MAX_LEVEL) {
       const required = 50 + this.level * this.level * 10;
       if (this.exp >= required) {
         this.exp -= required;
@@ -84,7 +90,8 @@ class HeroState {
         break;
       }
     }
-    if (this.level >= 15) {
+    // 如果已达等级上限，则清零经验避免溢出
+    if (this.level >= MAX_LEVEL) {
       this.exp = 0;
     }
     saveHeroProgress(this);
@@ -94,16 +101,37 @@ class HeroState {
     this.level++;
 
     // ✅ 升级加属性
-    const growth = this.levelUpConfig.attributeGrowth || {};
-    for (const key in growth) {
-      if (!this.attributes[key]) this.attributes[key] = 0;
-      this.attributes[key] += growth[key];
-    }
-
-    // ✅ 升级加 HP
-    const hpGrowth = this.levelUpConfig.hpGrowth ?? 0;
-    if (hpGrowth > 0) {
-      this.hp += hpGrowth;
+    // 捕捉英雄（带实例ID）使用基于稀有度的成长曲线；否则使用基础 levelUpConfig
+    if (this.rarityTier && ['white','green','blue'].includes(this.rarityTier)) {
+      // 稀有度成长表：每级属性和HP提升
+      const RARITY_GROWTH = {
+        white: { attribute: 1, hp: 5 },
+        green: { attribute: 2, hp: 10 },
+        blue:  { attribute: 3, hp: 15 }
+      };
+      const growthVals = RARITY_GROWTH[this.rarityTier] || { attribute: 1, hp: 5 };
+      // 为每个已存在属性增加成长值
+      for (const key in this.attributes) {
+        this.attributes[key] += growthVals.attribute;
+      }
+      // 若没有属性（极端情况），给物攻+增长
+      if (Object.keys(this.attributes).length === 0) {
+        this.attributes.physical = growthVals.attribute;
+      }
+      // HP 增长
+      this.hp += growthVals.hp;
+    } else {
+      // 使用基础配置成长
+      const growth = this.levelUpConfig.attributeGrowth || {};
+      for (const key in growth) {
+        if (!this.attributes[key]) this.attributes[key] = 0;
+        this.attributes[key] += growth[key];
+      }
+      // ✅ 升级加 HP
+      const hpGrowth = this.levelUpConfig.hpGrowth ?? 0;
+      if (hpGrowth > 0) {
+        this.hp += hpGrowth;
+      }
     }
 
     // 特例处理

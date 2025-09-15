@@ -17,6 +17,28 @@ const areaLevelRanges = {
   snow:   { min: 4, max: 6 }
 };
 
+// -----------------------------------------------------------
+// 敌人稀有度设定：白色、绿色、蓝色，对应属性和经验倍率
+// weight 表示出现概率权重；hpMul/atkMul/expMul/goldMul 定义属性倍率
+// color 用于显示名称颜色
+const rarityOptions = [
+  { tier: 'white', weight: 60, hpMul: 1.0, atkMul: 1.0, expMul: 1.0, goldMul: 1.0, color: '#FFFFFF' },
+  { tier: 'green', weight: 30, hpMul: 1.3, atkMul: 1.3, expMul: 1.5, goldMul: 1.2, color: '#00FF00' },
+  { tier: 'blue',  weight: 10, hpMul: 1.6, atkMul: 1.6, expMul: 2.0, goldMul: 1.4, color: '#00BFFF' }
+];
+
+// 随机选择稀有度
+function randomRarity() {
+  const total = rarityOptions.reduce((sum, o) => sum + o.weight, 0);
+  const rnd   = Math.random() * total;
+  let acc = 0;
+  for (const opt of rarityOptions) {
+    acc += opt.weight;
+    if (rnd <= acc) return opt;
+  }
+  return rarityOptions[0];
+}
+
 
 export function markBossDefeated(level) {
     if (level > defeatedBossLevel) {
@@ -79,16 +101,24 @@ export function loadMonster(level = 1) {
  */
 function heroToMonster(hero = {}, level = 1) {
   const baseHp = typeof hero.hp === 'number' ? hero.hp : 100;
-  // 简单规则：敌人生命值按英雄生命的 80 倍计算，使其数值与原怪物相近
-  const maxHp = Math.round(baseHp * 80);
   const attrs = hero.attributes || {};
   const physical = typeof attrs.physical === 'number' ? attrs.physical : 0;
   const magical  = typeof attrs.magical === 'number'  ? attrs.magical  : 0;
-  // 攻击力按英雄主攻属性乘以 5，再加上一个基础值
-  const damageVal = Math.max(physical, magical) * 5 + 10;
-  // 敌人级别可使用英雄定义的 level 或当前参数 level
   const lv = hero.level || level || 1;
-  // 冷却回合固定为 3，可根据需要调整
+  // 随机决定稀有度并应用倍率
+  const rarityOpt = randomRarity();
+  const hpMul   = rarityOpt.hpMul;
+  const atkMul  = rarityOpt.atkMul;
+  const expMul  = rarityOpt.expMul;
+  const goldMul = rarityOpt.goldMul;
+  // 生命值和攻击力倍率
+  const maxHp = Math.round(baseHp * 80 * hpMul);
+  const damageVal = (Math.max(physical, magical) * 5 + 10) * atkMul;
+  // 经验奖励基础值按等级计算，并乘以稀有度
+  const baseExp = 30 + lv * 5;
+  const expReward = Math.floor(baseExp * expMul);
+  const baseGold = 20 + lv * 5;
+  const goldReward = Math.floor(baseGold * goldMul);
   const cooldown = 3;
   return {
     id: hero.id || `enemy_${Date.now()}`,
@@ -100,7 +130,10 @@ function heroToMonster(hero = {}, level = 1) {
     maxHp,
     atk: damageVal,
     turns: cooldown,
-    gold: 20 + lv * 5,
+    gold: goldReward,
+    exp: expReward,
+    rarityTier: rarityOpt.tier,
+    rarityColor: rarityOpt.color,
     skill: {
       name: hero.skill?.name || '攻击',
       desc: hero.skill?.description || '普通攻击',

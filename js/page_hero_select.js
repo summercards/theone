@@ -1089,8 +1089,16 @@ function drawIcon(ctx, hero, x, y, size = ICON, isFromPool = false) {
       ctx.restore();
       
       // ==== 品质描边 ====
-      const rarityColor = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' }[hero.rarity] || '#FFFFFF';
-      ctx.strokeStyle = rarityColor;
+      // 捕捉到的英雄使用 rarityTier (white/green/blue)，否则使用基础稀有度 (SSR/SR/R)
+      let frameColor;
+      if (hero.rarityTier) {
+        const m = { white: '#FFFFFF', green: '#00FF00', blue: '#00BFFF' };
+        frameColor = m[hero.rarityTier] || '#FFFFFF';
+      } else {
+        const m = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' };
+        frameColor = m[hero.rarity] || '#FFFFFF';
+      }
+      ctx.strokeStyle = frameColor;
       ctx.lineWidth = 2;
       drawRoundedRect(ctx, x, y, size, size, 8, false, true);
       
