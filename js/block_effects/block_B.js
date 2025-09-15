@@ -8,10 +8,11 @@ export function renderBlockB(ctx, x, y, width, height) {
 }
 
 import { getSelectedHeroes } from '../data/hero_state.js';
-// import { addGold } from '../data/coin_state.js'; // 原逻辑使用
 import { logBattle } from '../utils/battle_log.js';
-import { healPlayer } from '../data/player_state.js'; // ✅ 新增
-import { createFloatingText } from '../effects_engine.js'; // ✅ 新增
+import { dealDamage } from '../data/monster_state.js';
+import { createExplosion, createMonsterBounce, showDamageText, createAvatarFlash } from '../effects_engine.js';
+import { createFloatingText } from '../effects_engine.js';
+import { healPlayer } from '../data/player_state.js';
 
 /**
  * B方块消除后效果（🟢新逻辑）：
@@ -19,22 +20,54 @@ import { createFloatingText } from '../effects_engine.js'; // ✅ 新增
  * 如果场上有游侠，每个再 +1 点
  */
 export function onEliminateGreenBlock(count) {
+  // 攻击逻辑：绿色方块驱动在场的游侠造成物理伤害
   const heroes = getSelectedHeroes().filter(Boolean);
   if (count <= 0 || heroes.length === 0) return;
 
-  const hasRanger = heroes.some(h => h.role === '游侠');
-  // 调整：提高回血量，提升绿色方块的价值
-  const perBlockHeal = hasRanger ? 10 : 8;
-  const totalHeal = perBlockHeal * count;
+  let total = 0;
+  const indices = [];
+  const names = [];
+  // 聚合所有游侠的物理攻击
+  heroes.forEach((hero, idx) => {
+    if (hero.role === '游侠') {
+      const value = hero.attributes?.physical ?? 0;
+      total += value;
+      indices.push(idx);
+      names.push(`${hero.name}(${value})`);
+    }
+  });
 
-  healPlayer(totalHeal); // ✅ 加血
-  logBattle(`[B方块] 玩家恢复生命 +${totalHeal}${hasRanger ? '（游侠加成）' : ''}`);
-
-  // ✅ 漂浮加血文字（位置可调）
-  const hp = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
-  const floatX = hp.x + hp.width * 0.75;  // 血条偏右
-  const floatY = hp.y - 10;               // 血条上方
-  createFloatingText(`+${totalHeal} HP`, floatX, floatY, '#66FFAA');
+  if (total > 0) {
+    const damage = total * count;
+    dealDamage(damage, { allowKill: true });
+    logBattle(`[绿方块] {${names.join(', ')}} ×${count} → 直接造成伤害 ${damage}`);
+    try {
+      const canvas = globalThis.canvasRef;
+      if (canvas) {
+        const x = canvas.width / 2;
+        const y = 180;
+        createExplosion(x, y);
+        createMonsterBounce();
+        showDamageText(damage, x, y + 50);
+      }
+    } catch (err) {}
+    indices.forEach(idx => {
+      try {
+        // 攻击动画：头像向上弹出后返回，不再放大
+        createAvatarFlash(idx, 1, 400, 0, -20);
+      } catch (err) {}
+    });
+  }
+  // 若没有游侠，仍旧为玩家回复少量生命以体现绿色方块的辅助价值
+  else {
+    const totalHeal = 5 * count;
+    healPlayer(totalHeal);
+    logBattle(`[绿方块] 消除 ×${count} → 玩家回复生命 ${totalHeal}`);
+    const hp = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
+    const floatX = hp.x + hp.width * 0.75;
+    const floatY = hp.y - 10;
+    createFloatingText(`+${totalHeal} HP`, floatX, floatY, '#66FFAA');
+  }
 }
 
 

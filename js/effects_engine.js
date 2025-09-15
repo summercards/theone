@@ -93,31 +93,38 @@ export function drawAllEffects(ctx, canvas) {
 
   effects.forEach((e, i) => {
     if (e.type === 'avatar_flash') {
+      // 头像闪动/弹跳效果
       const t = now - e.startTime;
       const p = t / e.duration;
-      if (p > 1) return remove.push(i);
-
       const slotIndex = e.slotIndex;
-      const scale = 1 + (e.scale - 1) * Math.sin(p * Math.PI);
+      // 动画结束：重置缩放与偏移
+      if (p > 1) {
+        // 动画结束时重置缩放和偏移
+        globalThis.avatarSlotScales = globalThis.avatarSlotScales || {};
+        globalThis.avatarSlotScales[slotIndex] = 1;
+        globalThis.avatarSlotOffsets = globalThis.avatarSlotOffsets || {};
+        globalThis.avatarSlotOffsets[slotIndex] = { x: 0, y: 0 };
+        return remove.push(i);
+      }
+      // 如果传入的 scale 为 1，则不缩放，若大于 1 则按正弦曲线变化
+      let scale;
+      if (e.scale && e.scale !== 1) {
+        scale = 1 + (e.scale - 1) * Math.sin(p * Math.PI);
+      } else {
+        scale = 1;
+      }
 
-      // 计算头像位置
-      const size = 48;
-      const spacing = 12;
-      const totalWidth = 5 * size + 4 * spacing;
-      const startX = (canvas?.width || 400 - totalWidth) / 2;
-      const topMargin = globalThis.__gridStartY - 80;
-      const x = startX + slotIndex * (size + spacing) + size / 2;
-      const y = topMargin + size / 2;
+      // 动态位移：根据正弦曲线完成从 0 到偏移量再返回 0 的过程
+      const dynOffsetX = (e.offsetX || 0) * Math.sin(p * Math.PI);
+      const dynOffsetY = (e.offsetY || 0) * Math.sin(p * Math.PI);
 
-      ctx.save();
-      ctx.translate(x + (e.offsetX || 0), y + (e.offsetY || 0));
-      ctx.scale(scale, scale);
-
-      // 记录放大状态
+      // 更新全局偏移量与缩放供 UI 层使用
       globalThis.avatarSlotScales = globalThis.avatarSlotScales || {};
+      globalThis.avatarSlotOffsets = globalThis.avatarSlotOffsets || {};
       globalThis.avatarSlotScales[slotIndex] = scale;
+      globalThis.avatarSlotOffsets[slotIndex] = { x: dynOffsetX, y: dynOffsetY };
 
-      ctx.restore();
+      // 无需在 effects 层应用 translate/scale，因为 UI 层会读取全局变量绘制
     }
 
     else if (e.type === 'shake') {
@@ -731,13 +738,16 @@ export function createMonsterBounce(duration = 300) {
   });
 }
 
-export function createAvatarFlash(slotIndex, scale = 1.3, duration = 400) {
+// 支持可选偏移量：offsetX、offsetY 用于位移头像，例如攻击时向前弹出
+export function createAvatarFlash(slotIndex, scale = 1.3, duration = 400, offsetX = 0, offsetY = 0) {
   effects.push({
     type: 'avatar_flash',
     slotIndex,
     startTime: Date.now(),
     duration,
-    scale
+    scale,
+    offsetX,
+    offsetY
   });
 }
 

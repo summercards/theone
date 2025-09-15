@@ -711,6 +711,31 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
       ctx.restore();
       ctx.drawImage(roleIcon, iconX, iconY, iconSize, iconSize);
     }
+
+    // === 伤害属性数值显示 ===
+    const roleAttrMap = {
+      '战士': 'physical',
+      '游侠': 'physical',
+      '刺客': 'physical',
+      '坦克': 'physical',
+      '法师': 'magical',
+      '辅助': 'magical'
+    };
+    const attrKey = roleAttrMap[hero.role] || 'physical';
+    const attrValue = hero.attributes?.[attrKey] ?? 0;
+    const numFontSize = iconSize * 0.7;
+    const textX = offsetX + scaledSize - 4;
+    const textY = offsetY + scaledSize - 4;
+    ctx.save();
+    ctx.font = `bold ${Math.floor(numFontSize)}px sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#000';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeText(`${attrValue}`, textX, textY);
+    ctx.fillText(`${attrValue}`, textX, textY);
+    ctx.restore();
     // === 💰 未雇佣时绘制金币锁 ===
 if (typeof hiredHeroIds !== 'undefined' && !hiredHeroIds.has(hero.id)) {
     // 黑色半透明遮罩
@@ -1792,39 +1817,11 @@ function handleSwap(src, dst) {
           logBattle("棋盘扩展效果结束，恢复为 6x6");
         }
       }
-      if (gaugeCount >= (globalThis.actionLimit || 5)) {
-        const dmgToDeal = attackGaugeDamage;
-        gaugeFlashTime = Date.now();
-        gaugeCount = 0;
-        playerActionCounter = 0; // ✅ 重置操作次数
-      
-        const heroes = getSelectedHeroes(); // 获取出战英雄（长度始终是 5）
-        const interval = 650;
-        const startDelay = 650;
-      
-        let currentIndex = 0;
-        const totalHeroes = heroes.filter(h => h).length; // 只统计有效英雄
-        const totalDuration = startDelay + totalHeroes * interval + 350;
-      
-        function releaseNextHero() {
-          if (currentIndex >= heroes.length) return;
-          if (heroes[currentIndex]) {
-            releaseHeroSkill(currentIndex);
-          }
-          currentIndex++;
-          if (currentIndex < heroes.length) {
-            setTimeout(releaseNextHero, interval);
-          }
-        }
-      
-        setTimeout(releaseNextHero, startDelay);
-      
-        // 粗暴写死整段释放 + 缓冲后再结算伤害
-        setTimeout(() => {
-            const finalDamage = attackGaugeDamage; // 释放完技能后才读取
-            startAttackEffect(finalDamage);     
-          drawGame();
-        }, totalDuration);
+      // 取消基于蓄力槽的自动攻击结算。原逻辑在 gaugeCount 达到 actionLimit 时，
+      // 会依次释放英雄技能并在结尾结算一次伤害。现在直接在方块消除时处理伤害，
+      // 因此这里不再执行任何操作。
+      if (false) {
+        /* 原蓄力槽攻击触发逻辑被移除 */
       }
       
       

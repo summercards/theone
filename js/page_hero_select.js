@@ -1136,6 +1136,37 @@ function drawIcon(ctx, hero, x, y, size = ICON, isFromPool = false) {
         ctx.strokeText(hero.name, x + 4, y + size - 3);
         ctx.fillText(hero.name,   x + 4, y + size - 3);
       }
+
+      // === 显示伤害属性数值（右下角） ===
+      {
+        const roleAttrMap = {
+          '战士': 'physical',
+          '游侠': 'physical',
+          '刺客': 'physical',
+          '坦克': 'physical',
+          '法师': 'magical',
+          '辅助': 'magical'
+        };
+        const attrKey = roleAttrMap[hero.role] || 'physical';
+        let savedData;
+        try {
+          savedData = wx.getStorageSync('heroProgress')?.[hero.id];
+        } catch (e) { savedData = null; }
+        const attrValue = (savedData?.attributes?.[attrKey]) ?? (hero.attributes?.[attrKey]) ?? 0;
+        const numSize = iconSize * 0.7;
+        const textX2 = x + size - 4;
+        const textY2 = y + size - 4;
+        ctx.save();
+        ctx.font = `bold ${Math.floor(numSize)}px sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#000';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.strokeText(`${attrValue}`, textX2, textY2);
+        ctx.fillText(`${attrValue}`, textX2, textY2);
+        ctx.restore();
+      }
       
     // ==== 等级角标 ====
     const level = saved?.level ?? hero.level ?? 1;

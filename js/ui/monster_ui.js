@@ -94,6 +94,19 @@ export function drawMonsterSprite(ctx, canvas) {
     ctx.restore();
   }
 
+  // Save the monster sprite center position for other systems (e.g., loot chest origin).
+  try {
+    globalThis.monsterSpritePos = {
+      x: x + SPR_W / 2,
+      y: y + SPR_H / 2,
+      width: SPR_W,
+      height: SPR_H
+    };
+  } catch (e) {
+    // Ensure property exists to avoid undefined access if an error occurs.
+    globalThis.monsterSpritePos = globalThis.monsterSpritePos || null;
+  }
+
   // 取消绘制品质边框，稀有度通过名称颜色区分
 
   const BAR_W = 280;

@@ -164,22 +164,43 @@ export function getMonster() {
   
     /* ---------- B. 生成宝箱 ---------- */
     if (amount > 0 && globalThis.canvasRef && globalThis.imageCache?.lootChests?.length) { // 📦Loot
-      try {
-        const canvas = globalThis.canvasRef;
-  
-        /* 起点：怪物中心附近 ±18px */
-        const sx = canvas.width / 2 + (Math.random() - 0.5) * 36;
-        const sy = globalThis.__gridStartY - 200 + (Math.random() - 0.5) * 36;
-  
-        /* 终点：整条头像栏随机 */
-        const heroBarW = 5 * 48 + 4 * 12;                    // 5 头像 + 4 间隔
-        const ex = (canvas.width - heroBarW) / 2 + Math.random() * heroBarW;
-        
-        const ey = globalThis.__gridStartY - 80 + 48 + -160      // ▼ 基准改到头像下
-                  + (Math.random() - 0.5) * 20;                //   再 ±10px 抖动
-        createLootChest(sx, sy, ex, ey, 650);                      // 0.65 s 抛物
-      } catch (err) {
-        console.warn('[LootChest] 生成失败', err);
+      // 掉落宝箱概率调整：仅以一定概率生成宝箱
+      const CHEST_DROP_PROB = 0.2; // 10%~25%之间取值，可根据需要调整
+      if (Math.random() < CHEST_DROP_PROB) {
+        try {
+          const canvas = globalThis.canvasRef;
+          // 起点：以当前怪物贴图中心为起始，添加少许随机抖动。
+          // 如果 monsterSpritePos 不存在，回退到玩家 HP 条中心。
+          let sx, sy;
+          const sprite = globalThis.monsterSpritePos;
+          if (sprite && typeof sprite.x === 'number' && typeof sprite.y === 'number') {
+            sx = sprite.x + (Math.random() - 0.5) * 36;
+            sy = sprite.y + (Math.random() - 0.5) * 36;
+          } else {
+            const hpBar = globalThis.hpBarPos || { x: canvas.width / 2 - 140, y: globalThis.__gridStartY - 20, width: 280, height: 20 };
+            sx = hpBar.x + hpBar.width / 2 + (Math.random() - 0.5) * 36;
+            sy = hpBar.y + hpBar.height / 2 + (Math.random() - 0.5) * 36;
+          }
+
+          // 终点：伤害槽区域（隐藏的计数槽）内随机位置，减少高度散布范围 40%。
+          const gaugeTop = globalThis.__gridStartY - 170;
+          const gaugeBottom = globalThis.__gridStartY - 80;
+          // 将范围缩小到原来的 60%，并以中心为基准
+          const fullRange = gaugeBottom - gaugeTop;
+          const reducedRange = fullRange * 0.6;
+          const centerY = gaugeTop + fullRange / 2;
+          const eyMin = centerY - reducedRange / 2;
+          const eyMax = centerY + reducedRange / 2;
+          const ey = eyMin + Math.random() * (eyMax - eyMin);
+
+          // 在水平方向上增加可视区域的随机散布，使用 5 个头像栏宽度相仿的范围
+          const range = 5 * 48 + 4 * 12;
+          const ex = (canvas.width - range) / 2 + Math.random() * range;
+
+          createLootChest(sx, sy, ex, ey, 650); // 0.65 s 抛物
+        } catch (err) {
+          console.warn('[LootChest] 生成失败', err);
+        }
       }
     }
   

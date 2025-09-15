@@ -1084,6 +1084,34 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
       ctx.restore();
       ctx.drawImage(roleIcon, iconX, iconY, iconSize, iconSize);
     }
+
+    // === 伤害属性数值显示 ===
+    // 根据职业确定应当显示的攻击属性：战士/游侠/刺客/坦克 用 physical，法师/辅助 用 magical
+    const roleAttrMap = {
+      '战士': 'physical',
+      '游侠': 'physical',
+      '刺客': 'physical',
+      '坦克': 'physical',
+      '法师': 'magical',
+      '辅助': 'magical'
+    };
+    const attrKey = roleAttrMap[hero.role] || 'physical';
+    const attrValue = hero.attributes?.[attrKey] ?? 0;
+    // 字号参考职业图标大小的 70%
+    const numFontSize = iconSize * 0.7;
+    // 显示数字位置改到左下角：放在职业图标右侧，与边缘保持 4px 间隔
+    const textX = offsetX + 4 + iconSize + 2;
+    const textY = offsetY + scaledSize - 4;
+    ctx.save();
+    ctx.font = `bold ${Math.floor(numFontSize)}px sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#000';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeText(`${attrValue}`, textX, textY);
+    ctx.fillText(`${attrValue}`, textX, textY);
+    ctx.restore();
   }
   
   
@@ -1199,18 +1227,21 @@ const DAMAGE巢底部 = __gridStartY - 80;
 const centerY = (DAMAGE巢顶部 + DAMAGE巢底部) / 2;
 gaugeCenterPos = { x: canvasRef.width / 2, y: centerY };
 // 🎯 绘制
-ctxRef.save();
-ctxRef.setTransform(1, 0, 0, 1, 0, 0);
-ctxRef.font = `bold ${fontSize}px Impact, sans-serif`;
-ctxRef.textAlign = 'center';
-ctxRef.textBaseline = 'middle';
+// 取消攻击槽显示：不再绘制累计伤害文本，但保留计算逻辑，以便需要时可启用
+if (false) {
+  ctxRef.save();
+  ctxRef.setTransform(1, 0, 0, 1, 0, 0);
+  ctxRef.font = `bold ${fontSize}px Impact, sans-serif`;
+  ctxRef.textAlign = 'center';
+  ctxRef.textBaseline = 'middle';
 
-ctxRef.fillStyle = gradient;
-ctxRef.lineWidth = strokeWidth;
-ctxRef.strokeStyle = '#000';
-ctxRef.strokeText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
-ctxRef.fillText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
-ctxRef.restore();
+  ctxRef.fillStyle = gradient;
+  ctxRef.lineWidth = strokeWidth;
+  ctxRef.strokeStyle = '#000';
+  ctxRef.strokeText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
+  ctxRef.fillText(`${attackDisplayDamage}`, canvasRef.width / 2, centerY);
+  ctxRef.restore();
+}
 
 /* === 本局金币 HUD ============================== */
 ctxRef.resetTransform?.(); // 防止变形残留
@@ -1277,7 +1308,8 @@ globalThis.backToHomeBtn = {
 };
 
 /* --- 🆕 行动倒计时：圆环 + 步数（挪到头像左侧） ------------ */
-{
+// 当前版本取消行动倒计时和蓄力槽显示，故不再绘制圆环与步数
+if (false) {
     // 延长行动步数，提高玩家的操作节奏容错空间
     const totalSteps  = 7;                                  // 总步数
     const remainSteps = Math.max(0, totalSteps - gaugeCount);
@@ -1446,7 +1478,9 @@ for (let i = 0; i < heroes.length; i++) {
   if (hero) {
     const scaleBase  = globalThis.avatarSlotScales?.[i] || 1;
     const finalScale = scaleBase * 1.05;
-    drawHeroIconFull(ctxRef, hero, sx, sy, size, finalScale);
+    // 应用头像弹跳偏移
+    const offset = (globalThis.avatarSlotOffsets && globalThis.avatarSlotOffsets[i]) || { x: 0, y: 0 };
+    drawHeroIconFull(ctxRef, hero, sx + offset.x, sy + offset.y, size, finalScale);
 
     // 等级文本
     const lvText = `Lv.${hero.level}`;
@@ -2487,26 +2521,9 @@ function handleSwap(src, dst) {
         }
       }
    
-      if (gaugeCount >= 5 && !pendingGaugeAttack) {
-        pendingGaugeAttack = true;           // 锁
-      
-        gaugeFlashTime = Date.now();         // 立即闪光
-      
-        // 0.5 s 后轰怪
-        setTimeout(() => {
-          startAttackEffect(attackGaugeDamage);
-      
-          // 清空所有英雄能量
-          const heroes = getSelectedHeroes();
-          heroes.forEach((_, idx) => setCharge(idx, 0));
-      
-          pendingGaugeAttack = false;        // 解锁
-        }, 500);
-      
-        // ★ 不再调用 tryStartHeroBurst，也不 set gaugeCount = 9999
-        //    如需额外保险，可在这里把 gaugeCount 重置为 0，
-        //    或在 startAttackEffect 末尾处理。
-      }
+      // 取消通过蓄力槽触发自动攻击的逻辑
+      // 原逻辑在 gaugeCount ≥5 且未 pendingGaugeAttack 时触发一次伤害结算。
+      // 现在直接在各色方块消除时处理伤害，因此无需此判断。
       
       
       
