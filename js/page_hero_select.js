@@ -70,13 +70,23 @@ const HERO_PER_PAGE = 15;                                   // 每页 15
 
 // 动态获取所有可用（已解锁）英雄列表。过滤掉隐藏英雄。
 function getAvailableHeroes() {
-  // 使用英雄库存列表获取可以显示的英雄，支持重复
+  // 根据库存中的实例 ID 构造英雄对象列表，支持重复
   const inv = getHeroInventory();
   const list = [];
-  inv.forEach(id => {
-    const hero = HeroData.getHeroById ? HeroData.getHeroById(id) : HeroData.heroes.find(h => h.id === id);
-    if (hero && !hero.hidden) {
-      list.push(hero);
+  inv.forEach(instanceId => {
+    const parts = String(instanceId).split('_');
+    const baseId = parts[0];
+    // 获取基础英雄数据
+    const baseHero = HeroData.getHeroById
+      ? HeroData.getHeroById(baseId)
+      : (HeroData.heroes && HeroData.heroes.find(h => h.id === baseId));
+    if (baseHero && !baseHero.hidden) {
+      // 构造一个新对象：保留基础属性但 id 使用实例 ID
+      const heroObj = {
+        ...baseHero,
+        id: instanceId
+      };
+      list.push(heroObj);
     }
   });
   return list;

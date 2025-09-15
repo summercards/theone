@@ -67,18 +67,40 @@ function captureMonsterAsHero(mon) {
   try {
     // 如果敌人来源于英雄数据，则其 heroId 指向该英雄的 ID
     if (mon && mon.heroId) {
-      // 将此英雄加入库存，允许重复
+      // 👾 捕捉敌方英雄：创建一个独立实例 ID
+      const baseId     = mon.heroId;
+      const instanceId = `${baseId}_${Date.now()}`;
+      // 初始化实例的进度：1级、0经验、复制基础属性与 HP
+      try {
+        const prog = wx.getStorageSync('heroProgress') || {};
+        const baseHero = HeroData.getHeroById
+          ? HeroData.getHeroById(baseId)
+          : (HeroData.heroes && HeroData.heroes.find(h => h.id === baseId));
+        const attrs = baseHero && baseHero.attributes ? { ...baseHero.attributes } : {};
+        const hpVal = baseHero && typeof baseHero.hp === 'number' ? baseHero.hp : 100;
+        prog[instanceId] = {
+          level: 1,
+          exp: 0,
+          attributes: attrs,
+          locked: false,
+          hp: hpVal
+        };
+        wx.setStorageSync('heroProgress', prog);
+      } catch (e) {
+        console.warn('初始化捕捉英雄实例进度失败', e);
+      }
+      // 加入库存，支持重复
       try {
         const inv = wx.getStorageSync('heroInventory');
         let arr = Array.isArray(inv) ? inv.slice() : [];
-        arr.push(mon.heroId);
+        arr.push(instanceId);
         wx.setStorageSync('heroInventory', arr);
       } catch (e) {
         // ignore
       }
-      // 调用 unlockHero 直接解锁该英雄（如果尚未解锁）
+      // 解锁基础英雄（若未解锁）
       if (typeof unlockHero === 'function') {
-        unlockHero(mon.heroId);
+        unlockHero(baseId);
       }
       return;
     }
@@ -126,8 +148,8 @@ globalThis.enterCapturePhase = function(monster) {
         globalThis.capturing = false;
         return;
       }
-      // 收服成功概率，可根据需要调整
-      const chance = 0.6;
+      // 收服成功概率：调高为 100% 方便测试，如需调整请修改此处
+      const chance = 1.0;
       if (Math.random() < chance) {
         // 成功收服：解锁英雄并提示
         captureMonsterAsHero(monster);
@@ -136,6 +158,8 @@ globalThis.enterCapturePhase = function(monster) {
           content: `${name} 已加入英雄池！`,
           showCancel: false,
           success() {
+            // 🏁 捕捉成功后立即结束战斗
+            endBattleAfterCapture(monster);
             globalThis.capturing = false;
           }
         });
@@ -153,6 +177,63 @@ globalThis.enterCapturePhase = function(monster) {
     }
   });
 };
+
+/**
+ * 捕捉成功后立即结束战斗并结算奖励。
+ * 模仿正常击败敌人的流程，发放金币与经验，弹出胜利弹窗。
+ * @param {Object} capturedMonster - 捕捉成功的怪物对象，用于计算等级与奖励
+ */
+function endBattleAfterCapture(capturedMonster) {
+  try {
+    // 强制令当前怪物 HP 为 0
+    const mon = (typeof getMonster === 'function') ? getMonster() : null;
+    if (mon) {
+      mon.hp = 0;
+    }
+    // 发放金币
+    earnedGold = getMonsterGold();
+    addCoins(earnedGold);
+    goldPopTime = Date.now();
+    displayedGold = getSessionCoins();
+    levelJustCompleted = currentLevel;
+    // 计算经验，根据捕捉敌人的等级决定
+    const level = capturedMonster?.level ?? (mon?.level ?? 1);
+    const isBoss = capturedMonster?.isBoss ?? (mon?.isBoss ?? false);
+    const exp   = Math.floor(level * 5 + 10 + (isBoss ? 50 : 0));
+    globalThis.expGainedThisRound = exp;
+    if (typeof rewardExpToHeroes === 'function') {
+      rewardExpToHeroes(exp);
+    }
+    // 清除宝箱动画并锁定后续事件
+    if (typeof clearLootChests === 'function') clearLootChests();
+    if (typeof lockForVictory   === 'function') lockForVictory();
+    // 准备弹窗数据
+    popupGoldDisplayed = 0;
+    popupGoldStartTime = Date.now();
+    globalThis.victoryDialogText =
+      VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
+    globalThis.levelRewards      = [];
+    globalThis.currentChestStats = {};
+    // 弹出胜利弹窗
+    showVictoryPopup = true;
+    if (typeof updatePlayerStats === 'function') {
+      updatePlayerStats({
+        stage: currentLevel,
+        damage: 0,
+        gold: getSessionCoins()
+      });
+    }
+    if (wx && typeof wx.setStorageSync === 'function') {
+      wx.setStorageSync('lastLevel', currentLevel.toString());
+    }
+    // 重新绘制游戏界面
+    if (typeof drawGame === 'function') {
+      drawGame();
+    }
+  } catch (err) {
+    console.warn('捕捉结束战斗流程异常', err);
+  }
+}
 
 function haltGame() {           // ☆ 统一熔断函数
   exitingGame      = true;      // ① 标记退出

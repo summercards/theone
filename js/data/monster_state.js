@@ -11,6 +11,12 @@ let monster = null;
 let turnCounter = 0;
 let defeatedBossLevel = 0; // 记录击败的最高 boss 等级
 
+// 区域等级范围：不同区域产生不同等级的敌人
+const areaLevelRanges = {
+  forest: { min: 1, max: 3 },
+  snow:   { min: 4, max: 6 }
+};
+
 
 export function markBossDefeated(level) {
     if (level > defeatedBossLevel) {
@@ -39,8 +45,12 @@ export function loadMonster(level = 1) {
     const hero = pool[Math.floor(Math.random() * pool.length)];
     // 如果没有英雄数据，回退到第一个英雄
     const chosen = hero || (HeroData.heroes && HeroData.heroes[0]);
-    // 将英雄转换为怪物格式
-    const proto = heroToMonster(chosen, level);
+    // 根据区域随机生成等级范围
+    const range = areaLevelRanges[area] || { min: 1, max: 1 };
+    const randLv = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+    // 将英雄转换为怪物格式，传入随机等级
+    const proto = heroToMonster(chosen, randLv);
+    proto.level = randLv;
     // 深拷贝，避免直接改动原型
     monster = JSON.parse(JSON.stringify(proto));
     monster.hp = monster.maxHp;

@@ -6,6 +6,7 @@
 const { drawRoundedRect } = require('../utils/canvas_utils.js');
 import { getMonster } from '../data/monster_state.js';
 import { monsterHitFlashTime } from '../utils/game_shared.js';
+const HeroData = require('../data/hero_data.js');
 
 
 const monsterImageCache = {};
@@ -91,6 +92,31 @@ export function drawMonsterSprite(ctx, canvas) {
     ctx.filter = flash ? 'brightness(2)' : 'none';
     ctx.drawImage(img, 0, 0, SPR_W, SPR_H);
     ctx.restore();
+  }
+
+  // 绘制怪物品质边框以区分稀有度
+  try {
+    const baseId = (monster.heroId || '').split('_')[0];
+    const baseHero = HeroData.getHeroById ? HeroData.getHeroById(baseId) : null;
+    const rarity = baseHero?.rarity || 'R';
+    const colorMap = {
+      N: '#B0B0B0',
+      R: '#4CAF50',      // 绿色
+      SR: '#2196F3',     // 蓝色
+      SSR: '#9C27B0',    // 紫色
+      UR: '#FF9800'      // 橙色
+    };
+    const frameColor = colorMap[rarity] || '#FFFFFF';
+    const framePadding = 6;
+    const frameX = x - framePadding;
+    const frameY = y - framePadding;
+    const frameW = SPR_W + framePadding * 2;
+    const frameH = SPR_H + framePadding * 2;
+    ctx.strokeStyle = frameColor;
+    ctx.lineWidth = 4;
+    drawRoundedRect(ctx, frameX, frameY, frameW, frameH, 12, false, true);
+  } catch (err) {
+    console.warn('绘制品质边框失败', err);
   }
 
   const BAR_W = 280;
