@@ -8,6 +8,7 @@ import {
   createPersistentFireGlow, removeFireGlowEffect
 } from './effects_engine.js';
 import { hasDefeatedBoss2 } from './data/monster_state.js';
+import { getTotalCoins } from './data/coin_state.js';
 
 // --------------------------------------------------
 // 变量区
@@ -36,6 +37,28 @@ let isMuted = wx.getStorageSync('musicMuted') === true; // 读取持久化的静
 globalThis.isMusicMuted = isMuted;                       // 进程内共享
 
 const MUSIC_VOL = 0.3;
+
+/**
+ * 每日签到奖励：若玩家当天首次进入首页则发放金币奖励。
+ * 奖励值固定为100金币，直接写入本地永久金币总数。
+ */
+function checkDailyBonus() {
+  const today = new Date().toDateString();
+  const lastDate = wx.getStorageSync('lastDailyBonusDate');
+  if (lastDate !== today) {
+    // 领取奖励并记录日期
+    const total = wx.getStorageSync('totalCoins') || 0;
+    wx.setStorageSync('totalCoins', total + 100);
+    wx.setStorageSync('lastDailyBonusDate', today);
+    // 使用模态框替代 Toast，让奖励提示更加醒目并需玩家确认
+    wx.showModal({
+      title: '每日签到奖励',
+      content: '恭喜您获得 100 金币！点击确认领取。',
+      confirmText: '领取',
+      showCancel: false
+    });
+  }
+}
 
 // --------------------------------------------------
 // 音乐静音相关
@@ -70,6 +93,13 @@ export function initHomePage(ctx, switchPage, canvas) {
   canvasRef = canvas;
   pageExiting = false;
   createPersistentFireGlow(canvasRef);
+
+  // 每日登录奖励检查
+  try {
+    checkDailyBonus();
+  } catch (_) {
+    // 忽略异常，确保首页加载不受影响
+  }
 
   // 处理背景音乐
   if (bgmAudioContext) {
@@ -193,7 +223,7 @@ function drawHomeUI() {
   const yEnter   = canvasRef.height - 240;
   const yRogue   = yEnter + 80;
 
-  // 进入主关卡按钮
+  // 森林探索按钮（原主关卡）
   {
     const scale = scaleBtn('heroSelect');
     const w = mainBtnW * scale;
@@ -209,7 +239,7 @@ function drawHomeUI() {
     });
   }
 
-  // Roguelike 区域（是否解锁）
+  // Roguelike 区域按钮（魔界森林），根据 Boss 是否击败解锁
   {
     const unlocked = hasDefeatedBoss2();
     const scale = scaleBtn('roguelike');
@@ -321,6 +351,7 @@ function onTouch(e) {
     const yEnter = canvasRef.height - 240;
     const yRogue = yEnter + 80;
 
+    // 第一个大按钮：进入英雄选择（魅影旅店）
     if (xTouch >= xMain && xTouch <= xMain + btnWidth &&
         yTouch >= yEnter && yTouch <= yEnter + btnHeight) {
       playClickSound();
@@ -329,6 +360,7 @@ function onTouch(e) {
       return;
     }
 
+    // 第二个大按钮：进入 Roguelike 区域（魔界森林）
     if (xTouch >= xMain && xTouch <= xMain + btnWidth &&
         yTouch >= yRogue && yTouch <= yRogue + btnHeight) {
       if (hasDefeatedBoss2()) {

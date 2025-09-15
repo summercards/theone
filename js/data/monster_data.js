@@ -79,36 +79,45 @@ const foodMonsters = [
   // 👇 缩放比例（scale）：0.5表示显示一半大小
   const foodScales = [0.5, 0.75, 1.0, 0.5, 0.75, 1.0, 0.5, 0.75, 1.0];
   
+  // 为了减轻前期难度，我们适当降低前 1~9 关怪物的生命值与伤害，
+  // 同时增加其掉落金币数量，帮助新手更快积累资源。
   for (let i = 0; i < 9; i++) {
     const lv = i + 1;
     monsters.push(createMonster({
       id: lv,
       level: lv,
       name: foodMonsters[i],
-      maxHp: 2200 + i * 160,
+      // 原公式：2200 + i * 160 → 调整为更低的基数和增幅
+      maxHp: 1800 + i * 120,
       sprite: `${foodSprites[i]}.png`,
-      damage: [18 + i * 5, 35 + i * 5],
+      // 原伤害：[18 + i*5, 35 + i*5] → 调整为更柔和的增长
+      damage: [12 + i * 4, 24 + i * 4],
       cooldown: 2,
-      gold: 18 + lv * 2,
-      spriteSize: 120,          // 容器大小保持120不变
-      spriteScale: foodScales[i] // 👈 新增字段，控制内部贴图缩放
+      // 提高金币奖励：基础+等级×系数
+      gold: 30 + lv * 3,
+      spriteSize: 120,
+      spriteScale: foodScales[i]
     }));
   }
   
 
-  monsters.push(createMonster({
-    id: 10,
-    level: 10,
-    name: '暴食者',
-    maxHp: 18500,
-    sprite: 'glutton.png',
-    damage: [89, 129],   // ❶ 变成数组即可
-    cooldown: 3,
-    gold: 60,
-    isBoss: true,
-    spriteSize: 120,
-    spriteScale: 3 // 👈 Boss 的贴图就是 120 * 2.5 = 300 显示
-  }));
+// 调整第 10 关 Boss 数据：降低生命值与伤害，并适当提升奖励
+monsters.push(createMonster({
+  id: 10,
+  level: 10,
+  name: '暴食者',
+  // 原生命 18500 → 降低为 12000，减轻早期 Boss 难度
+  maxHp: 12000,
+  sprite: 'glutton.png',
+  // 原伤害 [89,129] → 调整为 [70,100]
+  damage: [70, 100],
+  cooldown: 3,
+  // 奖励翻倍，鼓励通关
+  gold: 100,
+  isBoss: true,
+  spriteSize: 120,
+  spriteScale: 3
+}));
 
 // ------------------------------------------------------------
 // 关卡 11~20：嫉妒怪物体系（手动定义）
@@ -395,4 +404,62 @@ for (let i = 0; i < 7; i++) {
     isBoss: true,
     gold: Math.round(src.gold * 3.2)
   }));
+}
+
+// ---------------------------------------------------------------------------
+// 为提升新手体验，对早期关卡怪物进行削弱调整，同时适当提高掉落金币。
+// 关卡 1-10：怪物血量、伤害减少至原来的 60%，攻击间隔 +1（至少 3），金币 +50%
+// 关卡 11-20：怪物血量、伤害减少至原来的 75%，金币 +40%
+monsters.forEach(mon => {
+  if (mon.level <= 10) {
+    mon.maxHp = Math.floor(mon.maxHp * 0.6);
+    if (mon.skill && mon.skill.damage) {
+      if (Array.isArray(mon.skill.damage)) {
+        mon.skill.damage = mon.skill.damage.map(d => Math.floor(d * 0.6));
+      } else {
+        mon.skill.damage = Math.floor(mon.skill.damage * 0.6);
+      }
+    }
+    // 更新顶层 atk 属性用于 UI 显示
+    if (Array.isArray(mon.skill?.damage)) {
+      mon.atk = mon.skill.damage[0];
+    } else if (mon.skill?.damage !== undefined) {
+      mon.atk = mon.skill.damage;
+    }
+    // 延长攻击冷却，让玩家有更多回合
+    mon.turns = Math.max(mon.turns + 1, 3);
+    // 提高掉落金币
+    mon.gold = Math.floor(mon.gold * 1.5);
+  } else if (mon.level > 10 && mon.level <= 20) {
+    mon.maxHp = Math.floor(mon.maxHp * 0.75);
+    if (mon.skill && mon.skill.damage) {
+      if (Array.isArray(mon.skill.damage)) {
+        mon.skill.damage = mon.skill.damage.map(d => Math.floor(d * 0.75));
+      } else {
+        mon.skill.damage = Math.floor(mon.skill.damage * 0.75);
+      }
+    }
+    if (Array.isArray(mon.skill?.damage)) {
+      mon.atk = mon.skill.damage[0];
+    } else if (mon.skill?.damage !== undefined) {
+      mon.atk = mon.skill.damage;
+    }
+    mon.gold = Math.floor(mon.gold * 1.4);
+  }
+});
+
+// ------------------------------------------------------------
+// 统一怪物和英雄的形象：使用英雄头像替代怪物贴图
+// 我们从 hero_data 中读取所有英雄的 icon 字符串，循环赋值给每个怪物的 sprite 字段。
+try {
+  const HeroData = require('./hero_data.js');
+  const heroIcons = HeroData.heroes.map(h => h.icon);
+  for (let i = 0; i < monsters.length; i++) {
+    const icon = heroIcons[i % heroIcons.length];
+    if (icon) {
+      monsters[i].sprite = icon;
+    }
+  }
+} catch (err) {
+  console.warn('加载英雄图标失败，怪物头像未替换', err);
 }

@@ -43,23 +43,27 @@ function settle(entry) {
 
 /* ---------- 掉落表 ---------- */
 export const CHEST_LOOT = {
+  // 调整宝箱掉落，使玩家更易累积资源
   basic: [
-    { id:'coin',         weight:60, qty:[20,30] },
-    { id:'potion_small', weight:30 },
-    { id:'hero_shard',   weight:10 }
+    // 提高基础箱金币掉落权重和数量
+    { id: 'coin',         weight: 80, qty: [80, 120] },
+    { id: 'potion_small', weight: 15 },
+    { id: 'hero_shard',   weight: 5 }
   ],
   silver: [
-    { id:'coin',         weight:40, qty:[60,120] },
-    { id:'potion_mid',   weight:30 },
-    { id:'scroll_fire',  weight:20 },
-    { id:'hero_shard',   weight:10 }
+    // 提高银箱金币掉落和调整概率分布
+    { id: 'coin',         weight: 60, qty: [200, 450] },
+    { id: 'potion_mid',   weight: 20 },
+    { id: 'scroll_fire',  weight: 12 },
+    { id: 'hero_shard',   weight: 8 }
   ],
   gold: [
-    { id:'coin',          weight:30, qty:[320,840] },
-    { id:'potion_big',    weight:25 },
-    { id:'scroll_meteor', weight:20 },
-    { id:'hero_shard',    weight:15 },
-    { id:'elixir_attack', weight:10 }
+    // 提高金箱金币掉落并略微下调其他掉率，鼓励玩家推关
+    { id: 'coin',          weight: 50, qty: [800, 1600] },
+    { id: 'potion_big',    weight: 20 },
+    { id: 'scroll_meteor', weight: 15 },
+    { id: 'hero_shard',    weight: 10 },
+    { id: 'elixir_attack', weight: 5 }
   ]
 };
 

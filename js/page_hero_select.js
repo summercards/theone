@@ -35,11 +35,61 @@ const {
 } = require('./data/hero_state.js');
 const HeroData          = require('./data/hero_data.js');
 
+// ======================= 英雄库存逻辑 =======================
+// 获取已收集的英雄库存数组，支持重复。该数组包含每个英雄ID。
+function getHeroInventory() {
+  let inv = [];
+  try {
+    const stored = wx.getStorageSync('heroInventory');
+    if (Array.isArray(stored)) inv = stored.slice();
+  } catch (e) {
+    inv = [];
+  }
+  return inv;
+}
+
+// 初始化英雄库存。如果库存不存在或为空，则以当前已解锁的英雄为初始库存。
+function initHeroInventory() {
+  let inv = getHeroInventory();
+  if (!Array.isArray(inv) || inv.length === 0) {
+    // 默认库存包含所有未隐藏且解锁状态为 false 的英雄（可从 heroProgress 读取锁定状态）。
+    inv = [];
+    HeroData.heroes.forEach(h => {
+      if (h.hidden) return;
+      const state = new HeroState(h.id);
+      if (!state.locked) {
+        inv.push(h.id);
+      }
+    });
+    wx.setStorageSync('heroInventory', inv);
+  }
+}
+
 const ICON       = 60;                  // 头像大小（全局常量）
 const HERO_PER_PAGE = 15;                                   // 每页 15
- const TOTAL_PAGES   = Math.ceil(                           // 页数自动算
-   HeroData.heroes.length / HERO_PER_PAGE
- );
+
+// 动态获取所有可用（已解锁）英雄列表。过滤掉隐藏英雄。
+function getAvailableHeroes() {
+  // 使用英雄库存列表获取可以显示的英雄，支持重复
+  const inv = getHeroInventory();
+  const list = [];
+  inv.forEach(id => {
+    const hero = HeroData.getHeroById ? HeroData.getHeroById(id) : HeroData.heroes.find(h => h.id === id);
+    if (hero && !hero.hidden) {
+      list.push(hero);
+    }
+  });
+  return list;
+}
+
+// 动态计算总页数，根据可用英雄数量和每页容量。
+function getTotalPages() {
+  const total = getAvailableHeroes().length;
+  return Math.max(1, Math.ceil(total / HERO_PER_PAGE));
+}
+
+// 初始化时根据可用英雄计算页数，弃用固定常量 TOTAL_PAGES。
+let TOTAL_PAGES = getTotalPages();
 
 const lockIconImg = wx.createImage();   // 锁图标
 lockIconImg.src   = 'assets/ui/lock.png';
@@ -162,6 +212,9 @@ let ctxRef, canvasRef, switchPageFn;
     switchPageFn = switchPage;
     globalThis.canvasRef = canvas;        // ✅ 让 effects_engine.js 能读取 canvas
     globalThis.__gridStartY = canvas.height * 0.35;  // ✅ 若你的头像行高度是根据此值布局的
+
+    // 初始化英雄库存
+    initHeroInventory();
     
       // ⬇️ 在初始化后立即记录当前金币
   const currentGold = getTotalCoins();
@@ -284,7 +337,8 @@ function onTouch(e) {
     pageIndex--; render();
     return;
   }
-  if (hit(x, y, btnNextRect) && pageIndex < TOTAL_PAGES - 1) {
+  // 下一页：使用动态计算的总页数判断能否翻页
+  if (hit(x, y, btnNextRect) && pageIndex < getTotalPages() - 1) {
     playFlipSound();          // ✅ 替换成新音效
     clickedKey = 'next';
     clickAnimationFrame = 0;
@@ -353,65 +407,55 @@ if (hit(x, y, globalThis.adBtnRect)) {
   /* ---------- 英雄头像区 ---------- */
   for (const { rect, hero } of iconRects) {
     if (hero && hit(x, y, rect)) {
+      // 根据实例 ID 创建英雄状态，判断是否已解锁
+      const heroState = new HeroState(hero.id);
+      const baseHero  = hero.base || {};
 
-// === 🔒 若英雄被锁，先弹确认框 ===
-if (hero.locked) {
-  const cost = hero.unlockCost || 0;
-  const coins = getTotalCoins();
-
-// === 🔒 被锁，打开自绘弹窗 ===
-if (hero.locked) {
-  if (hero.unlockBy === 'ad') {
-    // 先弹出提示框而不是直接播放广告
-    wx.showModal({
-      title: '🎥 解锁英雄',
-      content: `解锁「${hero.name}」需要观看一段广告，是否继续？`,
-      cancelText: '取消',
-      confirmText: '立即观看',
-      success(res) {
-        if (res.confirm) {
-          const videoAd = wx.createRewardedVideoAd({ adUnitId: 'adunit-0123456789abcdef' });
-
-          videoAd.onError(err => {
-            wx.showToast({ title: '广告加载失败', icon: 'none' });
-          });
-
-          videoAd.load()
-            .then(() => videoAd.show())
-            .catch(() => {
-              wx.showToast({ title: '广告展示失败', icon: 'none' });
-            });
-
-          videoAd.onClose(res => {
-            if (res && res.isEnded) {
-              const state = new HeroState(hero.id);
-              if (state.tryUnlock()) {
-                hero.locked = false;
-                render();
+      // === 🔒 若英雄被锁，先弹确认框 ===
+      if (heroState.locked) {
+        const cost  = baseHero.unlockCost || 0;
+        const coins = getTotalCoins();
+        const unlockBy = baseHero.unlockBy;
+        if (unlockBy === 'ad') {
+          // 先弹出提示框而不是直接播放广告
+          wx.showModal({
+            title: '🎥 解锁英雄',
+            content: `解锁「${baseHero.name}」需要观看一段广告，是否继续？`,
+            cancelText: '取消',
+            confirmText: '立即观看',
+            success(res) {
+              if (res.confirm) {
+                const videoAd = wx.createRewardedVideoAd({ adUnitId: 'adunit-0123456789abcdef' });
+                videoAd.onError(err => {
+                  wx.showToast({ title: '广告加载失败', icon: 'none' });
+                });
+                videoAd.load()
+                  .then(() => videoAd.show())
+                  .catch(() => {
+                    wx.showToast({ title: '广告展示失败', icon: 'none' });
+                  });
+                videoAd.onClose(res => {
+                  if (res && res.isEnded) {
+                    if (heroState.tryUnlock()) {
+                      render();
+                    }
+                  } else {
+                    wx.showToast({ title: '观看未完成', icon: 'none' });
+                  }
+                });
               }
-            } else {
-              wx.showToast({ title: '观看未完成', icon: 'none' });
             }
           });
+          return; // ⛔ 防止后续加入出战队列
+        } else {
+          unlockDialog = { show: true, hero: baseHero };
+          return render();
         }
       }
-    });
-
-    return; // ⛔ 防止后续加入出战队列
-  } else {
-    unlockDialog = { show: true, hero };
-    return render();
-  }
-}
-
-}
-
       // === 已解锁：加入出战列表 ===
       if (selectedHeroes.includes(hero.id)) return;  // 已在队列中
-
       // ✅ 找第一个已解锁的空槽位
       const empty = selectedHeroes.findIndex((h, idx) => h === null && unlockedSlots[idx]);
-      
       if (empty !== -1) {
         selectedHeroes[empty] = hero.id;
         setSelectedHeroes(selectedHeroes);
@@ -479,20 +523,39 @@ for (const { hero } of iconRects) {
       wx.showToast({ title: '至少需要一名勇者', icon: 'none' });
       return;
     }
-  
+
     playClickSound();                // ✅ 播放点击音效
     clickedKey = 'confirm';          // ✅ 触发动画缩放
     clickAnimationFrame = 0;
-  
+
     wx.setStorageSync('unlockedSlots', unlockedSlots);
     wx.setStorageSync('selectedHeroes', selectedHeroes);
-  
-    setTimeout(() => {               // ✅ 稍等180ms后切页面，让动画有时间播放
-      getLastLevel((level) => {
-        switchPageFn('game', { level });
+
+    setTimeout(() => {
+      // 弹出地图选择窗口，玩家可选择探索区域
+      const itemList = ['森林', '雪地'];
+      wx.showActionSheet({
+        itemList,
+        success(res) {
+          if (res.tapIndex === 0) {
+            globalThis.selectedArea = 'forest';
+          } else if (res.tapIndex === 1) {
+            globalThis.selectedArea = 'snow';
+          } else {
+            // 未选择或取消
+            return;
+          }
+          // 选择完区域后再进入游戏
+          getLastLevel((level) => {
+            switchPageFn('game', { level });
+          });
+        },
+        fail() {
+          // 玩家取消操作，不做任何事
+        }
       });
     }, 180);
-  
+
     return;
   }
   
@@ -568,6 +631,12 @@ function hit(px, py, r) {
 
 // ======================= 渲染 =============================
 function render() {
+  // 动态计算总页数，防止解锁新英雄后页面越界
+  TOTAL_PAGES = getTotalPages();
+  if (pageIndex >= TOTAL_PAGES) {
+    pageIndex = TOTAL_PAGES - 1;
+  }
+
   if (clickedKey) {
     clickAnimationFrame++;
     if (clickAnimationFrame > 10) {
@@ -741,14 +810,15 @@ drawRoundedRect(ctx, poolX, poolY, poolPaddingW, poolPaddingH, 10, true, false);
 ctx.restore();
 
   // 英雄池头像区域
+  // 根据当前页从可用英雄中切片。仅显示已解锁的英雄，不显示占位符。
   const startIdx = pageIndex * HERO_PER_PAGE;
-  const rawHeroes = HeroData.heroes.filter(h => !h.hidden).slice(startIdx, startIdx + HERO_PER_PAGE);
-
-  const pageHeroes = rawHeroes.map(h => h ? new HeroState(h.id) : null);
+  const inventory = getAvailableHeroes();
+  const pageHeroes = inventory.slice(startIdx, startIdx + HERO_PER_PAGE);
+  // 填充空槽到一页容量，保持固定网格
   while (pageHeroes.length < HERO_PER_PAGE) pageHeroes.push(null);
 
   iconRects.length = 0;
-  pageHeroes.forEach((hero, i) => {
+  pageHeroes.forEach((heroObj, i) => {
     const row = Math.floor(i / 5);
     const col = i % 5;
     let ix = PAD_X + col * (ICON + GAP);
@@ -756,23 +826,23 @@ ctx.restore();
     let iconRect = { x: ix, y: iy, width: ICON, height: ICON };
     const scaled = scaleToAvoidOverlap(iconRect, layoutRects);
     layoutRects.push({ x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height });
-    
+
     ctx.strokeStyle = '#C084FC';
     ctx.lineWidth = 2;
     drawRoundedRect(ctx, scaled.x, scaled.y, scaled.width, scaled.height, 8, false, true);
-    
-    if (hero) drawIcon(ctx, hero, scaled.x, scaled.y, scaled.width, true);  // ✅ 表明是英雄池
 
-
-
-    else {
+    if (heroObj) {
+      // 根据 heroObj.id 实例化 HeroState 来获取当前属性
+      const heroState = new HeroState(heroObj.id);
+      drawIcon(ctx, heroState, scaled.x, scaled.y, scaled.width, true);
+    } else {
+      // 绘制空槽占位
       ctx.fillStyle = '#4B0073';
-      drawRoundedRect(ctx, ix + 4, iy + 4, ICON - 8, ICON - 8, 8, true, false);
-      drawText(ctx, '?', ix + ICON / 2, iy + ICON / 2,
+      drawRoundedRect(ctx, scaled.x + 4, scaled.y + 4, scaled.width - 8, scaled.height - 8, 8, true, false);
+      drawText(ctx, '?', scaled.x + scaled.width / 2, scaled.y + scaled.height / 2,
         '20px IndieFlower', '#FFF', 'center', 'middle');
     }
-    iconRects.push({ rect: { x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height }, hero });
-
+    iconRects.push({ rect: { x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height }, hero: heroObj });
   });
 // 🟡 插入在这里，确保 drawIcon 后才能访问
 globalThis.layoutRects = layoutRects;
@@ -862,7 +932,8 @@ ctx.scale(scaleConfirm, scaleConfirm);
 ctx.translate(-confirmRect.width / 2, -confirmRect.height / 2);
 ctx.fillStyle = '#6d2c91';
 drawRoundedRect(ctx, 0, 0, confirmRect.width, confirmRect.height, 28, true, false);
-drawStyledText(ctx, `进入第${level}关`, confirmRect.width / 2, confirmRect.height / 2, {
+// 按钮文字改为“去探险”，点击后弹出地图选择
+drawStyledText(ctx, '去探险', confirmRect.width / 2, confirmRect.height / 2, {
   font: 'bold 20px IndieFlower', fill: '#f8d6ff', align: 'center', baseline: 'middle'
 });
 ctx.restore();

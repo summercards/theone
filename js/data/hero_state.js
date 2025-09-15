@@ -8,10 +8,16 @@ const { createHeroLevelUpEffect } = require('../effects_engine.js');
 // ========================================================
 class HeroState {
   constructor(id) {
-    const base = HeroData.getHeroById(id);
-    const saved = wx.getStorageSync('heroProgress')?.[id];
+    // 支持实例化派生ID（如 hero001_xxxxx），通过下划线前缀匹配原型
+    const fullId = id;
+    const baseId = String(id).split('_')[0];
+    const base   = HeroData.getHeroById(baseId) || {};
+    // 取出与完整ID对应的保存数据
+    const saved  = wx.getStorageSync('heroProgress')?.[fullId];
 
-    this.id     = base.id;
+    // 将实例 ID 和基础 ID 保存
+    this.id     = fullId;
+    this.baseId = baseId;
     this.name   = base.name;
     this.icon   = base.icon;
     this.role   = base.role;
@@ -20,7 +26,10 @@ class HeroState {
     this.levelUpConfig   = base.levelUpConfig || {};
     this.expToNextLevel  = 50 + (base.level || 1) * (base.level || 1) * 10;
     this.unlockCost      = base.unlockCost     || 0;
-    this.hireCost        = base.hireCost || 200;
+    // 将雇佣费用统一调整为友好的默认值：若定义了 hireCost，则不超过 10；否则默认为 10
+    this.hireCost        = base.hireCost !== undefined
+      ? Math.min(base.hireCost, 10)
+      : 10;
     this.onLevelUp = null;
 
     // ✅ 新增 HP（注意顺序必须在 saved 定义之后）
@@ -48,6 +57,7 @@ class HeroState {
 
     this.level      = saved?.level      ?? base.level ?? 1;
     this.exp        = saved?.exp        ?? base.exp   ?? 0;
+    // 锁定状态：实例化的派生 ID 默认为解锁状态
     this.locked     = saved?.locked ?? base.locked ?? false;
   }
 

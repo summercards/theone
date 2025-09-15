@@ -7,25 +7,26 @@ const HeroData = {
       icon: "swordsman.png",
       role: "战士",
       rarity: "R",
-      maxCharge: 150, // ← 新增能量上限字段
-      hireCost: 20,         // ✅ 新增字段
-      locked: false,          // ← 默认已解锁
+      maxCharge: 150,
+      hireCost: 10,
+      locked: false,
       unlockCost: 0,
-      hp: 60, // ✅ 新增
+      hp: 80,
       attributes: { physical: 12 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 2 },
-        hpGrowth: 10, // ✅ 新增，每升一级增加 10 点 HP
+        hpGrowth: 10,
         unlockSkills: {}
       },
+      // 缩短技能冷却并提高增益系数，帮助玩家快速填充攻击槽
       skill: {
         name: "破甲斩",
         description: "将自身物攻注入伤害槽",
-        effect: { type: "addGauge", source: "physical", scale: 10 },
-        cooldown: 3
+        effect: { type: "addGauge", source: "physical", scale: 12 },
+        cooldown: 2
       }
     },
     {
@@ -34,10 +35,11 @@ const HeroData = {
       icon: "mage.png",
       role: "法师",
       rarity: "R",
-      maxCharge: 250, // ← 新增能量上限字段
-      hireCost: 20,         // ✅ 新增字段
-      locked: true,
-      hp: 35, // ✅ 新增
+      // 为了提高新手体验，将能量上限、生命值适当提升，解锁成本降低，并默认解锁
+      maxCharge: 250,
+      hireCost: 10,
+      locked: false,
+      hp: 50,
       unlockBy: "ad",
       attributes: { physical: 2, magical: 10 },
       level: 1,
@@ -45,14 +47,15 @@ const HeroData = {
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { magical: 3 },
-        hpGrowth: 3, // ✅ 新增，每升一级增加 3 点 HP
+        hpGrowth: 3,
         unlockSkills: { 4: "meteorStorm" }
       },
+      // 提高火球术伤害并缩短冷却，使她的输出更具存在感
       skill: {
         name: "火球术",
         description: "发射火球造成魔法伤害",
-        effect: { type: "magicalDamage", amount: 130 },
-        cooldown: 4
+        effect: { type: "magicalDamage", amount: 150 },
+        cooldown: 3
       }
     },
     {
@@ -60,30 +63,31 @@ const HeroData = {
       name: "阿紫",
       icon: "archer.png",
       role: "游侠",
-      maxCharge: 120, // ← 新增能量上限字段
+      maxCharge: 120,
       rarity: "R",
-      hireCost: 20,         // ✅ 新增字段
-      locked: true,           // ← 现在锁定
-      unlockCost: 2300,        // ← 解锁需要 200 金币
-      hp: 55, // ✅ 新增
+      hireCost: 10,
+      locked: false,
+      unlockCost: 0,
+      hp: 70,
       attributes: { physical: 8, magical: 5 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 2, magical: 1 },
-        hpGrowth: 6, // ✅ 新增，每升一级增加 10 点 HP
+        hpGrowth: 6,
         unlockSkills: { 3: "piercingRain" }
       },
+      // 大幅提升治疗量，并缩短技能冷却，让玩家更容易恢复生命
       skill: {
         name: "自然恩泽",
-        description: "为玩家恢复生命，1级恢复12点，每级提升10%",
+        description: "为玩家恢复生命，基础恢复量提升至20点，每级提升15%",
         effect: {
           type: "healPlayer",
-          baseHeal: 12,
-          growthRate: 0.10
+          baseHeal: 20,
+          growthRate: 0.15
         },
-        cooldown: 3
+        cooldown: 2
       }
     },
    
@@ -92,26 +96,27 @@ const HeroData = {
       name: "旺财",
       icon: "knight.png",
       role: "坦克",
-      maxCharge: 180, // ← 新增能量上限字段
+      maxCharge: 180,
       rarity: "R",
-      hireCost: 20,         // ✅ 新增字段
-      hp: 90, // ✅ 新增
-      locked: true,
-      unlockCost: 1200,
+      hireCost: 10,
+      hp: 110,
+      locked: false,
+      unlockCost: 0,
       attributes: { physical: 7, magical: 3 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 3, magical: 1 },
-        hpGrowth: 15, // ✅ 新增，每升一级增加 10 点 HP
+        hpGrowth: 15,
         unlockSkills: {}
       },
+      // 增加坦克技能带来的金币收益，并缩短冷却
       skill: {
         name: "汪！",
-        description: "清除所有金币方块，每个金币方块获得5金币",
-        effect: { type: "clearCoinBlocks", coinPerBlock: 5 },
-        cooldown: 3
+        description: "清除所有金币方块，每个金币方块获得更多金币",
+        effect: { type: "clearCoinBlocks", coinPerBlock: 8 },
+        cooldown: 2
       }
       
     },
@@ -120,26 +125,27 @@ const HeroData = {
       name: "鼠鼠",
       icon: "assassin.png",
       role: "刺客",
-      maxCharge: 210, // ← 新增能量上限字段
+      maxCharge: 210,
       rarity: "R",
-      hireCost: 20,         // ✅ 新增字段
-      hp: 50, // ✅ 新增
-      locked: true,
-      unlockCost: 1900,
+      hireCost: 10,
+      hp: 65,
+      locked: false,
+      unlockCost: 0,
       attributes: { physical: 10, magical: 2 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { physical: 4 },
-        hpGrowth: 8, // ✅ 新增，每升一级增加 10 点 HP
+        hpGrowth: 8,
         unlockSkills: { 5: "shadowKill" }
       },
+      // 更频繁地生成刺客方块：每 2 级增加一个，并缩短技能冷却
       skill: {
         name: "爆炸咯！",
-        description: "随机将棋盘上的若干方块变成刺客方块（E），每3级增加一个",
-        effect: { type: "convertToEBlocks", levelsPerIncrement: 3 },
-        cooldown: 3
+        description: "随机将棋盘上的若干方块变成刺客方块（E），每2级增加一个",
+        effect: { type: "convertToEBlocks", levelsPerIncrement: 2 },
+        cooldown: 2
     }
     },
 
@@ -148,26 +154,27 @@ const HeroData = {
       name: "小蘑菇",
       icon: "priest.png",
       role: "辅助",
-      maxCharge: 110, // ← 新增能量上限字段
+      maxCharge: 110,
       rarity: "R",
-      hireCost: 20,         // ✅ 新增字段
-      hp: 32, // ✅ 新增
-      locked: true,
-      unlockCost: 1500,
+      hireCost: 10,
+      hp: 50,
+      locked: false,
+      unlockCost: 0,
       attributes: { magical: 7, healing: 10 },
       level: 1,
       exp: 0,
       expToNextLevel: 100,
       levelUpConfig: {
         attributeGrowth: { magical: 2, healing: 3 },
-        hpGrowth: 2, // ✅ 新增，每升一级增加 10 点 HP
+        hpGrowth: 2,
         unlockSkills: { 3: "divineGrace" }
       },
+      // 提高技能条加速效果，并缩短冷却，以便更频繁地触发连招
       skill: {
         name: "能量共鸣",
-        description: "所有在场英雄的技能条增加 6% + 等级%",
-        effect: { type: "boostAllGauge", basePercentage: 6 },
-        cooldown: 3
+        description: "所有在场英雄的技能条增加 8% + 等级%",
+        effect: { type: "boostAllGauge", basePercentage: 8 },
+        cooldown: 2
     }
       
     },

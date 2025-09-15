@@ -16,7 +16,8 @@ import { logBattle } from '../utils/battle_log.js';
  * 所有在场英雄蓄力槽 +10% × 方块数量
  */
 export function onEliminateSupportBlock(count) {
-  const gain = count * 10;
+  // 调整：提高能量增益，每个辅助方块提供 15% 蓄力
+  const gain = count * 15;
   const charges = getCharges();
   const heroes = getSelectedHeroes();
 

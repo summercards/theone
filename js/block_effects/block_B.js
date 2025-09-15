@@ -23,7 +23,8 @@ export function onEliminateGreenBlock(count) {
   if (count <= 0 || heroes.length === 0) return;
 
   const hasRanger = heroes.some(h => h.role === '游侠');
-  const perBlockHeal = hasRanger ? 6 : 5;
+  // 调整：提高回血量，提升绿色方块的价值
+  const perBlockHeal = hasRanger ? 10 : 8;
   const totalHeal = perBlockHeal * count;
 
   healPlayer(totalHeal); // ✅ 加血

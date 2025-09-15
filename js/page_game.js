@@ -51,6 +51,109 @@ let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
 
 let exitingGame = false;        // ☆ 新增：返回主页时置 true
 
+// -------------------------------
+// 捕捉系统支持：通过全局函数触发界面
+// 当怪物生命值降至 30% 以下时，会调用 globalThis.enterCapturePhase(monster)。
+// 下面实现捕捉逻辑：弹出模态框，玩家可尝试收服怪物。成功则解锁一个新英雄，
+// 将该英雄的名称与头像替换为怪物信息，并标记英雄为已解锁。
+globalThis.capturing = false;
+
+/**
+ * 将给定怪物转换为英雄：寻找一个尚未解锁且未隐藏的英雄占位符，
+ * 覆盖其名称和头像为怪物信息，并解锁。
+ * @param {Object} mon 怪物对象（只读）
+ */
+function captureMonsterAsHero(mon) {
+  try {
+    // 如果敌人来源于英雄数据，则其 heroId 指向该英雄的 ID
+    if (mon && mon.heroId) {
+      // 将此英雄加入库存，允许重复
+      try {
+        const inv = wx.getStorageSync('heroInventory');
+        let arr = Array.isArray(inv) ? inv.slice() : [];
+        arr.push(mon.heroId);
+        wx.setStorageSync('heroInventory', arr);
+      } catch (e) {
+        // ignore
+      }
+      // 调用 unlockHero 直接解锁该英雄（如果尚未解锁）
+      if (typeof unlockHero === 'function') {
+        unlockHero(mon.heroId);
+      }
+      return;
+    }
+    // 若无 heroId，则回退到寻找空槽位的旧逻辑
+    const heroEntry = HeroData.heroes.find(h => h.locked && !h.hidden);
+    if (!heroEntry) {
+      console.log('没有可用的英雄槽位用于收服');
+      return;
+    }
+    // 将该英雄加入库存
+    try {
+      const inv = wx.getStorageSync('heroInventory');
+      let arr = Array.isArray(inv) ? inv.slice() : [];
+      arr.push(heroEntry.id);
+      wx.setStorageSync('heroInventory', arr);
+    } catch (e) {}
+    if (typeof unlockHero === 'function') {
+      unlockHero(heroEntry.id);
+    } else {
+      heroEntry.locked = false;
+    }
+  } catch (err) {
+    console.warn('捕捉怪物到英雄失败', err);
+  }
+}
+
+/**
+ * 进入捕捉阶段：弹出选择界面，玩家可尝试收服怪物。
+ * 传入的 monster 对象仅用于显示名称，不会直接修改其血量。
+ * @param {Object} monster
+ */
+globalThis.enterCapturePhase = function(monster) {
+  // 若已经在捕捉流程中，则忽略重复调用
+  if (globalThis.capturing) return;
+  globalThis.capturing = true;
+  const name = monster?.name || '未知怪物';
+  wx.showModal({
+    title: '收服怪物',
+    content: `${name} 濒临战败，是否尝试收服？`,
+    confirmText: '收服',
+    cancelText: '放弃',
+    success(res) {
+      if (!res || !res.confirm) {
+        // 玩家选择放弃收服
+        globalThis.capturing = false;
+        return;
+      }
+      // 收服成功概率，可根据需要调整
+      const chance = 0.6;
+      if (Math.random() < chance) {
+        // 成功收服：解锁英雄并提示
+        captureMonsterAsHero(monster);
+        wx.showModal({
+          title: '收服成功',
+          content: `${name} 已加入英雄池！`,
+          showCancel: false,
+          success() {
+            globalThis.capturing = false;
+          }
+        });
+      } else {
+        // 收服失败：提示失败信息
+        wx.showModal({
+          title: '收服失败',
+          content: `${name} 挣扎逃脱，继续战斗！`,
+          showCancel: false,
+          success() {
+            globalThis.capturing = false;
+          }
+        });
+      }
+    }
+  });
+};
+
 function haltGame() {           // ☆ 统一熔断函数
   exitingGame      = true;      // ① 标记退出
   clearingRunning  = false;     // ② 立即停掉棋盘连锁
@@ -58,12 +161,16 @@ function haltGame() {           // ☆ 统一熔断函数
   heroBurstRunning = false;     // ④ 如果正播连招，也立刻视为结束
 }
 
+// 调整关卡配置信息：前几关采用更小的棋盘和较少的方块类型，以便新手快速上手。
 const LevelConfigs = {
-    1: { gridSize: 5, allowedBlocks: ['A', 'D', 'F'] },
+    // 关卡 1 采用 4×4 棋盘，只有 A/D/F 三种方块，匹配机会更多
+    1: { gridSize: 4, allowedBlocks: ['A', 'D', 'F'] },
+    // 关卡 2 添加游侠方块并维持 5×5，大幅提升可消玩法
     2: { gridSize: 5, allowedBlocks: ['A', 'B', 'F'] },
-    3: { gridSize: 5, allowedBlocks: ['A', 'B',  'D', 'F'] },
-    4: { gridSize: 6, allowedBlocks: ['A', 'B',  'D', 'F'] },
-    5: { gridSize: 6, allowedBlocks: ['A', 'B',  'D',  'F'] },
+    // 关卡 3 起使用原有难度设置
+    3: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    4: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    5: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
     6: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
     7: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
     8: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
@@ -763,21 +870,33 @@ ctx.fillText(`Lv.${up.oldLevel} → Lv.${up.newLevel}`, nameX, lvlY);
       });
     }
   
-    /* 7. “下一关”按钮 */
-    const btnW = 160, btnH = 48;
-    const btnX = (W - btnW) / 2;
-    const btnY = H - 80;  // 更靠近底部
-  
+    /* 7. 行动按钮：继续探索 / 回到酒馆 */
+    const btnW  = 140;
+    const btnH  = 48;
+    const spacing = 24;
+    const totalW = btnW * 2 + spacing;
+    const btnY = H - 80;
+    const startX = (W - totalW) / 2;
+
+    // 继续探索按钮
     ctx.fillStyle = '#D43C44';
-    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
-  
+    drawRoundedRect(ctx, startX, btnY, btnW, btnH, 12, true, false);
     ctx.fillStyle = '#F3E9DB';
-    ctx.font = 'bold 22px sans-serif';
+    ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('下一关', W / 2, btnY + btnH / 2);
-  
-    globalThis.victoryBtnArea = { x: btnX, y: btnY, width: btnW, height: btnH };
+    ctx.fillText('继续探索', startX + btnW / 2, btnY + btnH / 2);
+
+    // 回到酒馆按钮
+    ctx.fillStyle = '#6D2C91';
+    const secondX = startX + btnW + spacing;
+    drawRoundedRect(ctx, secondX, btnY, btnW, btnH, 12, true, false);
+    ctx.fillStyle = '#F3E9DB';
+    ctx.fillText('回到酒馆', secondX + btnW / 2, btnY + btnH / 2);
+
+    // 保存按钮区域供点击检测
+    globalThis.victoryContinueArea = { x: startX, y: btnY, width: btnW, height: btnH };
+    globalThis.victoryReturnArea  = { x: secondX, y: btnY, width: btnW, height: btnH };
   }
   
   
@@ -1035,7 +1154,8 @@ globalThis.backToHomeBtn = {
 
 /* --- 🆕 行动倒计时：圆环 + 步数（挪到头像左侧） ------------ */
 {
-    const totalSteps  = 5;                                  // 总步数
+    // 延长行动步数，提高玩家的操作节奏容错空间
+    const totalSteps  = 7;                                  // 总步数
     const remainSteps = Math.max(0, totalSteps - gaugeCount);
     const pct         = remainSteps / totalSteps;           // 0~1
   
@@ -1955,50 +2075,73 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
   }
   return; // ✅ 阻止点击落入“下一关”
 }
-    // ✅ 胜利弹窗点击“下一关”
+    // ✅ 胜利弹窗点击“继续探索” / “回到酒馆”
     if (showVictoryPopup) {
-      const btn = globalThis.victoryBtnArea;
-      if (btn && x >= btn.x && x <= btn.x + btn.width &&
-                 y >= btn.y && y <= btn.y + btn.height) {
+      const cont = globalThis.victoryContinueArea;
+      const ret  = globalThis.victoryReturnArea;
+      // 点击继续探索按钮
+      if (cont && x >= cont.x && x <= cont.x + cont.width &&
+                 y >= cont.y && y <= cont.y + cont.height) {
         showVictoryPopup = false;
-        clearLootChests();      // ✨ 彻底移除上局宝箱
-        // ——— 清空上一关宝箱全部临时状态 ———
-globalThis.victoryChestRects   = [];
-globalThis.victoryChestOpened  = [];
-globalThis.victoryChestLoot    = [];
-globalThis.chestDropsThisRound = [];
-
-    // ✅ 清除胜利弹窗的临时状态，防止下一关残留
-    globalThis.victoryDialogText   = null;
-    globalThis.levelRewardsHeroId  = null;
-    globalThis.rewardHeroIconRect  = null;
-    globalThis.levelRewards        = [];
-    globalThis.heroLevelUps        = [];
-
-        gaugeCount = 0;        // 只清操作计数
-        currentLevel = currentLevel + 1; // ✅ 明确用本地 currentLevel 推进
-        const config = LevelConfigs[currentLevel] || {};
-globalThis.gridSize = config.gridSize || 6;
-globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
-        levelJustCompleted = currentLevel;  // ✅ 更新胜利用变量
+        clearLootChests();
+        // 清空上一局宝箱全部临时状态
+        globalThis.victoryChestRects   = [];
+        globalThis.victoryChestOpened  = [];
+        globalThis.victoryChestLoot    = [];
+        globalThis.chestDropsThisRound = [];
+        // 清理胜利弹窗临时状态
+        globalThis.victoryDialogText   = null;
+        globalThis.levelRewardsHeroId  = null;
+        globalThis.rewardHeroIconRect  = null;
+        globalThis.levelRewards        = [];
+        globalThis.heroLevelUps        = [];
+        gaugeCount = 0;
         attackGaugeDamage = 0;
         attackDisplayDamage = 0;
-        const monster = loadMonster(currentLevel); // ✅ 使用正确关卡加载怪物
-     
-    
+        // 保持当前等级不变，重新加载怪物及棋盘
+        const config = LevelConfigs[currentLevel] || {};
+        globalThis.gridSize = config.gridSize || 6;
+        globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
+        loadMonster(currentLevel);
         initGrid();
-        // ===== 重新载入最新出战英雄 =====
-       const heroes = getSelectedHeroes();
-       const totalHp = heroes.reduce((sum, h) => sum + (h?.hp || 0), 0);
-       initPlayer(totalHp);                       // 更新玩家血量
-
-       // 重新注册钩子，让新英雄技能生效
-       registerGameHooks({
-         expand: expandGridTo,
-         addGauge: addToAttackGauge,
-         hitFlash: monsterHitFlashTime
-       });
+        // 重新载入最新出战英雄
+        const heroes = getSelectedHeroes();
+        const totalHp = heroes.reduce((sum, h) => sum + (h?.hp || 0), 0);
+        initPlayer(totalHp);
+        // 重新注册钩子，让新英雄技能生效
+        registerGameHooks({
+          expand: expandGridTo,
+          addGauge: addToAttackGauge,
+          hitFlash: monsterHitFlashTime
+        });
         drawGame();
+        return;
+      }
+      // 点击回到酒馆按钮
+      if (ret && x >= ret.x && x <= ret.x + ret.width &&
+                y >= ret.y && y <= ret.y + ret.height) {
+        showVictoryPopup = false;
+        clearLootChests();
+        // 清空上一局宝箱全部临时状态
+        globalThis.victoryChestRects   = [];
+        globalThis.victoryChestOpened  = [];
+        globalThis.victoryChestLoot    = [];
+        globalThis.chestDropsThisRound = [];
+        globalThis.victoryDialogText   = null;
+        globalThis.levelRewardsHeroId  = null;
+        globalThis.rewardHeroIconRect  = null;
+        globalThis.levelRewards        = [];
+        globalThis.heroLevelUps        = [];
+        gaugeCount = 0;
+        attackGaugeDamage = 0;
+        attackDisplayDamage = 0;
+        // 保存当前等级到存档
+        wx.setStorageSync('lastLevel', currentLevel.toString());
+        // 停止游戏流程
+        haltGame();
+        // 返回到英雄选择（酒馆）界面
+        switchPageFn?.('heroSelect');
+        return;
       }
       return;
     }
@@ -2476,33 +2619,8 @@ const levelRewardTexts = [];
   globalThis.currentChestStats = {};      // 用完就清空，防止带到下一关
   // ===============================================
 
-let heroId = null;
-if (currentLevel === 2) {
-  heroId = 'hero002';
-} else if (currentLevel === 4) {
-  heroId = 'hero003';
-} else if (currentLevel === 6) {
-  heroId = 'hero004';
-} else if (currentLevel === 8) {
-  heroId = 'hero005';
-} else if (currentLevel === 10) {
-  heroId = 'hero016';
-}
-
-if (heroId && !isHeroUnlocked(heroId)) {
-    if (typeof unlockHero === 'function') unlockHero(heroId);
-    globalThis.levelRewardsHeroId = heroId;          // 用于弹窗展示
-  
-    /* ⭐️ 自动加入出战栏 —— 复用原点击逻辑 */
-    const team     = wx.getStorageSync('selectedHeroes') || [null, null, null, null, null];
-    const emptyIdx = team.findIndex(id => !id);
-    if (emptyIdx >= 0) {
-      team[emptyIdx] = heroId;
-      wx.setStorageSync('selectedHeroes', team);
-      setSelectedHeroes(team);
-    }
-    /* ------------------------------------------------------- */
-  }
+// 取消按关卡自动奖励英雄的逻辑，探索模式下不再基于当前关卡解锁英雄
+const heroId = null;
   
 
 
