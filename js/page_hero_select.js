@@ -7,6 +7,11 @@ const AD_COOLDOWN = 3 * 60 * 1000; // 3 分钟，单位毫秒
 let showUpgradeButtons = false;
 let showDialog = true;
 let dialogInterval = null; // ✅ 放到最顶层作用域
+// ==== 区域选择地图 ====
+// 控制是否显示区域选择地图弹窗
+let showAreaMap = false;
+// 存储每个区域按钮的矩形和解锁状态，用于点击检测
+let areaButtonRects = [];
 // ======== 排序状态 ========
 // 0: 按职业类型；1: 按稀有度；2: 按等级；3: 按名称
 let sortMode = 0;
@@ -296,6 +301,33 @@ let ctxRef, canvasRef, switchPageFn;
 function onTouch(e) {
   if (!e.changedTouches || !e.changedTouches[0]) return;
   const { clientX: x, clientY: y } = e.changedTouches[0];
+  // 如果正在显示区域选择地图，优先处理点击逻辑
+  if (showAreaMap) {
+    for (const btn of areaButtonRects) {
+      if (!btn) continue;
+      const bx = btn.x;
+      const by = btn.y;
+      const bw = btn.width;
+      const bh = btn.height;
+      if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
+        // 点击了某个区域按钮
+        if (btn.unlocked) {
+          globalThis.selectedArea = btn.key;
+          showAreaMap = false;
+          // 选择完区域后进入游戏
+          getLastLevel((level) => {
+            switchPageFn('game', { level });
+          });
+        } else {
+          wx.showToast({ title: '该区域未解锁', icon: 'none' });
+        }
+        return;
+      }
+    }
+    // 点击在区域外，则关闭地图界面
+    showAreaMap = false;
+    return render();
+  }
   // —— 排序按钮 ——
   if (sortBtnRect && hit(x, y, sortBtnRect)) {
     playClickSound();
@@ -586,29 +618,10 @@ for (const { hero } of iconRects) {
     wx.setStorageSync('unlockedSlots', unlockedSlots);
     wx.setStorageSync('selectedHeroes', selectedHeroes);
 
+    // 点击确认按钮后显示区域选择地图，而不是弹出底部 ActionSheet
     setTimeout(() => {
-      // 弹出地图选择窗口，玩家可选择探索区域
-      const itemList = ['森林', '雪地'];
-      wx.showActionSheet({
-        itemList,
-        success(res) {
-          if (res.tapIndex === 0) {
-            globalThis.selectedArea = 'forest';
-          } else if (res.tapIndex === 1) {
-            globalThis.selectedArea = 'snow';
-          } else {
-            // 未选择或取消
-            return;
-          }
-          // 选择完区域后再进入游戏
-          getLastLevel((level) => {
-            switchPageFn('game', { level });
-          });
-        },
-        fail() {
-          // 玩家取消操作，不做任何事
-        }
-      });
+      showAreaMap = true;
+      render();
     }, 180);
 
     return;
@@ -732,9 +745,75 @@ gradient.addColorStop(1, richPurple);     // 渐变到底部为紫色
 ctx.fillStyle = gradient;
 ctx.fillRect(0, 0, canvas.width, canvas.height * 0.9);
 
-// 下方 40% 固定为纯紫色
-ctx.fillStyle = richPurple;
-ctx.fillRect(0, canvas.height * 0.9, canvas.width, canvas.height * 0.1);
+  // 下方 40% 固定为纯紫色
+  ctx.fillStyle = richPurple;
+  ctx.fillRect(0, canvas.height * 0.9, canvas.width, canvas.height * 0.1);
+
+  // ==== 区域选择地图渲染 ====
+  // 如果 showAreaMap 为 true，则绘制地图选择界面并提前返回
+  if (showAreaMap) {
+    // 绘制半透明遮罩
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    // 设置面板大小与位置
+    const mapW = canvas.width * 0.8;
+    const mapH = canvas.height * 0.5;
+    const mapX = (canvas.width - mapW) / 2;
+    const mapY = (canvas.height - mapH) / 2;
+    // 面板背景
+    ctx.fillStyle = '#372c4a';
+    drawRoundedRect(ctx, mapX, mapY, mapW, mapH, 12, true, false);
+    // 标题
+    drawText(ctx, '选择探险区域', mapX + mapW / 2, mapY - 30,
+             '20px IndieFlower', '#FFE4E1', 'center', 'middle');
+    // 计算每个区域按钮大小
+    const cellW = mapW / 2;
+    const cellH = mapH / 2;
+    areaButtonRects.length = 0;
+    // 动态引入解锁函数
+    const { hasDefeatedBoss2, hasDefeatedBoss3, hasDefeatedBoss4 } = require('./data/monster_state.js');
+    const unlockedStatus = {
+      forest: true,
+      snow: (typeof hasDefeatedBoss2 === 'function' ? hasDefeatedBoss2() : false),
+      desert: (typeof hasDefeatedBoss3 === 'function' ? hasDefeatedBoss3() : false),
+      volcano: (typeof hasDefeatedBoss4 === 'function' ? hasDefeatedBoss4() : false)
+    };
+    const areaInfo = [
+      { key: 'forest',  label: '森林' },
+      { key: 'snow',    label: '雪地' },
+      { key: 'desert',  label: '荒漠' },
+      { key: 'volcano', label: '火山' }
+    ];
+    for (let i = 0; i < areaInfo.length; i++) {
+      const row = Math.floor(i / 2);
+      const col = i % 2;
+      const bx = mapX + col * cellW;
+      const by = mapY + row * cellH;
+      const bw = cellW;
+      const bh = cellH;
+      const info = areaInfo[i];
+      const isUnlocked = !!unlockedStatus[info.key];
+      // 面板背景颜色区分解锁状态
+      ctx.fillStyle = isUnlocked ? '#5d3a6d' : '#494250';
+      drawRoundedRect(ctx, bx + 10, by + 10, bw - 20, bh - 20, 8, true, false);
+      // 文本颜色根据解锁状态设置
+      const textColor = isUnlocked ? '#FFFFFF' : '#AAAAAA';
+      drawText(ctx, info.label, bx + bw / 2, by + bh / 2,
+               '18px IndieFlower', textColor, 'center', 'middle');
+      // 保存按钮信息用于点击检测
+      areaButtonRects.push({
+        key: info.key,
+        x: bx + 10,
+        y: by + 10,
+        width: bw - 20,
+        height: bh - 20,
+        unlocked: isUnlocked
+      });
+    }
+    return;
+  }
 
 
 // ✅ 英雄选择界面顶部“酒吧背景图”
