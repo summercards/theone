@@ -20,7 +20,9 @@ const LEGENDARY_PROB = 0.3;
 // 区域等级范围：不同区域产生不同等级的敌人
 const areaLevelRanges = {
   forest: { min: 1, max: 3 },
-  snow:   { min: 4, max: 6 }
+  snow:   { min: 4, max: 6 },
+  desert: { min: 7, max: 9 },
+  volcano: { min: 10, max: 12 }
 };
 
 // -----------------------------------------------------------
@@ -76,6 +78,16 @@ export function markBossDefeated(level) {
     //return true;
     return defeatedBossLevel >= 20;
   }
+
+// 解锁荒漠地图的条件（击败 ≥40 关 Boss）
+export function hasDefeatedBoss3() {
+  return defeatedBossLevel >= 40;
+}
+
+// 解锁火山地图的条件（击败 ≥60 关 Boss）
+export function hasDefeatedBoss4() {
+  return defeatedBossLevel >= 60;
+}
 
 
 export function loadMonster(level = 1) {

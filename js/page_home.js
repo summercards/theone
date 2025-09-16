@@ -23,6 +23,7 @@ let heroIntroBtnArea = null;
 let roguelikeBtnArea = null;
 let musicToggleBtnArea = null;
 let backpackBtnArea  = null;   // ★ 新增
+let clearSaveBtnArea = null;    // ⭐ 清空存档按钮
 
 let homeLoopId = null;
 let fireFrameCounter = 0;
@@ -267,7 +268,7 @@ function drawHomeUI() {
   const smallBtnW = 100;
   const smallBtnH = 40;
   const spacing   = 16;
-  const btnCount  = 4;
+  const btnCount  = 5; // 增加一个“清空存档”按钮
   const totalW    = smallBtnW * btnCount + spacing * (btnCount - 1);
   const baseX     = (canvasRef.width - totalW) / 2;
   const btnY      = canvasRef.height - 80;
@@ -290,6 +291,7 @@ function drawHomeUI() {
   const xShare = baseX + (smallBtnW + spacing);
   const xIntro = baseX + (smallBtnW + spacing) * 2;
   const xBag   = baseX + (smallBtnW + spacing) * 3;  // ★ 新增位置
+  const xClear = baseX + (smallBtnW + spacing) * 4;  // 新增：清空存档按钮
 
   drawSmall('排行榜', xRank,  'ranking',   '#6d2c91', '#f8d6ff');
   rankingBtnArea = { x: xRank, y: btnY, width: smallBtnW, height: smallBtnH };
@@ -302,6 +304,10 @@ function drawHomeUI() {
 
   drawSmall('背包',   xBag,   'backpack', '#2b6e4f', '#eafffb');
   backpackBtnArea  = { x: xBag, y: btnY, width: smallBtnW, height: smallBtnH };
+
+  // ⭐ 新增“清空存档”按钮
+  drawSmall('清空存档', xClear, 'clearSave', '#a83b36', '#ffe7e1');
+  clearSaveBtnArea = { x: xClear, y: btnY, width: smallBtnW, height: smallBtnH };
 
   // --------------------------------------------------
   // 右上角音乐开关
@@ -397,6 +403,26 @@ function onTouch(e) {
     playClickSound();
     clickedButton = 'backpack';
     clickAnimationFrame = 0;
+    return;
+  }
+
+  // ⭐ 清空存档按钮
+  if (clearSaveBtnArea && inArea(clearSaveBtnArea)) {
+    playClickSound();
+    wx.showModal({
+      title: '清空存档',
+      content: '确定要清空存档吗？该操作不可恢复。',
+      confirmText: '清空',
+      cancelText: '取消',
+      success(res) {
+        if (res && res.confirm) {
+          try {
+            wx.clearStorageSync();
+          } catch (_) {}
+          wx.showToast({ title: '存档已清空', icon: 'none' });
+        }
+      }
+    });
     return;
   }
 }

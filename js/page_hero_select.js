@@ -7,17 +7,20 @@ const AD_COOLDOWN = 3 * 60 * 1000; // 3 分钟，单位毫秒
 let showUpgradeButtons = false;
 let showDialog = true;
 let dialogInterval = null; // ✅ 放到最顶层作用域
-// ==== 区域选择地图 ====
-// 控制是否显示区域选择地图弹窗
-let showAreaMap = false;
-// 存储每个区域按钮的矩形和解锁状态，用于点击检测
-let areaButtonRects = [];
 // ======== 排序状态 ========
 // 0: 按职业类型；1: 按稀有度；2: 按等级；3: 按名称
 let sortMode = 0;
 let sortBtnRect = null;
 const sortLabels = ['类型', '品质', '等级', '名称'];
 import { updatePlayerStats } from './utils/player_stats.js';  // 顶部添加
+// ⭐ 合成按钮矩形（用于点击检测）
+let synthBtnRect = null;
+// ⭐ 地图选择弹层开关与按钮列表
+let showAreaMap = false;
+let areaButtonRects = [];
+
+// 导入地图解锁条件
+const { hasDefeatedBoss2, hasDefeatedBoss3, hasDefeatedBoss4 } = require('./data/monster_state.js');
 // 🗨️ 随机台词池（酒馆NPC）
 const barDialogLines = [
   "欢迎来到魅影旅店，勇者…你可真香。",
@@ -62,16 +65,26 @@ function getHeroInventory() {
 function initHeroInventory() {
   let inv = getHeroInventory();
   if (!Array.isArray(inv) || inv.length === 0) {
-    // 默认库存包含所有未隐藏且解锁状态为 false 的英雄（可从 heroProgress 读取锁定状态）。
-    inv = [];
-    HeroData.heroes.forEach(h => {
-      if (h.hidden) return;
-      const state = new HeroState(h.id);
-      if (!state.locked) {
-        inv.push(h.id);
-      }
-    });
-    wx.setStorageSync('heroInventory', inv);
+    // 📌 第一次进入游戏：仅赠送一个1级白色勇者
+    const baseHero = HeroData.heroes.find(h => !h.hidden) || HeroData.heroes[0];
+    if (baseHero) {
+      const instanceId = `${baseHero.id}_${Date.now()}`;
+      inv = [instanceId];
+      const prog = wx.getStorageSync('heroProgress') || {};
+      prog[instanceId] = {
+        level: 1,
+        exp: 0,
+        attributes: { ...(baseHero.attributes || {}) },
+        locked: false,
+        hp: baseHero.hp ?? 100,
+        rarity: 'white'
+      };
+      wx.setStorageSync('heroProgress', prog);
+      wx.setStorageSync('heroInventory', inv);
+    } else {
+      inv = [];
+      wx.setStorageSync('heroInventory', inv);
+    }
   }
 }
 
@@ -133,6 +146,127 @@ function getAvailableHeroes() {
     }
   });
   return list;
+}
+
+/**
+ * 打开英雄合成对话框。玩家可选择拥有≥3个重复英雄（同名称同稀有度）的组合进行合成。
+ * 合成将消耗3个相同英雄实例，并获得1个更高稀有度的新实例。
+ */
+function openSynthesisDialog() {
+  try {
+    // 收集库存中可合成的英雄键 -> 实例ID数组
+    const inv = getHeroInventory();
+    const heroProg = wx.getStorageSync('heroProgress') || {};
+    const groups = {};
+    inv.forEach((instId) => {
+      const parts = String(instId).split('_');
+      const baseId = parts[0];
+      const prog  = heroProg[instId] || {};
+      const tier  = prog.rarity || prog.rarityTier || 'white';
+      const key   = `${baseId}__${tier}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(instId);
+    });
+    // 构建候选列表
+    const itemList = [];
+    const keys     = [];
+    for (const key in groups) {
+      if (groups[key].length >= 3) {
+        const [baseId, tier] = key.split('__');
+        // 获取英雄名称
+        let baseHero = null;
+        if (HeroData.getHeroById) {
+          baseHero = HeroData.getHeroById(baseId);
+        } else if (HeroData.heroes) {
+          baseHero = HeroData.heroes.find(h => h.id === baseId);
+        }
+        const name = baseHero?.name || baseId;
+        // 显示品质中文
+        const tierLabelMap = { white:'白', green:'绿', blue:'蓝', purple:'紫', yellow:'橙', gold:'金' };
+        const tierLabel = tierLabelMap[tier] || tier;
+        itemList.push(`${name} (${tierLabel}) ×${groups[key].length}`);
+        keys.push(key);
+      }
+    }
+    if (itemList.length === 0) {
+      wx.showToast({ title: '没有可合成的英雄', icon: 'none' });
+      return;
+    }
+    wx.showActionSheet({
+      itemList,
+      success(res) {
+        const idx = res.tapIndex;
+        if (idx >= 0 && keys[idx]) {
+          performSynthesis(keys[idx]);
+        }
+      }
+    });
+  } catch (err) {
+    console.warn('打开合成对话框失败', err);
+    wx.showToast({ title: '合成失败', icon: 'none' });
+  }
+}
+
+/**
+ * 执行指定组合键的英雄合成。键格式为 `${baseId}__${tier}`。
+ * 消耗3个实例并生成一个更高稀有度实例。
+ */
+function performSynthesis(key) {
+  try {
+    const [baseId, tier] = key.split('__');
+    const tiers = ['white','green','blue','purple','yellow','gold'];
+    const currentIdx = tiers.indexOf(tier);
+    const nextTier = tiers[Math.min(currentIdx + 1, tiers.length - 1)];
+    // 读取存档
+    const inv = getHeroInventory();
+    const heroProg = wx.getStorageSync('heroProgress') || {};
+    // 找到符合条件的实例ID
+    const candidates = inv.filter(instId => {
+      const parts = String(instId).split('_');
+      if (parts[0] !== baseId) return false;
+      const prog = heroProg[instId] || {};
+      const r = prog.rarity || prog.rarityTier || 'white';
+      return r === tier;
+    });
+    if (candidates.length < 3) {
+      wx.showToast({ title: '材料不足', icon: 'none' });
+      return;
+    }
+    const removeIds = candidates.slice(0, 3);
+    // 从库存中移除这三张
+    let newInv = inv.filter(id => !removeIds.includes(id));
+    // 删除相应进度
+    removeIds.forEach(id => { delete heroProg[id]; });
+    // 创建新实例
+    const newId = `${baseId}_${Date.now()}`;
+    // 获取基础英雄数据
+    let baseHero = null;
+    if (HeroData.getHeroById) {
+      baseHero = HeroData.getHeroById(baseId);
+    } else if (HeroData.heroes) {
+      baseHero = HeroData.heroes.find(h => h.id === baseId);
+    }
+    const attrs = baseHero?.attributes ? { ...baseHero.attributes } : {};
+    const hpVal = typeof baseHero?.hp === 'number' ? baseHero.hp : 100;
+    heroProg[newId] = {
+      level: 1,
+      exp: 0,
+      attributes: attrs,
+      locked: false,
+      hp: hpVal,
+      rarity: nextTier
+    };
+    newInv.push(newId);
+    wx.setStorageSync('heroProgress', heroProg);
+    wx.setStorageSync('heroInventory', newInv);
+    wx.showToast({ title: '合成成功', icon: 'success' });
+    // 重新计算总页数并刷新列表
+    TOTAL_PAGES = getTotalPages();
+    render();
+  } catch (err) {
+    console.warn('执行合成失败', err);
+    wx.showToast({ title: '合成失败', icon: 'none' });
+  }
 }
 
 // 动态计算总页数，根据可用英雄数量和每页容量。
@@ -299,22 +433,16 @@ let ctxRef, canvasRef, switchPageFn;
 
 // ======================= 触摸 / 点击 ======================
 function onTouch(e) {
-  if (!e.changedTouches || !e.changedTouches[0]) return;
-  const { clientX: x, clientY: y } = e.changedTouches[0];
-  // 如果正在显示区域选择地图，优先处理点击逻辑
+  // 如果地图选择弹层开启，优先处理点击
   if (showAreaMap) {
+    if (!e.changedTouches || !e.changedTouches[0]) return;
+    const { clientX: mx, clientY: my } = e.changedTouches[0];
+    // 点击区域按钮
     for (const btn of areaButtonRects) {
-      if (!btn) continue;
-      const bx = btn.x;
-      const by = btn.y;
-      const bw = btn.width;
-      const bh = btn.height;
-      if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
-        // 点击了某个区域按钮
+      if (mx >= btn.x && mx <= btn.x + btn.width && my >= btn.y && my <= btn.y + btn.height) {
         if (btn.unlocked) {
           globalThis.selectedArea = btn.key;
           showAreaMap = false;
-          // 选择完区域后进入游戏
           getLastLevel((level) => {
             switchPageFn('game', { level });
           });
@@ -324,10 +452,14 @@ function onTouch(e) {
         return;
       }
     }
-    // 点击在区域外，则关闭地图界面
+    // 点击空白区域关闭弹层
     showAreaMap = false;
-    return render();
+    render();
+    return;
   }
+
+  if (!e.changedTouches || !e.changedTouches[0]) return;
+  const { clientX: x, clientY: y } = e.changedTouches[0];
   // —— 排序按钮 ——
   if (sortBtnRect && hit(x, y, sortBtnRect)) {
     playClickSound();
@@ -438,6 +570,12 @@ function onTouch(e) {
   if (hit(x, y, upgradeToggleRect)) {
     showUpgradeButtons = !showUpgradeButtons;
     return render();
+  }
+
+  // ⭐ 合成按钮：检测点击并打开合成对话框
+  if (globalThis.synthBtnRect && hit(x, y, globalThis.synthBtnRect)) {
+    openSynthesisDialog();
+    return;
   }
 // ---------- 点击“看广告得金币” ----------
 
@@ -618,12 +756,10 @@ for (const { hero } of iconRects) {
     wx.setStorageSync('unlockedSlots', unlockedSlots);
     wx.setStorageSync('selectedHeroes', selectedHeroes);
 
-    // 点击确认按钮后显示区域选择地图，而不是弹出底部 ActionSheet
-    setTimeout(() => {
-      showAreaMap = true;
-      render();
-    }, 180);
-
+    // 点击确认后显示地图选择界面（自绘地图）
+    showAreaMap = true;
+    areaButtonRects = [];
+    render();
     return;
   }
   
@@ -745,75 +881,9 @@ gradient.addColorStop(1, richPurple);     // 渐变到底部为紫色
 ctx.fillStyle = gradient;
 ctx.fillRect(0, 0, canvas.width, canvas.height * 0.9);
 
-  // 下方 40% 固定为纯紫色
-  ctx.fillStyle = richPurple;
-  ctx.fillRect(0, canvas.height * 0.9, canvas.width, canvas.height * 0.1);
-
-  // ==== 区域选择地图渲染 ====
-  // 如果 showAreaMap 为 true，则绘制地图选择界面并提前返回
-  if (showAreaMap) {
-    // 绘制半透明遮罩
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-    // 设置面板大小与位置
-    const mapW = canvas.width * 0.8;
-    const mapH = canvas.height * 0.5;
-    const mapX = (canvas.width - mapW) / 2;
-    const mapY = (canvas.height - mapH) / 2;
-    // 面板背景
-    ctx.fillStyle = '#372c4a';
-    drawRoundedRect(ctx, mapX, mapY, mapW, mapH, 12, true, false);
-    // 标题
-    drawText(ctx, '选择探险区域', mapX + mapW / 2, mapY - 30,
-             '20px IndieFlower', '#FFE4E1', 'center', 'middle');
-    // 计算每个区域按钮大小
-    const cellW = mapW / 2;
-    const cellH = mapH / 2;
-    areaButtonRects.length = 0;
-    // 动态引入解锁函数
-    const { hasDefeatedBoss2, hasDefeatedBoss3, hasDefeatedBoss4 } = require('./data/monster_state.js');
-    const unlockedStatus = {
-      forest: true,
-      snow: (typeof hasDefeatedBoss2 === 'function' ? hasDefeatedBoss2() : false),
-      desert: (typeof hasDefeatedBoss3 === 'function' ? hasDefeatedBoss3() : false),
-      volcano: (typeof hasDefeatedBoss4 === 'function' ? hasDefeatedBoss4() : false)
-    };
-    const areaInfo = [
-      { key: 'forest',  label: '森林' },
-      { key: 'snow',    label: '雪地' },
-      { key: 'desert',  label: '荒漠' },
-      { key: 'volcano', label: '火山' }
-    ];
-    for (let i = 0; i < areaInfo.length; i++) {
-      const row = Math.floor(i / 2);
-      const col = i % 2;
-      const bx = mapX + col * cellW;
-      const by = mapY + row * cellH;
-      const bw = cellW;
-      const bh = cellH;
-      const info = areaInfo[i];
-      const isUnlocked = !!unlockedStatus[info.key];
-      // 面板背景颜色区分解锁状态
-      ctx.fillStyle = isUnlocked ? '#5d3a6d' : '#494250';
-      drawRoundedRect(ctx, bx + 10, by + 10, bw - 20, bh - 20, 8, true, false);
-      // 文本颜色根据解锁状态设置
-      const textColor = isUnlocked ? '#FFFFFF' : '#AAAAAA';
-      drawText(ctx, info.label, bx + bw / 2, by + bh / 2,
-               '18px IndieFlower', textColor, 'center', 'middle');
-      // 保存按钮信息用于点击检测
-      areaButtonRects.push({
-        key: info.key,
-        x: bx + 10,
-        y: by + 10,
-        width: bw - 20,
-        height: bh - 20,
-        unlocked: isUnlocked
-      });
-    }
-    return;
-  }
+// 下方 40% 固定为纯紫色
+ctx.fillStyle = richPurple;
+ctx.fillRect(0, canvas.height * 0.9, canvas.width, canvas.height * 0.1);
 
 
 // ✅ 英雄选择界面顶部“酒吧背景图”
@@ -1046,6 +1116,25 @@ const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
                     align: 'center',
                     baseline: 'middle'
                 });
+
+  // ⭐ 合成按钮：放置在升级按钮右侧，点击可打开合成对话框
+  let synthRect = {
+    x: upgradeToggleRect.x + upgradeToggleRect.width + 12,
+    y: upgradeToggleRect.y,
+    width: ICON * 1.2,
+    height: ICON * 0.8
+  };
+  synthRect = avoidOverlap(synthRect, layoutRects);
+  layoutRects.push(synthRect);
+  globalThis.synthBtnRect = synthRect;
+  ctx.fillStyle = '#9c275d';
+  drawRoundedRect(ctx, synthRect.x, synthRect.y, synthRect.width, synthRect.height, 8, true, false);
+  drawStyledText(ctx, '合成', synthRect.x + synthRect.width / 2, synthRect.y + synthRect.height / 2, {
+    font: 'bold 18px IndieFlower',
+    fill: '#ffe3e3',
+    align: 'center',
+    baseline: 'middle'
+  });
  // ✅ 获取当前关卡等级（用于按钮显示）
 let level = 1;
 try {
@@ -1106,6 +1195,46 @@ drawStyledText(ctx, '分享得金币',
 });
 
 globalThis.adBtnRect = adBtnRect;
+
+  // === 地图选择弹层绘制 ===
+  if (showAreaMap) {
+    // 半透明背景
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 标题
+    drawText(ctx, '选择探索区域', canvas.width / 2, canvas.height * 0.15,
+      'bold 24px IndieFlower', '#FFFFFF', 'center', 'middle');
+    // 构建区域按钮
+    areaButtonRects = [];
+    const areas = [
+      { key: 'forest',  label: '森林', unlocked: true },
+      { key: 'snow',    label: '雪地', unlocked: typeof hasDefeatedBoss2 === 'function' ? hasDefeatedBoss2() : true },
+      { key: 'desert',  label: '荒漠', unlocked: typeof hasDefeatedBoss3 === 'function' ? hasDefeatedBoss3() : false },
+      { key: 'volcano', label: '火山', unlocked: typeof hasDefeatedBoss4 === 'function' ? hasDefeatedBoss4() : false }
+    ];
+    const btnW = canvas.width * 0.36;
+    const btnH = canvas.height * 0.17;
+    const marginX = (canvas.width - btnW * 2) / 3;
+    const marginY = canvas.height * 0.12;
+    const startY = canvas.height * 0.32;
+    for (let i = 0; i < areas.length; i++) {
+      const row = Math.floor(i / 2);
+      const col = i % 2;
+      const x = marginX + (btnW + marginX) * col;
+      const y = startY + row * (btnH + marginY);
+      const unlocked = areas[i].unlocked;
+      const bgColor = unlocked ? '#6d2c91' : '#444444';
+      ctx.fillStyle = bgColor;
+      drawRoundedRect(ctx, x, y, btnW, btnH, 12, true, false);
+      const textColor = unlocked ? '#FFFFFF' : '#888888';
+      drawText(ctx, areas[i].label, x + btnW / 2, y + btnH / 2,
+        'bold 22px IndieFlower', textColor, 'center', 'middle');
+      areaButtonRects.push({ x, y, width: btnW, height: btnH, key: areas[i].key, unlocked });
+    }
+    ctx.restore();
+    return;
+  }
 
 
 // 返回按钮（左上角）

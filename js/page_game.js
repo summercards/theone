@@ -105,7 +105,9 @@ function captureMonsterAsHero(mon) {
       if (typeof unlockHero === 'function') {
         unlockHero(baseId);
       }
-      return;
+      // 记录捕捉的英雄实例 ID 以便后续奖励使用，并返回该 ID
+      globalThis.lastCapturedHeroInstanceId = instanceId;
+      return instanceId;
     }
     // 若无 heroId，则回退到寻找空槽位的旧逻辑
     const heroEntry = HeroData.heroes.find(h => h.locked && !h.hidden);
@@ -154,18 +156,29 @@ globalThis.enterCapturePhase = function(monster) {
       // 收服成功概率：调高为 100% 方便测试，如需调整请修改此处
       const chance = 1.0;
       if (Math.random() < chance) {
-        // 成功收服：解锁英雄并提示
-        captureMonsterAsHero(monster);
-        wx.showModal({
-          title: '收服成功',
-          content: `${name} 已加入英雄池！`,
-          showCancel: false,
-          success() {
-            // 🏁 捕捉成功后立即结束战斗
-            endBattleAfterCapture(monster);
-            globalThis.capturing = false;
+        // 成功收服：解锁英雄并进入自定义奖励弹窗流程
+        const instanceId = captureMonsterAsHero(monster);
+        // 获取英雄名称
+        let heroName = name;
+        try {
+          const baseId = monster?.heroId;
+          let baseHero = null;
+          if (baseId) {
+            if (HeroData.getHeroById) {
+              baseHero = HeroData.getHeroById(baseId);
+            } else if (HeroData.heroes) {
+              baseHero = HeroData.heroes.find(h => h.id === baseId);
+            }
+            if (baseHero && baseHero.name) heroName = baseHero.name;
           }
-        });
+        } catch (_) {}
+        // 标记捕捉奖励激活：在胜利弹窗中绘制捕捉的英雄奖励
+        globalThis.captureRewardActive = true;
+        globalThis.captureRewardMessage = `恭喜你，获得了${heroName}`;
+        globalThis.levelRewardsHeroId = instanceId || globalThis.lastCapturedHeroInstanceId;
+        // 立即结束战斗并结算奖励（包括弹出胜利弹窗）
+        endBattleAfterCapture(monster);
+        globalThis.capturing = false;
       } else {
         // 收服失败：提示失败信息
         wx.showModal({
@@ -946,41 +959,62 @@ if (opened && globalThis.victoryChestLoot[i]) {
 }
 /* --------------------------------------------------------- */
 
-  // ✅ 如果有奖励英雄，则绘制头像并记录可点击区域
+  // ✅ 如果有奖励英雄，则绘制头像与奖励信息
   if (globalThis.levelRewardsHeroId) {
     const HeroState = require('./data/hero_state.js').HeroState;
     const hero = new HeroState(globalThis.levelRewardsHeroId);
-  
+    // 头像尺寸及位置
     const iconSize = 72;
     const iconX = W / 2 - iconSize / 2;
-    const iconY = rewardStartY + rewards.length * 28 + 20;
-  
+    // 根据奖励行数和经验文本，动态计算 Y 坐标，避免遮挡其他内容
+    const rewardCount = (globalThis.levelRewards || []).length;
+    const iconY = expY + 60 + rewardCount * 28;
+    // 绘制英雄全身像
     drawHeroIconFull(ctx, hero, iconX, iconY, iconSize, 1.0);
-  
-    // ⬇️ 显示“点击加入队伍”文字
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('已加入队伍', W / 2, iconY + iconSize + 4);
-  
-    // ⬇️ 显示正确的英雄名称（自动读取）
-    const fullHero = HeroData.getHeroById(hero.id);
-    const realName = fullHero?.name || '新英雄';
-    ctx.fillStyle = '#FFD700';
-    ctx.font = '18px sans-serif';
-    ctx.fillText(`解锁新英雄：${realName}`, W / 2, iconY + iconSize + 28);
-  
-    /* ★★★ 英雄技能描述 ★★★ */
-const skillDesc = fullHero?.skill?.description || '';
-if (skillDesc) {
-  ctx.fillStyle   = '#CCCCCC';          // 淡灰色，别盖住标题
-  ctx.font        = '14px sans-serif';
-  ctx.textAlign   = 'center';
-  ctx.textBaseline= 'top';
-  ctx.fillText(skillDesc, W / 2, iconY + iconSize + 52);
-}
-
+    // 根据是否为捕捉奖励切换绘制模式
+    if (globalThis.captureRewardActive) {
+      // 捕捉奖励：显示祝贺文字和确认按钮
+      const msg = globalThis.captureRewardMessage || '';
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(msg, W / 2, iconY + iconSize + 4);
+      // 绘制确认按钮
+      const btnW2 = 100;
+      const btnH2 = 36;
+      const btnX2 = (W - btnW2) / 2;
+      const btnY2 = iconY + iconSize + 32;
+      ctx.fillStyle = '#5A3E8D';
+      drawRoundedRect(ctx, btnX2, btnY2, btnW2, btnH2, 8, true, false);
+      ctx.fillStyle = '#F3E9DB';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('确认', btnX2 + btnW2 / 2, btnY2 + btnH2 / 2);
+      // 记录按钮区域供点击检测
+      globalThis.captureConfirmArea = { x: btnX2, y: btnY2, width: btnW2, height: btnH2 };
+    } else {
+      // 默认奖励逻辑：提示加入队伍及技能信息
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText('已加入队伍', W / 2, iconY + iconSize + 4);
+      const fullHero = HeroData.getHeroById(hero.id);
+      const realName = fullHero?.name || '新英雄';
+      ctx.fillStyle = '#FFD700';
+      ctx.font = '18px sans-serif';
+      ctx.fillText('解锁新英雄：' + realName, W / 2, iconY + iconSize + 28);
+      const skillDesc = fullHero?.skill?.description || '';
+      if (skillDesc) {
+        ctx.fillStyle   = '#CCCCCC';
+        ctx.font        = '14px sans-serif';
+        ctx.textAlign   = 'center';
+        ctx.textBaseline= 'top';
+        ctx.fillText(skillDesc, W / 2, iconY + iconSize + 52);
+      }
+    }
   }
   
   
@@ -2283,6 +2317,21 @@ function onTouchend(e) {
         y >= area.y && y <= area.y + area.height) {
       openAllChests();
       return; // 避免继续处理其他按钮
+    }
+  }
+
+  // ⭐ 捕捉奖励确认按钮：优先于其他弹窗元素处理
+  if (showVictoryPopup && globalThis.captureConfirmArea) {
+    const area = globalThis.captureConfirmArea;
+    if (x >= area.x && x <= area.x + area.width &&
+        y >= area.y && y <= area.y + area.height) {
+      // 关闭捕捉奖励弹窗
+      globalThis.captureRewardActive = false;
+      globalThis.captureRewardMessage = null;
+      globalThis.levelRewardsHeroId = null;
+      globalThis.captureConfirmArea = null;
+      drawGame();
+      return;
     }
   }
 // ✅ 点击奖励英雄头像 → 自动加入空出战栏

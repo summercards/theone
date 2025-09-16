@@ -15,11 +15,20 @@ const HeroData = require('./hero_data.js');
  */
 const heroes = HeroData.heroes || [];
 
-// 计算中点，将英雄列表划分为两半。
-const mid = Math.floor(heroes.length / 2);
+// 计算四等分索引，尽量平均地划分英雄池
+const total = heroes.length;
+const quarter = Math.max(1, Math.floor(total / 4));
 const areaHeroes = {
-  forest: heroes.slice(0, mid),
-  snow:   heroes.slice(mid),
+  forest: heroes.slice(0, quarter),
+  snow:   heroes.slice(quarter, quarter * 2),
+  desert: heroes.slice(quarter * 2, quarter * 3),
+  volcano: heroes.slice(quarter * 3)
 };
+// 兜底：如果某个区域没有英雄，则退回全列表
+for (const key of Object.keys(areaHeroes)) {
+  if (!Array.isArray(areaHeroes[key]) || areaHeroes[key].length === 0) {
+    areaHeroes[key] = heroes.slice();
+  }
+}
 
 module.exports = areaHeroes;
