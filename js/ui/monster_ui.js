@@ -178,16 +178,41 @@ drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
   ctx.textAlign = 'center';
   ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 12);
 
+  // 绘制敌人的攻击倒计时条：每当玩家行动一次增长一段，满格时敌人发动一次攻击
+  try {
+    const attackMax  = globalThis.enemyAttackThreshold || 5;
+    const attackProg = globalThis.enemyAttackProgress || 0;
+    const ratio      = Math.max(0, Math.min(attackProg / attackMax, 1));
+    const atkBarH    = 8;
+    const atkBarY    = barY + BAR_H + 6; // 紧贴 HP 条下方
+    // 背景
+    ctx.fillStyle   = '#331B33';
+    drawRoundedRect(ctx, barX, atkBarY, BAR_W, atkBarH, 4, true, false);
+    // 前景进度
+    ctx.fillStyle   = '#FFAA33';
+    drawRoundedRect(ctx, barX, atkBarY, BAR_W * ratio, atkBarH, 4, true, false);
+    // 外框
+    ctx.strokeStyle = '#664466';
+    ctx.lineWidth   = 1;
+    drawRoundedRect(ctx, barX, atkBarY, BAR_W, atkBarH, 4, false, true);
+  } catch (e) {
+    // 忽略绘制错误
+  }
+
   const nameY = y - 35;
   ctx.font = 'bold 18px IndieFlower, sans-serif';
   ctx.lineWidth = 2;
-  // 根据稀有度设置名称颜色
+  // 根据稀有度设置名称颜色，包含紫色、黄色和金色等高阶品质
   const rarityColors = {
     white: '#FFFFFF',
     green: '#00FF00',
-    blue:  '#00BFFF'
+    blue:  '#00BFFF',
+    purple: '#C71585',
+    yellow: '#FFC107',
+    gold:  '#FFD700'
   };
-  const nameColor = rarityColors[monster.rarityTier] || '#FFFFFF';
+  // 如果怪物对象携带 rarityColor 属性，则优先使用；否则从表中获取
+  const nameColor = monster.rarityColor || rarityColors[monster.rarityTier] || '#FFFFFF';
   ctx.strokeStyle = '#000';
   ctx.strokeText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
   ctx.fillStyle = nameColor;

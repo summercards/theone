@@ -4,8 +4,9 @@ import { getSelectedHeroes } from '../data/hero_state.js';
 import HeroData from '../data/hero_data.js';
 import { logBattle } from '../utils/battle_log.js';
 import { dealDamage } from '../data/monster_state.js';
-import { createExplosion, createMonsterBounce, showDamageText, createAvatarFlash } from '../effects_engine.js';
-import { getMonster } from '../data/monster_state.js';
+// Use fireball effect instead of explosion and bounce. Import flash and damage text utilities.
+import { playFireballEffect, createAvatarFlash, showDamageText } from '../effects_engine.js';
+// getMonster is no longer needed; hero icons and monster position stored in global variables
 
 export function renderBlockA(ctx, x, y, width, height) {
   const img = globalThis.imageCache['block_A'];
@@ -31,31 +32,50 @@ export function onEliminateRedBlock(count) {
   // 如果没有战士，直接返回
   if (total <= 0) return;
 
-  const damage = total * count;
+  // 基础伤害按战士力量总和乘以消除数量
+  let damage = total * count;
+  // 根据当前 Combo 数附加伤害加成：每多一次连击增加 30%
+  const comboCnt  = globalThis.comboCounter || 1;
+  const comboMult = 1 + Math.max(0, comboCnt - 1) * 0.3;
+  damage = Math.floor(damage * comboMult);
   // 立即对怪物造成伤害
   dealDamage(damage, { allowKill: true });
   // 战斗日志
-  logBattle(`[红方块] {${names.join(', ')}} ×${count} → 直接造成伤害 ${damage}`);
-  // 显示爆炸和伤害文本
+  logBattle(`[红方块] {${names.join(', ')}} ×${count} → 造成伤害 ${damage}`);
+  // 触发火球特效、怪物闪白和伤害飘字
   try {
     const canvas = globalThis.canvasRef;
     if (canvas) {
-      const x = canvas.width / 2;
-      const y = 180;
-      createExplosion(x, y);
-      createMonsterBounce();
-      showDamageText(damage, x, y + 50);
+      const monsterPos = globalThis.monsterSpritePos || { x: canvas.width / 2, y: 180 };
+      // 从每个战士头像发射火球
+      const heroPositions = globalThis.heroIconPositions || {};
+      indices.forEach(idx => {
+        const pos = heroPositions[idx];
+        if (pos) {
+          playFireballEffect(
+            pos.x + pos.width / 2,
+            pos.y + pos.height / 2,
+            monsterPos.x,
+            monsterPos.y,
+            48,
+            500
+          );
+        }
+      });
+      // 触发怪物闪白效果
+      globalThis.monsterHitFlashTime = Date.now();
+      // 显示伤害飘字
+      showDamageText(damage, monsterPos.x, monsterPos.y + 60);
     }
   } catch (err) {
-    // fallback silently
+    // 忽略绘制错误
   }
-  // 放大对应英雄头像
+  // 头像弹跳动画：向上轻弹后归位
   indices.forEach(idx => {
     try {
-      // 攻击动画：头像向上弹出后返回，不再放大
       createAvatarFlash(idx, 1, 400, 0, -20);
     } catch (err) {
-      /* ignore */
+      // ignore
     }
   });
 }

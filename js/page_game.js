@@ -326,6 +326,53 @@ import { logBattle } from './utils/battle_log.js'; // ✅ 加这一行
 import { resetCharges } from './data/hero_charge_state.js';
 import { getMonster, getMonsterDamage, markBossDefeated } from './data/monster_state.js';
 
+/* ===============================================================
+   敌人反击机制：
+   在玩家每次操作后增加进度条，达到阈值时触发敌人攻击。
+   显示在 monster_ui 的 HP 条下方，通过 enemyAttackProgress 绘制。
+   =============================================================== */
+// 初始化全局攻击进度及阈值（默认每 5 步一次攻击，可在其他文件中调整）
+globalThis.enemyAttackProgress  = globalThis.enemyAttackProgress  || 0;
+globalThis.enemyAttackThreshold = globalThis.enemyAttackThreshold || 5;
+
+/**
+ * 增加敌人的攻击进度。每当玩家进行一次移动（不论是否形成消除），
+ * 调用此函数以增加进度条。若进度达到阈值，则重置并立即发动一次攻击。
+ */
+function increaseEnemyAttackProgress() {
+  globalThis.enemyAttackProgress += 1;
+  if (globalThis.enemyAttackProgress >= globalThis.enemyAttackThreshold) {
+    globalThis.enemyAttackProgress = 0;
+    performEnemyAttack();
+  }
+}
+
+/**
+ * 敌人对玩家发动攻击：根据怪物攻击力扣除玩家生命，产生飘字及血条闪烁。
+ */
+function performEnemyAttack() {
+  try {
+    const dmg = (typeof getMonsterDamage === 'function' ? getMonsterDamage() : 0) || 0;
+    if (dmg <= 0) return;
+    // 扣减玩家生命
+    takeDamage(dmg);
+    logBattle(`[敌人反击] 敌人对玩家造成伤害 ${dmg}`);
+    // 在玩家 HP 条附近显示伤害飘字
+    const hpBar = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
+    const fx = hpBar.x + hpBar.width * 0.75;
+    const fy = hpBar.y - 10;
+    createFloatingText(`-${dmg}`, fx, fy, '#FF4444');
+    // 触发 HP 条闪红动画
+    createMonsterAttackFlash();
+    // 若玩家死亡，则标记游戏结束
+    if (typeof isPlayerDead === 'function' && isPlayerDead()) {
+      showGameOver = true;
+    }
+  } catch (err) {
+    console.warn('performEnemyAttack error', err);
+  }
+}
+
 function playSound(name) {
   if (!wx.createInnerAudioContext) return;
 
@@ -1056,7 +1103,10 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
       const tierColorMap = {
         white: '#FFFFFF',
         green: '#00FF00',
-        blue:  '#00BFFF'
+        blue:  '#00BFFF',
+        purple: '#C71585',
+        yellow: '#FFC107',
+        gold: '#FFD700'
       };
       borderColor = tierColorMap[rarityTier] || '#FFFFFF';
     } else {
@@ -1480,6 +1530,11 @@ for (let i = 0; i < heroes.length; i++) {
     const finalScale = scaleBase * 1.05;
     // 应用头像弹跳偏移
     const offset = (globalThis.avatarSlotOffsets && globalThis.avatarSlotOffsets[i]) || { x: 0, y: 0 };
+    // 记录头像矩形以便特效使用（火球起点）
+    try {
+      globalThis.heroIconPositions = globalThis.heroIconPositions || {};
+      globalThis.heroIconPositions[i] = { x: sx + offset.x, y: sy + offset.y, width: size, height: size };
+    } catch (e) {}
     drawHeroIconFull(ctxRef, hero, sx + offset.x, sy + offset.y, size, finalScale);
 
     // 等级文本
@@ -1852,26 +1907,15 @@ const endX = startX + heroIndex * (size + spacing) + size / 2;
 const endY = topMargin + size + 8;
 
 // 在 checkAndClearMatches 中，处理 B 方块粒子效果：
-if (letter === 'B') {
-    const cur = getPlayerHp();
-    const max = getPlayerMaxHp();
-  
-    if (cur < max) {
-      const hpBar = globalThis.hpBarPos;
-      if (hpBar) {
-        const targetX = hpBar.x + hpBar.width / 2;
-        const targetY = hpBar.y + hpBar.height / 2;
-        createEnergyParticles(centerX, centerY, targetX, targetY, blockColor, 6);
-      }
-    }
+      if (letter === 'B') {
+    // 绿色方块的生命恢复粒子已经转移到 block_B.js 中处理
   } else if (letter === 'D') {
+    // D 方块仍保留金币粒子效果
     createGoldParticles(centerX, centerY);
   } else if (letter === 'A') {
-    const targetX = canvas.width / 2;
-    const targetY = __gridStartY - 125;
-    createEnergyParticles(centerX, centerY, targetX, targetY, blockColor, 6);
+    // 移除红色方块飞向伤害巢的能量特效
   } else if (heroIndex >= 0) {
-    createEnergyParticles(centerX, centerY, endX, endY, blockColor, 6);
+    // 移除能量粒子飞向职业能量槽的效果
   }
 
 
@@ -2122,33 +2166,24 @@ function processClearAndDrop() {
                 }, 500);
               } else {
                 setTimeout(() => {
-/* === combo 结算：粒子注入 + 加伤害 ============ */
-/* === combo 结算：粒子注入 + 加伤害 ============ */
+/* === combo 结算：直接对怪物造成额外伤害 ============ */
 if (comboCounter > 0) {
-  /* === ① 计算加成 ================================= */
-  const baseDamage = attackGaugeDamage;          // 结算时的原始伤害巢数值
-  const perCombo   = Math.floor(baseDamage * 0.10); // 取 10 %，向下取整
-  const bonus      = perCombo * comboCounter;    // 总加成 = combo × 10 %
-
-  // ➜ 生成能量粒子飞向伤害巢
-  if (comboTextPos && gaugeCenterPos) {
-    createEnergyParticles(
-      comboTextPos.x, comboTextPos.y,
-      gaugeCenterPos.x, gaugeCenterPos.y,
-      '#d80d0d',                                  // 粒子颜色
-      2                                          // 数量
-    );
-
-    // 粒子飞完 500ms 后真正加伤害
-    setTimeout(() => {
-      attackGaugeDamage += bonus;
-      damagePopTime = Date.now();                 // 数字弹跳
-    }, 150);
-  } else {
-    attackGaugeDamage += bonus;                   // 找不到坐标就直接加
-    damagePopTime = Date.now();
+  // 基于本回合累积的伤害求出 combo 加成：每连击多 10%
+  const baseDamage = globalThis.comboDamageAccumulator || 0;
+  const bonus = Math.floor(baseDamage * 0.30 * comboCounter);
+  if (bonus > 0) {
+    dealDamage(bonus, { allowKill: true });
+    logBattle(`[Combo] 组合加成伤害 +${bonus}`);
+    // 在怪物位置显示额外伤害飘字
+    try {
+      const canvas = globalThis.canvasRef;
+      const pos = globalThis.monsterSpritePos || { x: canvas.width / 2, y: 180 };
+      showDamageText(bonus, pos.x, pos.y + 60);
+    } catch (err) {}
   }
 }
+// 重置累计伤害
+globalThis.comboDamageAccumulator = 0;
 
    /* ============================================= */
                 
@@ -2469,6 +2504,8 @@ function handleSwap(src, dst) {
   gridData[src.row][src.col] = temp;
 
   animateSwap(src, dst, () => {
+    // 🌟 每次玩家交换一次方块（无论是否成功匹配）都推动敌人攻击进度
+    try { increaseEnemyAttackProgress(); } catch (e) {}
     if (checkAndClearMatches()) {
       selected = null;
       gaugeCount++;
