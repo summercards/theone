@@ -463,3 +463,98 @@ try {
 } catch (err) {
   console.warn('加载英雄图标失败，怪物头像未替换', err);
 }
+
+// ★ 兜底：把第 1 关普通怪的 maxHp 也钳到 95–105（构建期）
+// 说明：运行时我们还会在 page_game.js 再钳一次，双保险
+try {
+    const m1 = monsters.find(m => m.level === 1 && !m.isBoss);
+    if (m1) {
+      m1.maxHp = 95 + Math.floor(Math.random() * 11); // 95~105
+      // m1.skill.damage 保持不变；UI 的顶层 atk 你已有同步逻辑
+    }
+  } catch (_) {}
+  
+  // ------------------------------------------------------------
+// 森林（1~10关）数值重算：稀有度成长 × 等级成长
+// 目标：白色1级 ≈ 100 HP
+// 放置位置：monster_data.js 文件末尾（确保 monsters 已经构建完成）
+// ------------------------------------------------------------
+(function rebalanceForestByRarity() {
+    // 1) 拿到怪物数组（无论是局部变量还是挂到全局）
+    const MONS =
+      (typeof monsters !== 'undefined' && monsters) ||
+      (typeof globalThis !== 'undefined' && globalThis.monsters);
+    if (!Array.isArray(MONS)) return;
+  
+    // 2) 基准与倍率（按需可在这里微调）
+    const BASE_HP_WHITE_L1 = 100; // 白色1级基准HP
+  
+    const RARITY_MULT = {        // 稀有度倍率
+      white: 1.00,
+      green: 1.25,
+      blue:  1.60,
+      purple:2.20,
+      orange:2.80,
+      gold:  3.20
+    };
+  
+    const BOSS_MULT = 6.0;       // 1~10段 Boss 的额外倍率（一般是第10关）
+  
+    // 等级成长：1级=1；10级≈4.47（温和指数）
+    function levelGrowth(lv) {
+      const n = Math.max(1, lv | 0);
+      return Math.pow(1.18, n - 1);
+    }
+  
+    // 若数据里没写稀有度，则按 1~10 的站位做个推断（可改成你自己的规则）
+    // 1~3=白，4~6=绿，7~8=蓝，9=紫；10通常是Boss→橙
+    function inferRarity(mon) {
+      if (mon.isBoss) return 'orange';
+      const pos = ((mon.level - 1) % 10) + 1;
+      if (pos <= 3) return 'white';
+      if (pos <= 6) return 'green';
+      if (pos <= 8) return 'blue';
+      return 'purple';
+    }
+  
+    // 3) 对 1~10 关逐只重算
+    MONS.forEach(mon => {
+      if (!mon || mon.level < 1 || mon.level > 10) return;
+  
+      const rarity = mon.rarityTier || inferRarity(mon);
+      mon.rarityTier = rarity; // 保存，方便其它系统读取（例如捕捉/掉落）
+  
+      const oldHp = mon.maxHp || BASE_HP_WHITE_L1;
+  
+      let hp = Math.round(
+        BASE_HP_WHITE_L1 *
+        levelGrowth(mon.level) *
+        (RARITY_MULT[rarity] || 1.0)
+      );
+  
+      // 第10关 Boss 再给强化
+      if (mon.isBoss && mon.level === 10) {
+        hp = Math.round(hp * BOSS_MULT);
+      }
+  
+      // 应用新HP
+      mon.maxHp = hp;
+      mon.hp    = hp;
+  
+      // 伤害按HP比例等比缩放，避免“血多/少但伤害不匹配”
+      const ratio = oldHp > 0 ? (hp / oldHp) : 1;
+      if (mon.skill && mon.skill.damage != null) {
+        if (Array.isArray(mon.skill.damage)) {
+          mon.skill.damage = mon.skill.damage.map(v => Math.max(1, Math.floor(v * ratio)));
+          // 同步顶层 atk（如果你用它展示伤害）
+          mon.atk = mon.skill.damage[0];
+        } else {
+          mon.skill.damage = Math.max(1, Math.floor(mon.skill.damage * ratio));
+          mon.atk = mon.skill.damage;
+        }
+      } else if (typeof mon.atk === 'number') {
+        mon.atk = Math.max(1, Math.floor(mon.atk * ratio));
+      }
+    });
+  })();
+  

@@ -269,7 +269,7 @@ function haltGame() {           // ☆ 统一熔断函数
 // 调整关卡配置信息：前几关采用更小的棋盘和较少的方块类型，以便新手快速上手。
 const LevelConfigs = {
     // 关卡 1 采用 4×4 棋盘，只有 A/D/F 三种方块，匹配机会更多
-    1: { gridSize: 4, allowedBlocks: ['A', 'D', 'F'] },
+    1: { gridSize: 5, allowedBlocks: ['A', 'D', 'F'] },
     // 关卡 2 添加游侠方块并维持 5×5，大幅提升可消玩法
     2: { gridSize: 5, allowedBlocks: ['A', 'B', 'F'] },
     // 关卡 3 起使用原有难度设置
@@ -296,6 +296,8 @@ import { applySkillEffect } from './logic/skill_logic.js';
 import { showDamageText } from './effects_engine.js';
 import SuperBlockSystem from './data/super_block_system.js';
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
+import { ensureEncounter } from './data/encounters.js';
+
 import { registerGameHooks } from './utils/game_shared.js';
 import { getPlayerHp, getPlayerMaxHp } from './data/player_state.js';
 import { unlockHero } from './data/hero_state.js';
@@ -386,6 +388,21 @@ function performEnemyAttack() {
   }
 }
 
+// ★ 新手关卡（第1关）敌人 HP 强制到 [95, 105]：只影响“非 Boss”
+function enforceTutorialHP() {
+    try {
+      if (typeof getMonster !== 'function') return;
+      const mon = getMonster();
+      if (!mon) return;
+  
+      if (globalThis?.currentLevel === 1 && !mon.isBoss) {
+        const hp = 95 + Math.floor(Math.random() * 11); // 95~105
+        mon.maxHp = hp;
+        mon.hp    = hp;
+      }
+    } catch (_) {}
+  }
+  
 function playSound(name) {
   if (!wx.createInnerAudioContext) return;
 
@@ -571,6 +588,7 @@ globalThis.bgmAudioContext = gameBgm;
 
     resetSessionState();      //  ← 新增
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
+    globalThis.currentLevel = currentLevel; // 兼容其他地方万一有用到
     haltGame();                               // ☆ 立刻熔断后台循环
     wx.setStorageSync('lastLevel', currentLevel.toString());
     globalThis.expGainedThisRound = 0;
@@ -613,7 +631,17 @@ wx.onTouchEnd(onTouchend);
 
   initGrid();
   const m = loadMonster(currentLevel);
- 
+  if (typeof getMonster === 'function') ensureEncounter(currentLevel, getMonster());
+
+  (HeroData.heroes||[]).forEach(h=>console.log(h.id, h.name, h.rarity||h.quality))
+  // ★ 加这一行：按配置校正敌人（池外→池内，并重算数值）
+ensureEncounter(currentLevel, getMonster());
+
+// 若你有“胜利→继续探索→再次 loadMonster(currentLevel)”的逻辑，
+// 在那次 loadMonster 后面同样补一行 ensureEncounter(...)
+
+
+  enforceTutorialHP();
   const totalHp = heroes.reduce((sum, h) => sum + (h?.hp || 0), 0);
   initPlayer(totalHp);
   drawGame();
@@ -2386,6 +2414,7 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
         globalThis.gridSize = config.gridSize || 6;
         globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
         loadMonster(currentLevel);
+        enforceTutorialHP();
         initGrid();
         // 重新载入最新出战英雄
         const heroes = getSelectedHeroes();
