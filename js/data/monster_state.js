@@ -218,7 +218,7 @@ function heroToMonster(hero = {}, level = 1, forcedRarity = null, forcedPrefix =
     id: hero.id || `enemy_${Date.now()}`,
     level: lv,
     name,
-    sprite: hero.icon ? `../icons/${hero.icon}` : 'moster1-1.png',
+    sprite: hero.icon ? `../icons/${hero.icon}` : 'icons/hero1.png',
     spriteSize: 120,
     spriteScale: 1.5,
     maxHp,

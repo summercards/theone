@@ -54,9 +54,16 @@ export function drawMonsterSprite(ctx, canvas) {
 
   if (!monsterImageCache[monster.id]) {
     const img = wx.createImage();
-    img.src = `assets/monsters/${monster.sprite}`;
+    const sp = monster.sprite || 'icons/hero1.png'; // 兜底用任意存在的图标
+    // 统一指向 assets/icons 或已带相对前缀的情况
+    const resolved =
+      sp.startsWith('../') ? `assets/${sp.slice(3)}` :
+      sp.startsWith('icons/') ? `assets/${sp}` :
+      `assets/icons/${sp}`;
+    img.src = resolved;
     monsterImageCache[monster.id] = img;
   }
+  
 
   const img = monsterImageCache[monster.id];
   const BASE_SIZE = monster.spriteSize || 120;         // 所有怪物默认 120
