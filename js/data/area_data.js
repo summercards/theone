@@ -18,12 +18,17 @@ const heroes = HeroData.heroes || [];
 // 计算四等分索引，尽量平均地划分英雄池
 const total = heroes.length;
 const quarter = Math.max(1, Math.floor(total / 4));
-const areaHeroes = {
-  forest: heroes.slice(0, quarter),
-  snow:   heroes.slice(quarter, quarter * 2),
-  desert: heroes.slice(quarter * 2, quarter * 3),
-  volcano: heroes.slice(quarter * 3)
-};
+// ---- Custom split: forest fixed to hero001–hero005; others auto-sliced ----
+const forestIds = ["hero001","hero002","hero003","hero004","hero005"];
+const forestSet = new Set(forestIds);
+const forest = forestIds.map(id => HeroData.getHeroById(id)).filter(Boolean);
+const remaining = heroes.filter(h => !forestSet.has(h.id));
+const oneThird = Math.max(1, Math.floor(remaining.length / 3));
+const snow    = remaining.slice(0, oneThird);
+const desert  = remaining.slice(oneThird, oneThird * 2);
+const volcano = remaining.slice(oneThird * 2);
+const areaHeroes = { forest, snow, desert, volcano };
+
 // 兜底：如果某个区域没有英雄，则退回全列表
 for (const key of Object.keys(areaHeroes)) {
   if (!Array.isArray(areaHeroes[key]) || areaHeroes[key].length === 0) {
@@ -31,4 +36,10 @@ for (const key of Object.keys(areaHeroes)) {
   }
 }
 
+// Fallback: if any area ends up empty, revert to full list
+for (const k of Object.keys(areaHeroes)) {
+  if (!Array.isArray(areaHeroes[k]) || areaHeroes[k].length === 0) {
+    areaHeroes[k] = heroes.slice();
+  }
+}
 module.exports = areaHeroes;

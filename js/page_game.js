@@ -388,20 +388,6 @@ function performEnemyAttack() {
   }
 }
 
-// ★ 新手关卡（第1关）敌人 HP 强制到 [95, 105]：只影响“非 Boss”
-function enforceTutorialHP() {
-    try {
-      if (typeof getMonster !== 'function') return;
-      const mon = getMonster();
-      if (!mon) return;
-  
-      if (globalThis?.currentLevel === 1 && !mon.isBoss) {
-        const hp = 95 + Math.floor(Math.random() * 11); // 95~105
-        mon.maxHp = hp;
-        mon.hp    = hp;
-      }
-    } catch (_) {}
-  }
   
 function playSound(name) {
   if (!wx.createInnerAudioContext) return;
@@ -2414,7 +2400,7 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
         globalThis.gridSize = config.gridSize || 6;
         globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
         loadMonster(currentLevel);
-        enforceTutorialHP();
+ 
         initGrid();
         // 重新载入最新出战英雄
         const heroes = getSelectedHeroes();

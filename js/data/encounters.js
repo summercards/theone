@@ -5,6 +5,17 @@
 import HeroData from './hero_data.js';
 const HEROES = HeroData?.heroes || (HeroData.getAllHeroes?.() || []);
 
+// ===== 与 monster_state.js 保持一致的统一常量（只保留这一套） =====
+const BASE_HP_WHITE_L1 = 100;   // 白 1级基准 HP
+const HP_GROWTH        = 1.18;  // 等级成长（温和指数）
+const ENEMY_GLOBAL_BUFF = 1.4;  // 敌人全局 +40%（如需关闭改为 1.0）
+const RARITY_MULT = {           // 稀有度倍率（含 yellow）
+  white: 1.00, green: 1.25, blue: 1.60, purple: 2.20, yellow: 2.60, gold: 3.20
+};
+// Boss 倍率温和，避免 10 级上万
+const BOSS_MULT = 3.5;
+const levelGrowth = (lv) => Math.pow(HP_GROWTH, Math.max(1, (lv|0)) - 1);
+
 // —— 把“编号 01~06”解析成实际 heroId ——
 // 规则：优先匹配 h.code/h.no/h.serial 等字段；否则再看 id/名字尾部两位数字；最后匹配 HERO_001 这类。
 function idsFromCodes(codes) {
@@ -35,28 +46,25 @@ function idsFromCodes(codes) {
 }
 
 // —— 森林池：编号 01~06 ——
-// 如果你知道精确 heroId，直接替换为 const FOREST_POOL = ['HERO_001','HERO_002',...];
+// 如果你要 01~05，把最后一个去掉：['01','02','03','04','05']
 const FOREST_POOL = idsFromCodes(['01','02','03','04','05','06']);
 
-// —— 数值公式 ——
-// 目标：白 1 级 ≈ 100 HP
-const BASE_HP_WHITE_L1 = 100;
-const RARITY_MULT = { white:1.00, green:1.25, blue:1.60, purple:2.20, orange:2.80, gold:3.20 };
-const levelGrowth = (lv) => Math.pow(1.18, Math.max(1, (lv|0)) - 1);
-const BOSS_MULT = 6.0; // 第 10 关 Boss 倍率（可按手感微调）
+/** 按本局稀有度 + 等级统一重算敌人 HP / ATK（只出整数，稳定成长） */
+export function recomputeEnemyStats(enemy, hero, level, isBoss = false) {
+  // ✅ 稀有度优先级：本局抽到的 > 英雄原稀有度
+  const rarity = (enemy?.rarityTier || hero?.rarity || hero?.quality || 'white').toLowerCase();
 
-/** 按英雄稀有度与关卡等级重算敌人 HP / 攻击（等比缩放伤害，避免错位） */
-export function recomputeEnemyStats(enemy, hero, level, isBoss=false) {
-  const rarity = (hero?.rarity || hero?.quality || enemy?.rarityTier || 'white').toLowerCase();
-  const oldHp  = Number(enemy?.maxHp || enemy?.hp || BASE_HP_WHITE_L1);
+  // 旧 HP 用于按比例缩放伤害
+  const oldHp = Number(enemy?.maxHp || enemy?.hp || BASE_HP_WHITE_L1);
 
-  let hp = Math.round(BASE_HP_WHITE_L1 * (RARITY_MULT[rarity] || 1) * levelGrowth(level));
+  // 统一 HP 公式（含 BUFF，取整）
+  let hp = Math.round(BASE_HP_WHITE_L1 * (RARITY_MULT[rarity] || 1) * levelGrowth(level) * ENEMY_GLOBAL_BUFF);
   if (isBoss) hp = Math.round(hp * BOSS_MULT);
 
-  // 等比缩放伤害
+  // 等比缩放 ATK（保持手感）
   const ratio = oldHp > 0 ? (hp / oldHp) : 1;
 
-  enemy.level = level|0;
+  enemy.level = level | 0;
   enemy.isBoss = !!isBoss;
   enemy.maxHp = hp;
   enemy.hp    = hp;
