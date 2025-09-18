@@ -1159,7 +1159,7 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
       borderColor = tierColorMap[rarityTier] || '#FFFFFF';
     } else {
       // 原英雄稀有度映射，保持旧配色
-      const rarityMap = { SSR: '#FFD700', SR: '#C0C0C0', R: '#A0522D' };
+      const rarityMap = { R:'#FFFFFF', SR:'#00BFFF', SSR:'#C71585', UR:'#FFD700' };
       borderColor = rarityMap[hero.rarity] || '#FFFFFF';
     }
     ctx.strokeStyle = borderColor;

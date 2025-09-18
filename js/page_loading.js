@@ -4,6 +4,25 @@
 
    import { loadAll, migrateLocalToCloudOnce } from './utils/cloud_save.js';
    const HeroData = require('./data/hero_data.js');
+
+// ===== 兼容迁移：把旧稀有度(R/SR/SSR/UR)转成新稀有度(white/green/blue/purple/yellow/gold) =====
+function migrateRarityScheme() {
+  try {
+    const prog = wx.getStorageSync('heroProgress') || {};
+    let changed = false;
+    const mapOldToNew = { R:'white', SR:'blue', SSR:'purple', UR:'gold' };
+    for (const k in prog) {
+      const r = prog[k]?.rarity;
+      if (!r) continue;
+      if (mapOldToNew[r]) {
+        prog[k].rarity = mapOldToNew[r];
+        changed = true;
+      }
+    }
+    if (changed) wx.setStorageSync('heroProgress', prog);
+  } catch (e) { console.warn('[migrate] rarity scheme failed', e); }
+}
+
    
    let ctxRef, canvasRef, switchPageFn;
    let progress = 0;
@@ -119,6 +138,7 @@
      })();
    
      Promise.all([assetPromise, cloudPromise]).then(() => {
+      try { migrateRarityScheme(); } catch(_) {}
        // 留 0.5 秒给玩家看到 100%，再切 Home
        setTimeout(() => switchPageFn('home'), 500);
      });

@@ -171,18 +171,28 @@ function setSelectedHeroes(ids) {
 function getSelectedHeroes() {
   return selectedHeroes;
 }
-
 function saveHeroProgress(hero) {
-  const data = wx.getStorageSync('heroProgress') || {};
-  data[hero.id] = {
-    level:      hero.level,
-    exp:        hero.exp,
-    attributes: hero.attributes,
-    locked:     hero.locked,
-    hp:         hero.hp   // ✅ 保存 HP
-  };
-  wx.setStorageSync('heroProgress', data);
-}
+    const data = wx.getStorageSync('heroProgress') || {};
+    const old  = data[hero.id] || {};
+  
+    // 保留已存在的 rarity（white/green/blue/purple/yellow/gold），
+    // 若没有则用当前实例的 rarityTier。
+    const rarityToSave = (typeof old.rarity !== 'undefined' && old.rarity !== null)
+      ? old.rarity
+      : (hero.rarityTier || null);
+  
+    data[hero.id] = {
+      ...old,                 // 先保留旧字段，避免丢失
+      level:      hero.level,
+      exp:        hero.exp,
+      attributes: hero.attributes,
+      locked:     hero.locked,
+      hp:         hero.hp,
+      rarity:     rarityToSave
+    };
+    wx.setStorageSync('heroProgress', data);
+  }
+  
 
 export function clearSelectedHeroes () {
   setSelectedHeroes(Array(5).fill(null));

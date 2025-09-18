@@ -94,24 +94,35 @@ const HERO_PER_PAGE = 15;                                   // 每页 15
 // 动态获取所有可用（已解锁）英雄列表。过滤掉隐藏英雄。
 function getAvailableHeroes() {
   // 根据库存中的实例 ID 构造英雄对象列表，支持重复
-  const inv = getHeroInventory();
-  const list = [];
-  inv.forEach(instanceId => {
-    const parts = String(instanceId).split('_');
-    const baseId = parts[0];
-    // 获取基础英雄数据
-    const baseHero = HeroData.getHeroById
-      ? HeroData.getHeroById(baseId)
-      : (HeroData.heroes && HeroData.heroes.find(h => h.id === baseId));
-    if (baseHero && !baseHero.hidden) {
-      // 构造一个新对象：保留基础属性但 id 使用实例 ID
-      const heroObj = {
-        ...baseHero,
-        id: instanceId
-      };
-      list.push(heroObj);
-    }
-  });
+// 根据库存中的实例 ID 构造英雄对象列表，支持重复
+const inv = getHeroInventory();
+const list = [];
+const prog = wx.getStorageSync('heroProgress') || {};
+
+inv.forEach(instanceId => {
+  const parts = String(instanceId).split('_');
+  const baseId = parts[0];
+
+  const baseHero = HeroData.getHeroById
+    ? HeroData.getHeroById(baseId)
+    : (HeroData.heroes && HeroData.heroes.find(h => h.id === baseId));
+
+  if (baseHero && !baseHero.hidden) {
+    const inst = prog[instanceId] || {};
+    const heroObj = {
+      ...baseHero,
+      id: instanceId,
+      // ★ 用实例稀有度（white/green/blue/purple/yellow/gold）
+      rarityTier: inst.rarity || baseHero.rarityTier || null,
+      // （可选）合并实例等级/HP/属性
+      level:      (typeof inst.level === 'number' ? inst.level : (baseHero.level || 1)),
+      hp:         (typeof inst.hp === 'number' ? inst.hp : (baseHero.hp ?? 100)),
+      attributes: inst.attributes ? { ...(baseHero.attributes||{}), ...inst.attributes } : (baseHero.attributes||{})
+    };
+    list.push(heroObj);
+  }
+});
+
   // === 根据排序模式对列表排序 ===
   const getRarityRank = (hero) => {
     // 捕获英雄使用 rarityTier (white/green/blue/purple/yellow/gold)，否则使用基础 rarity (SSR/SR/R)
