@@ -26,6 +26,16 @@ function _powi(b, e) {
   return Math.pow(base, exp);
 }
 
+// 浅比较属性对象，判断是否有变化（避免无意义写盘）
+function _shallowEqualAttrs(a = {}, b = {}) {
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  for (const k of ka) {
+    if (Number(a[k]) !== Number(b[k])) return false;
+  }
+  return true;
+}
+
 /**
  * 从基础模板 + 等级 + 稀有度 计算最终属性（乘法成长）
  * 支持在英雄模板上用 growthMul / growthMulByRarity 覆盖默认倍率：
@@ -138,7 +148,18 @@ class HeroState {
 
     // —— 新增：构造完成后立刻把重算结果写回存档 ——
 // 确保英雄池（优先读存档）能拿到“按等级×倍率重算”的最新数值
-try { saveHeroProgress(this); } catch (e) { console.warn('sync hero stats to store failed', e); }
+try {
+  const store = wx.getStorageSync('heroProgress') || {};
+  const prev  = store[this.id] || {};
+  const changed =
+    Number(prev.hp) !== Number(this.hp) ||
+    !_shallowEqualAttrs(prev.attributes || {}, this.attributes) ||
+    Number(prev.level) !== Number(this.level) ||
+    Number(prev.exp) !== Number(this.exp) ||
+    Boolean(prev.locked) !== Boolean(this.locked) ||
+    String(prev.rarity || '').toLowerCase() !== String(this.rarityTier || '').toLowerCase();
+  if (changed) saveHeroProgress(this);
+} catch (e) { console.warn('sync hero stats to store failed', e); }
 
   }
 
@@ -237,7 +258,7 @@ function saveHeroProgress(hero) {
       ? old.rarity
       : (hero.rarityTier || null);
   
-    data[hero.id] = {
+    const next = {
       ...old,                 // 先保留旧字段，避免丢失
       level:      hero.level,
       exp:        hero.exp,
@@ -246,6 +267,16 @@ function saveHeroProgress(hero) {
       hp:         hero.hp,
       rarity:     rarityToSave
     };
+    // 若数据完全一致则不写入，避免触发云存档监听
+    const same =
+      Number(old.level)  === Number(next.level)  &&
+      Number(old.exp)    === Number(next.exp)    &&
+      Boolean(old.locked)=== Boolean(next.locked)&&
+      Number(old.hp)     === Number(next.hp)     &&
+      String(old.rarity || '') === String(next.rarity || '') &&
+      _shallowEqualAttrs(old.attributes || {}, next.attributes || {});
+    if (same) return;
+    data[hero.id] = next;
     wx.setStorageSync('heroProgress', data);
   }
   
