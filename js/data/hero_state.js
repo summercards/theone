@@ -8,6 +8,71 @@ const { createHeroLevelUpEffect } = require('../effects_engine.js');
 // ========================================================
 const MAX_LEVEL = 50;
 
+/* --------------------- 新增：乘法成长支持（最小入侵） --------------------- */
+/** 按稀有度的默认“每级倍率”（示例，可按策划调整） */
+const RARITY_MULT_DEFAULT = {
+  white:  { attrMul: 1.02, hpMul: 1.03 },
+  green:  { attrMul: 1.03, hpMul: 1.04 },
+  blue:   { attrMul: 1.05, hpMul: 1.06 },
+  purple: { attrMul: 1.07, hpMul: 1.08 },
+  yellow: { attrMul: 1.09, hpMul: 1.10 },
+  gold:   { attrMul: 1.12, hpMul: 1.15 },
+};
+
+function _powi(b, e) {
+  const base = Number(b), exp = Number(e);
+  if (!isFinite(base) || base <= 0) return 1;
+  if (!isFinite(exp) || exp <= 0) return 1;
+  return Math.pow(base, exp);
+}
+
+/**
+ * 从基础模板 + 等级 + 稀有度 计算最终属性（乘法成长）
+ * 支持在英雄模板上用 growthMul / growthMulByRarity 覆盖默认倍率：
+ *  - growthMul: { attrMul: 1.06, hpMul: 1.08 }
+ *  - growthMul: { attrMul: {physical:1.07, magic:1.05}, hpMul:1.07 }
+ *  - growthMulByRarity: { gold:{...}, blue:{...} } // 优先级更高
+ */
+function computeStatsByMultiplier(base, level, rarity) {
+  const lvlUps = Math.max(0, (Number(level) || 1) - 1);
+  const rarityKey = String(rarity || 'white').toLowerCase();
+
+  const heroMulByRarity = base?.growthMulByRarity?.[rarityKey];
+  const heroMul = heroMulByRarity || base?.growthMul || null;
+  const defMul  = RARITY_MULT_DEFAULT[rarityKey] || RARITY_MULT_DEFAULT.white;
+
+  const rawAttrMul =
+    (heroMul && heroMul.attrMul != null) ? heroMul.attrMul :
+    (defMul  && defMul.attrMul  != null) ? defMul.attrMul  : 1.0;
+
+  const hpMulPerLevel =
+    (heroMul && heroMul.hpMul != null) ? heroMul.hpMul :
+    (defMul  && defMul.hpMul  != null) ? defMul.hpMul  : 1.0;
+
+  const baseAttrs = { ...(base?.attributes || {}) };
+  const baseHp    = (typeof base?.hp === 'number' && isFinite(base.hp)) ? base.hp : 100;
+
+  const outAttrs = {};
+  if (rawAttrMul && typeof rawAttrMul === 'object') {
+    // 分属性倍率
+    for (const k of Object.keys(baseAttrs)) {
+      const perLevel = Number(rawAttrMul[k] ?? 1.0);
+      outAttrs[k] = Math.round(Number(baseAttrs[k] || 0) * _powi(perLevel, lvlUps));
+    }
+  } else {
+    // 统一倍率
+    const perLevel = Number(rawAttrMul || 1.0);
+    const mul = _powi(perLevel, lvlUps);
+    for (const k of Object.keys(baseAttrs)) {
+      outAttrs[k] = Math.round(Number(baseAttrs[k] || 0) * mul);
+    }
+  }
+
+  const hp = Math.round(Number(baseHp) * _powi(Number(hpMulPerLevel || 1.0), lvlUps));
+  return { hp, attributes: outAttrs };
+}
+/* --------------------- ↑ 新增逻辑仅被构造/升级调用 ↑ --------------------- */
+
 class HeroState {
   constructor(id) {
     // 支持实例化派生ID（如 hero001_xxxxx），通过下划线前缀匹配原型
@@ -34,16 +99,24 @@ class HeroState {
       : 10;
     this.onLevelUp = null;
 
-    // ✅ 新增 HP（注意顺序必须在 saved 定义之后）
-    this.hp = saved?.hp ?? base.hp ?? 100;
+    // 捕捉得到的英雄可能带有稀有度，用于自定义成长曲线（保存为小写便于查表）
+    this.rarityTier = (saved?.rarity || base.rarityTier || 'white').toLowerCase();
 
-    // 📌 捕捉得到的英雄可能带有稀有度，用于自定义成长曲线
-    this.rarityTier = saved?.rarity || base.rarityTier || null;
+    // 等级/经验等仍沿用你的原有逻辑
+    this.level      = saved?.level      ?? base.level ?? 1;
+    this.exp        = saved?.exp        ?? base.exp   ?? 0;
+    // 锁定状态：实例化的派生 ID 默认为解锁状态
+    this.locked     = saved?.locked ?? base.locked ?? false;
 
-    const rawAttrs = saved?.attributes ?? { ...base.attributes };
+    /* 关键改动：
+       —— 忽略存档里的 hp/attributes，统一“从基础模板 + 等级 + 稀有度”重算 —— */
+    const { hp, attributes } = computeStatsByMultiplier(base, this.level, this.rarityTier);
+
+    // ✅ 新的数值作为运行时展示/战斗的来源
+    this.hp = hp;
+
     const heroName = base.name ?? "未知英雄";
-
-    this.attributes = new Proxy(rawAttrs, {
+    this.attributes = new Proxy({ ...attributes }, {
       set(target, prop, value) {
         const old = target[prop];
         if (old !== value) {
@@ -51,6 +124,9 @@ class HeroState {
             `%c⚠️ ${heroName} 属性变更: [${prop}] 从 ${old} ➜ ${value}`,
             'color: red; font-weight: bold; background: #fff3f3; padding: 2px 4px;'
           );
+
+
+  
         }
         target[prop] = value;
         return true;
@@ -60,10 +136,10 @@ class HeroState {
       }
     });
 
-    this.level      = saved?.level      ?? base.level ?? 1;
-    this.exp        = saved?.exp        ?? base.exp   ?? 0;
-    // 锁定状态：实例化的派生 ID 默认为解锁状态
-    this.locked     = saved?.locked ?? base.locked ?? false;
+    // —— 新增：构造完成后立刻把重算结果写回存档 ——
+// 确保英雄池（优先读存档）能拿到“按等级×倍率重算”的最新数值
+try { saveHeroProgress(this); } catch (e) { console.warn('sync hero stats to store failed', e); }
+
   }
 
   tryUnlock() {
@@ -100,40 +176,20 @@ class HeroState {
   levelUp() {
     this.level++;
 
-    // ✅ 升级加属性
-    // 捕捉英雄（带实例ID）使用基于稀有度的成长曲线；否则使用基础 levelUpConfig
-    if (this.rarityTier && ['white','green','blue'].includes(this.rarityTier)) {
-      // 稀有度成长表：每级属性和HP提升
-      const RARITY_GROWTH = {
-        white: { attribute: 1, hp: 5 },
-        green: { attribute: 2, hp: 10 },
-        blue:  { attribute: 3, hp: 15 }
-      };
-      const growthVals = RARITY_GROWTH[this.rarityTier] || { attribute: 1, hp: 5 };
-      // 为每个已存在属性增加成长值
-      for (const key in this.attributes) {
-        this.attributes[key] += growthVals.attribute;
-      }
-      // 若没有属性（极端情况），给物攻+增长
-      if (Object.keys(this.attributes).length === 0) {
-        this.attributes.physical = growthVals.attribute;
-      }
-      // HP 增长
-      this.hp += growthVals.hp;
-    } else {
-      // 使用基础配置成长
-      const growth = this.levelUpConfig.attributeGrowth || {};
-      for (const key in growth) {
-        if (!this.attributes[key]) this.attributes[key] = 0;
-        this.attributes[key] += growth[key];
-      }
-      // ✅ 升级加 HP
-      const hpGrowth = this.levelUpConfig.hpGrowth ?? 0;
-      if (hpGrowth > 0) {
-        this.hp += hpGrowth;
-      }
-    }
+    /* 关键改动：
+       —— 不做“在当前值上加/乘”的增量运算 —— 
+       —— 而是把 level+1 后，直接从基础模板重算（避免误差、统一口径） —— */
+    const base = HeroData.getHeroById(this.baseId) || {};
+    const { hp, attributes } = computeStatsByMultiplier(base, this.level, this.rarityTier);
 
+    // 覆盖到当前数值（保持其余事件/特效逻辑不变）
+    this.hp = hp;
+    // 同步每个属性键
+    for (const k of Object.keys(attributes)) this.attributes[k] = attributes[k];
+    // 删除可能不存在的旧属性键（若基础模板调整过）
+    for (const k of Object.keys(this.attributes)) if (!(k in attributes)) delete this.attributes[k];
+
+    // —— 下面保持你原有的升级事件/特效/解锁等逻辑不变 —— //
     // 特例处理
     if (this.id === 'hero002') {
       const skillEffect = this.skill.effect;
@@ -185,7 +241,7 @@ function saveHeroProgress(hero) {
       ...old,                 // 先保留旧字段，避免丢失
       level:      hero.level,
       exp:        hero.exp,
-      attributes: hero.attributes,
+      attributes: { ...hero.attributes },
       locked:     hero.locked,
       hp:         hero.hp,
       rarity:     rarityToSave
