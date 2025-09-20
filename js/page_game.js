@@ -998,28 +998,38 @@ if (opened && globalThis.victoryChestLoot[i]) {
 }
 /* --------------------------------------------------------- */
 
-  // ✅ 如果有奖励英雄，则绘制头像与奖励信息
-  if (globalThis.levelRewardsHeroId) {
+// ✅ 如果有奖励英雄，则绘制头像与奖励信息
+if (globalThis.levelRewardsHeroId) {
     const HeroState = require('./data/hero_state.js').HeroState;
     const hero = new HeroState(globalThis.levelRewardsHeroId);
-    // 头像尺寸及位置
     const iconSize = 72;
     const iconX = W / 2 - iconSize / 2;
-    // 根据奖励行数和经验文本，动态计算 Y 坐标，避免遮挡其他内容
     const rewardCount = (globalThis.levelRewards || []).length;
     const iconY = expY + 60 + rewardCount * 28;
-    // 绘制英雄全身像
+  
+    // 先按原位置绘制一次头像（不影响后续逻辑）
     drawHeroIconFull(ctx, hero, iconX, iconY, iconSize, 1.0);
+  
     // 根据是否为捕捉奖励切换绘制模式
     if (globalThis.captureRewardActive) {
-      // 捕捉奖励：显示祝贺文字和确认按钮
+      // 黑底：盖住后续胜利弹窗内容，使本帧只显示头像+确认
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.80)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+  
+      // 重新把头像绘制到黑底上方
+      drawHeroIconFull(ctx, hero, iconX, iconY, iconSize, 1.0);
+  
+      // 捕捉奖励祝贺文字（维持你原有样式）
       const msg = globalThis.captureRewardMessage || '';
       ctx.fillStyle = '#FFD700';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(msg, W / 2, iconY + iconSize + 4);
-      // 绘制确认按钮
+  
+      // 确认按钮（维持你原有样式与位置）
       const btnW2 = 100;
       const btnH2 = 36;
       const btnX2 = (W - btnW2) / 2;
@@ -1031,26 +1041,33 @@ if (opened && globalThis.victoryChestLoot[i]) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('确认', btnX2 + btnW2 / 2, btnY2 + btnH2 / 2);
-      // 记录按钮区域供点击检测
+  
+      // 记录按钮区域供点击检测（保持不变）
       globalThis.captureConfirmArea = { x: btnX2, y: btnY2, width: btnW2, height: btnH2 };
+  
+      // 关键：本帧到此为止，不再绘制宝箱、经验、下一关等后续元素
+      return;
     } else {
-      // 默认奖励逻辑：提示加入队伍及技能信息
+      // 默认奖励逻辑：提示加入队伍及技能信息（保持原样）
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText('已加入队伍', W / 2, iconY + iconSize + 4);
+  
       const fullHero = HeroData.getHeroById(hero.id);
       const realName = fullHero?.name || '新英雄';
+  
       ctx.fillStyle = '#FFD700';
       ctx.font = '18px sans-serif';
       ctx.fillText('解锁新英雄：' + realName, W / 2, iconY + iconSize + 28);
+  
       const skillDesc = fullHero?.skill?.description || '';
       if (skillDesc) {
-        ctx.fillStyle   = '#CCCCCC';
-        ctx.font        = '14px sans-serif';
-        ctx.textAlign   = 'center';
-        ctx.textBaseline= 'top';
+        ctx.fillStyle = '#CCCCCC';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
         ctx.fillText(skillDesc, W / 2, iconY + iconSize + 52);
       }
     }
