@@ -159,64 +159,136 @@ inv.forEach(instanceId => {
   return list;
 }
 
+
+// ==================== 合成候选收集 & 分页弹窗（新增） ====================
+
+// 稀有度显示字典（与你项目一致）
+const RARITY_TEXT = {
+    white: '白', green: '绿', blue: '蓝', purple: '紫', yellow: '橙', gold: '金'
+  };
+  
+  // 收集所有“可合成”候选（同 baseId + 稀有度，数量≥3）
+  function collectSynthesisCandidatesPaged() {
+    const inv = getHeroInventory();
+    const heroProg = wx.getStorageSync('heroProgress') || {};
+    const buckets = new Map();
+  
+    // 归并计数：key = `${baseId}__${tier}`
+    for (const instId of inv) {
+      const [baseId] = String(instId).split('_');
+      const prog = heroProg[instId] || {};
+      const tier = (prog.rarity || prog.rarityTier || 'white').toLowerCase();
+      const key  = `${baseId}__${tier}`;
+  
+      let node = buckets.get(key);
+      if (!node) {
+        // 找基础名
+        let baseHero = null;
+        if (HeroData.getHeroById) baseHero = HeroData.getHeroById(baseId);
+        else if (HeroData.heroes) baseHero = HeroData.heroes.find(h => h.id === baseId);
+        node = { key, baseId, tier, name: baseHero?.name || baseId, count: 0 };
+      }
+      node.count += 1;
+      buckets.set(key, node);
+    }
+  
+    // 只保留可合成（≥3），并按 稀有度→名称 排序
+    const order = ['white','green','blue','purple','yellow','gold'];
+    const list = [...buckets.values()]
+      .filter(x => x.count >= 3)
+      .sort((a,b) => {
+        const ra = order.indexOf(a.tier), rb = order.indexOf(b.tier);
+        if (ra !== rb) return ra - rb;
+        return String(a.name).localeCompare(String(b.name), 'zh-CN');
+      });
+  
+    return list;
+  }
+  
+  // 分页 ActionSheet：每页最多 6 项，超出用“上一页/下一页”
+  function showPagedActionSheet(cands, pageIndex = 0) {
+    const PAGE_SIZE = 6;
+    const pages = Math.max(1, Math.ceil(cands.length / PAGE_SIZE));
+    const p = Math.min(Math.max(0, pageIndex), pages - 1);
+    const start = p * PAGE_SIZE;
+    const pageList = cands.slice(start, start + PAGE_SIZE);
+  
+    // 组合本页 itemList，并且在末尾追加翻页项
+    const itemList = pageList.map(c => {
+      const times = Math.floor(c.count / 3);
+      const rtxt  = RARITY_TEXT[c.tier] || c.tier;
+      return `${rtxt}·${c.name} ×${c.count}（可合成${times}次）`;
+    });
+  
+    const actions = pageList.map((_, i) => ({ type: 'pick', i }));
+    if (pages > 1) {
+      if (p > 0) {
+        itemList.push('⬅ 上一页');
+        actions.push({ type: 'prev' });
+      }
+      if (p < pages - 1) {
+        itemList.push('下一页 ➡');
+        actions.push({ type: 'next' });
+      }
+    }
+  
+    return new Promise(resolve => {
+      wx.showActionSheet({
+        alertText: `可合成项（第 ${p + 1}/${pages} 页）`,
+        itemList,
+        success: ({ tapIndex }) => resolve({ action: actions[tapIndex], pageList, page: p, pages }),
+        fail: () => resolve(null)
+      });
+    });
+  }
+
+  
+
 /**
  * 打开英雄合成对话框。玩家可选择拥有≥3个重复英雄（同名称同稀有度）的组合进行合成。
  * 合成将消耗3个相同英雄实例，并获得1个更高稀有度的新实例。
  */
-function openSynthesisDialog() {
+// ==================== 打开合成对话框（替换原函数） ====================
+async function openSynthesisDialog() {
+  // 防抖：防止短时间内多次点击合成按钮
+  if (openSynthesisDialog._lock) return;
+  openSynthesisDialog._lock = true;
+  setTimeout(() => { openSynthesisDialog._lock = false; }, 300);
+
   try {
-    // 收集库存中可合成的英雄键 -> 实例ID数组
-    const inv = getHeroInventory();
-    const heroProg = wx.getStorageSync('heroProgress') || {};
-    const groups = {};
-    inv.forEach((instId) => {
-      const parts = String(instId).split('_');
-      const baseId = parts[0];
-      const prog  = heroProg[instId] || {};
-      const tier  = prog.rarity || prog.rarityTier || 'white';
-      const key   = `${baseId}__${tier}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(instId);
-    });
-    // 构建候选列表
-    const itemList = [];
-    const keys     = [];
-    for (const key in groups) {
-      if (groups[key].length >= 3) {
-        const [baseId, tier] = key.split('__');
-        // 获取英雄名称
-        let baseHero = null;
-        if (HeroData.getHeroById) {
-          baseHero = HeroData.getHeroById(baseId);
-        } else if (HeroData.heroes) {
-          baseHero = HeroData.heroes.find(h => h.id === baseId);
-        }
-        const name = baseHero?.name || baseId;
-        // 显示品质中文
-        const tierLabelMap = { white:'白', green:'绿', blue:'蓝', purple:'紫', yellow:'橙', gold:'金' };
-        const tierLabel = tierLabelMap[tier] || tier;
-        itemList.push(`${name} (${tierLabel}) ×${groups[key].length}`);
-        keys.push(key);
-      }
-    }
-    if (itemList.length === 0) {
+    const cands = collectSynthesisCandidatesPaged();
+
+    if (!cands.length) {
       wx.showToast({ title: '没有可合成的英雄', icon: 'none' });
       return;
     }
-    wx.showActionSheet({
-      itemList,
-      success(res) {
-        const idx = res.tapIndex;
-        if (idx >= 0 && keys[idx]) {
-          performSynthesis(keys[idx]);
+
+    let page = 0;
+    while (true) {
+      const res = await showPagedActionSheet(cands, page);
+      if (!res || !res.action) return; // 取消或异常
+
+      const { action, pageList, page: cur } = res;
+      if (action.type === 'prev') { page = Math.max(0, cur - 1); continue; }
+      if (action.type === 'next') { page = cur + 1; continue; }
+      if (action.type === 'pick') {
+        const pick = pageList[action.i];
+        // ✅ 保持你原先的合成入口：performSynthesis(key)
+        if (typeof performSynthesis === 'function') {
+          performSynthesis(pick.key);
+        } else {
+          wx.showToast({ title: `选择了 ${RARITY_TEXT[pick.tier] || pick.tier}·${pick.name}`, icon: 'none' });
+          console.warn('[合成] 找不到 performSynthesis(key) 函数，请保持函数名一致。');
         }
+        return;
       }
-    });
+    }
   } catch (err) {
-    console.warn('打开合成对话框失败', err);
-    wx.showToast({ title: '合成失败', icon: 'none' });
+    console.error('[合成菜单异常]', err);
+    wx.showToast({ title: '合成菜单出错', icon: 'none' });
   }
 }
+
 
 /**
  * 执行指定组合键的英雄合成。键格式为 `${baseId}__${tier}`。

@@ -2872,17 +2872,22 @@ setTimeout(() => {
     skillsActive++;                 // 技能开始 → +1
     const hero = getSelectedHeroes()[slotIndex];
     if (!hero) return;
-
-      // ✅ 添加技能对话特效
-  const skillName = HeroData.heroes.find(h => h.id === hero.id)?.skill?.name || '技能';
-  createSkillDialog(slotIndex, skillName);
+  
+    // ✅ 添加技能对话特效
+    const skillName = HeroData.heroes.find(h => h.id === hero.id)?.skill?.name || '技能';
+    createSkillDialog(slotIndex, skillName);
   
     const eff = hero.skill?.effect;
     if (!eff) return;
-
+  
     console.log("释放技能：", hero.name, hero.skill?.effect);
+  
+    // ⛳️ 关键：把 dealDamage 包装为永远 allowKill
     const context = {
-      dealDamage,
+      dealDamage: (value, options = {}) => {
+        // 无论技能是否传 options，都强制允许击杀
+        return dealDamage(value, { ...options, allowKill: true });
+      },
       log: logBattle,
       canvas: canvasRef,
       addGauge: (value) => {
@@ -2897,171 +2902,198 @@ setTimeout(() => {
         damagePopTime = Date.now();
       }
     };
-    
   
     applySkillEffect(hero, eff, context);
+  
     // 添加释放特效（在能量条清空前）
-const size = 48;
-const spacing = 12;
-const totalWidth = 5 * size + 4 * spacing;
-const startX = (canvasRef.width - totalWidth) / 2;
-const topMargin = __gridStartY - 80;
-const barW = size;
-const barH = 6;
-const barX = startX + slotIndex * (size + spacing);
-const barY = topMargin + size + 6;
-// 🌟 添加蓝色能量高亮边框
-createChargeGlowEffect(barX - 1, barY - 1, barW + 2, barH + 2);
-createChargeReleaseEffect(barX, barY, barW, barH);
-
+    const size = 48;
+    const spacing = 12;
+    const totalWidth = 5 * size + 4 * spacing;
+    const startX = (canvasRef.width - totalWidth) / 2;
+    const topMargin = __gridStartY - 80;
+    const barW = size;
+    const barH = 6;
+    const barX = startX + slotIndex * (size + spacing);
+    const barY = topMargin + size + 6;
+  
+    // 🌟 能量高亮
+    createChargeGlowEffect(barX - 1, barY - 1, barW + 2, barH + 2);
+    createChargeReleaseEffect(barX, barY, barW, barH);
+  
     setCharge(slotIndex, 0);
     createExplosion(canvasRef.width / 2, canvasRef.height / 2);
-
+  
     const SKILL_END_MS = 1200;
-setTimeout(() => {
-  skillsActive--;
-}, SKILL_END_MS);
-
-
-      // ✅ 技能表现：触发头像动画（默认样式）
-      createAvatarFlash(slotIndex, 1.3, 500); 
-
-  // ✅ 可扩展技能特效表现
-  if (hero.id === 'hero002') {
-    // 示例：法师英雄释放火球术
-    createFloatingText('火球术！', canvasRef.width / 2, 160, '#FF6600');
-    createExplosion(canvasRef.width / 2, 140, '#FF3300');
-  } else if (hero.id === 'hero006') {
-    // 示例：牧师英雄释放圣光祷言
-    createFloatingText('圣光祷言', canvasRef.width / 2, 160, '#66FFFF');
+    setTimeout(() => {
+      skillsActive--;
+    }, SKILL_END_MS);
+  
+    // ✅ 技能表现：触发头像动画（默认样式）
+    createAvatarFlash(slotIndex, 1.3, 500);
+  
+    // ✅ 可扩展技能特效表现（保留你的原逻辑）
+    if (hero.id === 'hero002') {
+      createFloatingText('火球术！', canvasRef.width / 2, 160, '#FF6600');
+      createExplosion(canvasRef.width / 2, 140, '#FF3300');
+    } else if (hero.id === 'hero006') {
+      createFloatingText('圣光祷言', canvasRef.width / 2, 160, '#66FFFF');
+    }
   }
-
-  }
+  
   
 
 
-function startAttackEffect(dmg) {
-  if (dmg <= 0) return;
-
-  // ① 清零界面累计
-  attackGaugeDamage   = 0;
-  attackDisplayDamage = 0;
-
-  // ② 记录待结算伤害
-  pendingDamage = dmg;
-
-  // ③ 发射飞弹：起点 = 伤害数字中心，终点 = 怪物中心
-  const startX = canvasRef.width / 2;
-  const startY = __gridStartY - 40;  // 让它从计数器区域或头像栏中飞出                           
-  const endX   = canvasRef.width / 2;
-  const endY   = 180;                           // 怪物中心高度，按你的 UI 调
-
-  createProjectile(startX, startY, endX, endY, 500, () => {
-      
-    // 飞弹到达 ⇒ 怪物掉血 & 受击闪
-    dealDamage(pendingDamage, { allowKill: true });
-    playSound('monster_hit');
-    createMonsterBounce(); // ✅ 添加弹性缩放动画
-    createExplosion(endX, endY);                // 爆点可复用现有效果
-    monsterHitFlashTime = Date.now();
-
-    // 飘字
-  // 🎯 根据伤害值动态设定颜色和大小
-const color = pendingDamage > 10000 ? '#FFFF00'
-: pendingDamage > 2000 ? '#FF6600'
-: '#FF4444';
-
-const size = pendingDamage > 10000 ? 64
-: pendingDamage > 2000 ? 48
-: 36;
-
-showDamageText(pendingDamage, endX, endY + 50);
-
-    pendingDamage = 0;
-    setTimeout(() => {
-      gaugeCount = 0;
-    }, 500);
-
-    if (isMonsterDead()) {
+  function startAttackEffect(dmg) {
+    // 🛟 兜底：如果技能阶段已经把怪物打死，而槽伤害为 0
+    if (dmg <= 0) {
+      if (isMonsterDead && isMonsterDead()) {
+        const monster = getMonster && getMonster();
+        if (monster?.isBoss && typeof markBossDefeated === 'function') {
+          markBossDefeated(monster.level);
+        }
+        setTimeout(() => {
+          earnedGold = getMonsterGold();
+          addCoins(earnedGold);
+          goldPopTime   = Date.now();
+          displayedGold = getSessionCoins();
+          levelJustCompleted = currentLevel;
+  
+          // 经验结算（沿用你现有的计算方式）
+          const currentMonster = typeof getMonster === 'function' ? getMonster() : null;
+          const exp = currentMonster?.exp ?? (function () {
+            const lv = currentMonster?.level ?? 1;
+            const isBoss = currentMonster?.isBoss ?? false;
+            return Math.floor(lv * 5 + 10 + (isBoss ? 50 : 0));
+          })();
+          globalThis.expGainedThisRound = exp;
+          if (typeof rewardExpToHeroes === 'function') {
+            rewardExpToHeroes(exp);
+          }
+  
+          // 弹窗 & 状态（与你原胜利流程保持一致）
+          globalThis.levelRewards = [];
+          globalThis.victoryDialogText =
+            VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
+  
+          showVictoryPopup = true;
+          clearLootChests?.();
+          lockForVictory?.();
+          popupGoldDisplayed = 0;
+          popupGoldStartTime = Date.now();
+  
+          updatePlayerStats?.({
+            stage: currentLevel,
+            damage: 0,                   // 此次由技能击杀，槽伤害为 0
+            gold: getSessionCoins()
+          });
+  
+          if (wx && typeof wx.setStorageSync === 'function') {
+            wx.setStorageSync('lastLevel', currentLevel.toString());
+          }
+          drawGame?.();
+        }, 600);
+      }
+      return; // 原有的 return 保留
+    }
+  
+    // ===== 下面保持你原有的槽伤害投射 & 结算逻辑不变 =====
+  
+    if (dmg <= 0) return;
+  
+    // ① 清零界面累计
+    attackGaugeDamage   = 0;
+    attackDisplayDamage = 0;
+  
+    // ② 记录待结算伤害
+    pendingDamage = dmg;
+  
+    // ③ 发射飞弹：起点 = 伤害数字中心，终点 = 怪物中心
+    const startX = canvasRef.width / 2;
+    const startY = __gridStartY - 40;
+    const endX   = canvasRef.width / 2;
+    const endY   = 180;
+  
+    createProjectile(startX, startY, endX, endY, 500, () => {
+  
+      // 飞弹到达 ⇒ 怪物掉血 & 受击闪
+      dealDamage(pendingDamage, { allowKill: true });
+      playSound('monster_hit');
+      createMonsterBounce();
+      createExplosion(endX, endY);
+      monsterHitFlashTime = Date.now();
+  
+      // 飘字（保留你的表现）
+      const color = pendingDamage > 10000 ? '#FFFF00'
+                   : pendingDamage > 2000  ? '#FF6600'
+                   : '#FF4444';
+      const size  = pendingDamage > 10000 ? 64
+                   : pendingDamage > 2000  ? 48
+                   : 36;
+      showDamageText(pendingDamage, endX, endY + 50);
+  
+      pendingDamage = 0;
+      setTimeout(() => { gaugeCount = 0; }, 500);
+  
+      if (isMonsterDead()) {
         const monster = getMonster();
         if (monster.isBoss) {
           markBossDefeated(monster.level);
         }
         setTimeout(() => {
-            earnedGold = getMonsterGold();
-            addCoins(earnedGold);
-            goldPopTime = Date.now();
-            displayedGold = getSessionCoins();
-            levelJustCompleted = currentLevel;
-          
-            // ✅ 经验逻辑：根据已击败怪物的经验
-            const currentMonster = typeof getMonster === 'function' ? getMonster() : null;
-            const exp = currentMonster?.exp ?? (function(){
-              const lv = currentMonster?.level ?? 1;
-              const isBoss = currentMonster?.isBoss ?? false;
-              return Math.floor(lv * 5 + 10 + (isBoss ? 50 : 0));
-            })();
-            globalThis.expGainedThisRound = exp;
-            if (typeof rewardExpToHeroes === 'function') {
-              rewardExpToHeroes(exp);
-            }
- 
-
-// ✅ 添加关卡奖励英雄（例如每隔几关解锁新英雄）
-const levelRewardTexts = [];
-
-  globalThis.currentChestStats = {};      // 用完就清空，防止带到下一关
-  // ===============================================
-
-// 取消按关卡自动奖励英雄的逻辑，探索模式下不再基于当前关卡解锁英雄
-const heroId = null;
+          earnedGold = getMonsterGold();
+          addCoins(earnedGold);
+          goldPopTime       = Date.now();
+          displayedGold     = getSessionCoins();
+          levelJustCompleted = currentLevel;
   
-
-
-globalThis.levelRewards = levelRewardTexts;
-
-// 弹窗即将出现——先抽一行对白
-globalThis.victoryDialogText =
-  VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
-
-            // ✅ 胜利弹窗
-            showVictoryPopup = true;
-            clearLootChests();           // <<<<<< 新增
-            lockForVictory();      // ★ 新增：锁死后续异步流程
-            popupGoldDisplayed = 0;
-            popupGoldStartTime = Date.now();
-          
-            updatePlayerStats({
-              stage: currentLevel,
-              damage: dmg,
-              gold: getSessionCoins()
-            });
-          
-            wx.setStorageSync('lastLevel', currentLevel.toString());
-          
-            drawGame(); // ✅ 一定要放在最后触发弹窗绘制
-          }, 600);
-          
-          
-    
-      return; // ❗很重要：停止继续 loadMonster
-    } else {
-      setTimeout(() => {
-        monsterRetaliate();
-      }, 1000); // 延迟 1000ms 后再反击
-    }
-    if ((globalThis.gridExpandTurns || 0) > 0) {
-      globalThis.gridExpandTurns--;
-      if (globalThis.gridExpandTurns === 0) {
-        globalThis.gridSize = 6;
-        initGrid();
-        drawGame();
-        logBattle("棋盘扩展效果结束，恢复为 6x6");
+          const currentMonster = typeof getMonster === 'function' ? getMonster() : null;
+          const exp = currentMonster?.exp ?? (function(){
+            const lv = currentMonster?.level ?? 1;
+            const isBoss = currentMonster?.isBoss ?? false;
+            return Math.floor(lv * 5 + 10 + (isBoss ? 50 : 0));
+          })();
+          globalThis.expGainedThisRound = exp;
+          if (typeof rewardExpToHeroes === 'function') {
+            rewardExpToHeroes(exp);
+          }
+  
+          globalThis.levelRewards = [];
+          globalThis.victoryDialogText =
+            VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
+  
+          showVictoryPopup = true;
+          clearLootChests?.();
+          lockForVictory?.();
+          popupGoldDisplayed = 0;
+          popupGoldStartTime = Date.now();
+  
+          updatePlayerStats?.({
+            stage: currentLevel,
+            damage: dmg,
+            gold: getSessionCoins()
+          });
+  
+          wx?.setStorageSync?.('lastLevel', currentLevel.toString());
+          drawGame?.();
+        }, 600);
+  
+        return; // ❗ 停止继续 loadMonster
+      } else {
+        setTimeout(() => { monsterRetaliate(); }, 1000);
       }
-    }
-    
-}, pendingDamage);
-}
+  
+      if ((globalThis.gridExpandTurns || 0) > 0) {
+        globalThis.gridExpandTurns--;
+        if (globalThis.gridExpandTurns === 0) {
+          globalThis.gridSize = 6;
+          initGrid();
+          drawGame();
+          logBattle("棋盘扩展效果结束，恢复为 6x6");
+        }
+      }
+    }, pendingDamage);
+  }
+  
 
 function monsterRetaliate() {
   const monster = getMonster();
