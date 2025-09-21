@@ -561,16 +561,19 @@ let selected = null;
 
 /* ================= 背景层：黑 → 紫渐变 =================== */
 function drawBackground() {
-    ctxRef.setTransform(1, 0, 0, 1, 0, 0);          // 复位矩阵
-    const darkPurple = '#16041e';                   // 最底端色
-    const g = ctxRef.createLinearGradient(0, 0, 0, canvasRef.height * 0.9);
-    g.addColorStop(0, '#000');                      // 顶部纯黑
-    g.addColorStop(1, darkPurple);                  // 90% 处过渡到暗紫
+    ctxRef.setTransform(1, 0, 0, 1, 0, 0);
+  
+    // 淡紫 → 深紫（与森林背景更和谐，不与天空打架）
+    const g = ctxRef.createLinearGradient(0, 0, 0, canvasRef.height);
+    g.addColorStop(0, '#b993d6'); // 顶部淡紫
+    g.addColorStop(0.65, '#6a5cab'); // 过渡的紫蓝
+    g.addColorStop(1, '#2b1055'); // 底部深紫
+  
     ctxRef.fillStyle = g;
-    ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height * 0.9);
-    ctxRef.fillStyle = darkPurple;                  // 余下 10%
-    ctxRef.fillRect(0, canvasRef.height * 0.9, canvasRef.width, canvasRef.height * 0.1);
+    ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
   }
+  
+
   
 
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
@@ -759,6 +762,11 @@ const startY = Math.max(topSafeArea, canvasRef.height - blockSize * gridSize - b
   globalThis.__blockSize = actualBlockSize;
 globalThis.__gridStartX = boardX;
 globalThis.__gridStartY = boardY;
+
+
+
+
+
 
   // 绘制方块
   for (let row = 0; row < gridSize; row++) {
@@ -1252,16 +1260,18 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
     ctx.strokeText(`${attrValue}`, textX, textY);
     ctx.fillText(`${attrValue}`, textX, textY);
     ctx.restore();
+
+    // 把背景放到 UI 的最后，用 destination-over 压到最底层
+ctxRef.save();
+ctxRef.globalCompositeOperation = 'destination-over';
+drawBackground();
+ctxRef.restore();
   }
   
   
   //UI层下的图片不会闪烁，后续功能都放进这个层。 
 function drawUI() {
-    /* —— 背景始终放在 UI 最底层 —— */
-ctxRef.save();
-ctxRef.globalCompositeOperation = 'destination-over'; // 后画但显示在最底
-drawBackground();                                     // 调用刚写的新函数
-ctxRef.restore();
+
 
 
   ctxRef.setTransform(1, 0, 0, 1, 0, 0);
@@ -1278,18 +1288,30 @@ ctxRef.restore();
     height: __blockSize * gridSize
   });
 
-// ✅ 棋盘外围
-const padding = 9;       // 调整距离
-const borderRadius = 12; // 调整圆角
+// === 棋盘底板：移到 UI 层；显示层级 = 在宝石下、在金币文字下方 ===
+{
+    const padding = 9;
+    const borderRadius = 12;
+  
+    const boardBgX = __gridStartX - padding;
+    const boardBgY = __gridStartY - padding;
+    const boardBgW = __blockSize * gridSize + padding * 2;
+    const boardBgH = __blockSize * gridSize + padding * 2;
+  
+    // 用 destination-over 压到当前已绘制像素之下（此时宝石已在画布上）
+    ctxRef.save();
+    ctxRef.globalCompositeOperation = 'destination-over';
+    ctxRef.fillStyle = 'rgba(22, 12, 40, 0.66)'; // 半透明深紫
+    drawRoundedRect(ctxRef, boardBgX, boardBgY, boardBgW, boardBgH, borderRadius, true, false);
+    ctxRef.restore();
+  
+    // 外框用正常模式（在最上面显示边框）
+    ctxRef.strokeStyle = '#5f3a84'; // 或 '#751b50'
+    ctxRef.lineWidth = 4;
+    drawRoundedRect(ctxRef, boardBgX, boardBgY, boardBgW, boardBgH, borderRadius, false, true);
+  }
+  
 
-const boardX = __gridStartX - padding;
-const boardY = __gridStartY - padding;
-const boardW = __blockSize * gridSize + padding * 2;
-const boardH = __blockSize * gridSize + padding * 2;
-
-ctxRef.strokeStyle = '#751b50'; // 绿色
-ctxRef.lineWidth = 4;
-drawRoundedRect(ctxRef, boardX, boardY, boardW, boardH, borderRadius, false, true);
 // ✅ 棋盘外围
 
 drawMonsterSprite(ctxRef, canvasRef); 
@@ -1413,7 +1435,7 @@ ctxRef.textBaseline = 'top';
 // 🎯 描边
 ctxRef.lineWidth = 2;
 ctxRef.strokeStyle = '#000';
-ctxRef.strokeText(goldText, 26, 116);
+ctxRef.strokeText(goldText, 26, 70);
 
 // 🎯 填充
 ctxRef.fillStyle = '#FFD700';
