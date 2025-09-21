@@ -1,3 +1,28 @@
+// ========== 地图卡片缩略图：资源映射与预加载（新增） ==========
+const AREA_BG = {
+    forest:  'assets/scene/scene-bg01.png', // 森林
+    snow:    'assets/scene/scene-bg02.png', // 雪地
+    desert:  'assets/scene/scene-bg03.png', // 荒漠
+    volcano: 'assets/scene/scene-bg04.png', // 火山
+    // 其余如果有：05/06/07 同理补上
+  };
+  
+  // 预加载到内存，避免第一次点击才加载导致闪烁
+  const sceneThumbs = {};  // key -> HTMLImageElement（微信小游戏里是 Image 对象）
+  
+  function preloadSceneThumbs(done) {
+    const keys = Object.keys(AREA_BG);
+    if (keys.length === 0) { done && done(); return; }
+    let left = keys.length;
+    keys.forEach(k => {
+      const img = wx.createImage();
+      img.onload = () => { sceneThumbs[k] = img; if (--left === 0) done && done(); };
+      img.onerror = () => { console.warn('[thumb] 加载失败', AREA_BG[k]); if (--left === 0) done && done(); };
+      img.src = AREA_BG[k];
+    });
+  }
+  
+
 // === 全局冷却控制（可放在文件顶部或函数外部） ===
 let unlockedSlots = [true, true, true, true, true]; // 第1个槽位默认解锁
 let lastAdTime = 0; // 上次点击时间戳
@@ -480,6 +505,9 @@ let ctxRef, canvasRef, switchPageFn;
     ctxRef = ctx;
     canvasRef = canvas;
     switchPageFn = switchPage;
+    // 初始化时预加载区域缩略图，避免第一次打开时闪烁
+preloadSceneThumbs();
+
     globalThis.canvasRef = canvas;        // ✅ 让 effects_engine.js 能读取 canvas
     globalThis.__gridStartY = canvas.height * 0.35;  // ✅ 若你的头像行高度是根据此值布局的
 
@@ -916,6 +944,96 @@ function hit(px, py, r) {
          py >= r.y && py <= r.y + r.height;
 }
 
+// ========== 画“地图卡片”：用背景图上半部居中裁切（新增） ==========
+
+// 计算从原图中裁切的区域（更偏向上半部、水平居中），再铺满目标卡片。
+// 效果类似 object-fit: cover + object-position: top center
+function computeTopCenteredCrop(imgW, imgH, targetW, targetH) {
+    const targetAspect = targetW / targetH;
+  
+    // 先取原图上方 ~55% 的高度，再按目标宽高比确定裁切宽度
+    let sH = Math.round(imgH * 0.55);
+    let sW = Math.round(sH * targetAspect);
+  
+    // 如果宽度超出原图，改用整图宽度回算高度
+    if (sW > imgW) {
+      sW = imgW;
+      sH = Math.round(sW / targetAspect);
+    }
+    if (sH > imgH) sH = imgH;
+  
+    // 水平居中，竖直靠上（留 5% 头部）
+    const sx = Math.max(0, Math.round((imgW - sW) / 2));
+    const sy = Math.max(0, Math.round(imgH * 0.05));
+  
+    return { sx, sy, sW, sH };
+  }
+  
+  // 仅构建圆角路径用于 clip（你项目里有 drawRoundedRect，但它会直接画）
+  function roundedPath(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+  
+  // 在给定矩形内绘制一张“地图卡片”
+  function drawAreaCard(ctx, rect, areaKey, enabled, selected, label) {
+    const { x, y, w, h } = rect;
+    const r = rect.r ?? 18;
+  
+    ctx.save();
+    roundedPath(ctx, x, y, w, h, r);
+    ctx.clip();
+  
+    // 背景底色（未加载图时也好看）
+    ctx.fillStyle = enabled ? '#6d2c91' : '#666666';
+    ctx.fillRect(x, y, w, h);
+  
+    // 背景图：用上半部居中裁切
+    const img = sceneThumbs[areaKey]; // 由第①步预加载得到
+    if (img && img.width && img.height) {
+      const { sx, sy, sW, sH } = computeTopCenteredCrop(img.width, img.height, w, h);
+      ctx.drawImage(img, sx, sy, sW, sH, x, y, w, h);
+    }
+  
+    // 加一层细微暗角，保证文字对比度
+    const g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0.00, 'rgba(0,0,0,0.10)');
+    g.addColorStop(0.60, 'rgba(0,0,0,0.15)');
+    g.addColorStop(1.00, 'rgba(0,0,0,0.25)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, w, h);
+  
+    // 选中/常态描边
+    ctx.lineWidth = selected ? 4 : 2;
+    ctx.strokeStyle = selected ? '#FFFFFF' : 'rgba(255,255,255,0.35)';
+    ctx.save();
+    ctx.beginPath();
+    roundedPath(ctx, x + ctx.lineWidth/2, y + ctx.lineWidth/2, w - ctx.lineWidth, h - ctx.lineWidth, r);
+    ctx.stroke();
+    ctx.restore();
+  
+    // 中心文字
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${Math.round(h * 0.26)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + w / 2, y + h / 2);
+  
+    // 未解锁时加蒙层
+    if (!enabled) {
+      ctx.fillStyle = 'rgba(0,0,0,0.38)';
+      ctx.fillRect(x, y, w, h);
+    }
+  
+    ctx.restore();
+  }
+  
 // ======================= 渲染 =============================
 function render() {
   // 动态计算总页数，防止解锁新英雄后页面越界
@@ -1281,43 +1399,58 @@ globalThis.adBtnRect = adBtnRect;
 
   // === 地图选择弹层绘制 ===
   if (showAreaMap) {
-    // 半透明背景
+    // 背景遮罩
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
     // 标题
     drawText(ctx, '选择探索区域', canvas.width / 2, canvas.height * 0.15,
       'bold 24px IndieFlower', '#FFFFFF', 'center', 'middle');
-    // 构建区域按钮
-    areaButtonRects = [];
+  
+    // 区域配置（解锁条件与之前一致）
     const areas = [
       { key: 'forest',  label: '森林', unlocked: true },
       { key: 'snow',    label: '雪地', unlocked: typeof hasDefeatedBoss2 === 'function' ? hasDefeatedBoss2() : true },
       { key: 'desert',  label: '荒漠', unlocked: typeof hasDefeatedBoss3 === 'function' ? hasDefeatedBoss3() : false },
       { key: 'volcano', label: '火山', unlocked: typeof hasDefeatedBoss4 === 'function' ? hasDefeatedBoss4() : false }
     ];
+  
+    // 保持你现在的卡片布局尺寸与位置（仅把绘制改为 drawAreaCard）
     const btnW = canvas.width * 0.36;
     const btnH = canvas.height * 0.17;
     const marginX = (canvas.width - btnW * 2) / 3;
     const marginY = canvas.height * 0.12;
     const startY = canvas.height * 0.32;
+  
+    areaButtonRects = [];
     for (let i = 0; i < areas.length; i++) {
       const row = Math.floor(i / 2);
       const col = i % 2;
       const x = marginX + (btnW + marginX) * col;
       const y = startY + row * (btnH + marginY);
-      const unlocked = areas[i].unlocked;
-      const bgColor = unlocked ? '#6d2c91' : '#444444';
-      ctx.fillStyle = bgColor;
-      drawRoundedRect(ctx, x, y, btnW, btnH, 12, true, false);
-      const textColor = unlocked ? '#FFFFFF' : '#888888';
-      drawText(ctx, areas[i].label, x + btnW / 2, y + btnH / 2,
-        'bold 22px IndieFlower', textColor, 'center', 'middle');
-      areaButtonRects.push({ x, y, width: btnW, height: btnH, key: areas[i].key, unlocked });
+  
+      // 选中态（如果你有 selectedArea 变量就用它；没有可统一传 false）
+      const isSelected = (globalThis.selectedArea === areas[i].key);
+  
+      // 用上半部居中裁切后的场景图作为卡片内容，尺寸与原按钮一致
+      drawAreaCard(
+        ctx,
+        { x, y, w: btnW, h: btnH, r: 12 },
+        areas[i].key,          // 'forest' | 'snow' | 'desert' | 'volcano'
+        areas[i].unlocked,     // 可点击与否
+        isSelected,            // 是否高亮描边
+        areas[i].label         // 文本：森林/雪地/荒漠/火山
+      );
+  
+      // 仍然保存热区，用于触摸命中
+      areaButtonRects.push({ x, y, width: btnW, height: btnH, key: areas[i].key, unlocked: areas[i].unlocked });
     }
+  
     ctx.restore();
     return;
   }
+  
 
 
 // 返回按钮（左上角）
