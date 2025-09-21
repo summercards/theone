@@ -253,6 +253,9 @@ function endBattleAfterCapture(capturedMonster) {
     globalThis.levelRewards      = [];
     globalThis.currentChestStats = {};
     // 弹出胜利弹窗
+    // 强制本次弹窗重新选择随机插图
+globalThis._victoryPopupLevelTag = null;
+globalThis.victoryPopupImage = null;
     showVictoryPopup = true;
     if (typeof updatePlayerStats === 'function') {
       updatePlayerStats({
@@ -552,7 +555,60 @@ victoryHeroImage.onload = () => {
 
   victoryHeroLoaded = true; // ✅ 图片加载完成
 };
+/* ============= 随机胜利插图图片池（来自 assets/icons） ============= */
+const ICON_BASE = 'assets/icons/';
+// 列出你目录里“确定存在”的文件；避免包含空格/括号的名字
+const VICTORY_ICON_FILES = [
+  'archer.png',
+  'archer2.png',
+  'archer3.png',
+  'assassin.png',
+  'assassin2.png',
+  'assassin3.png',
+  'hero1.png',
+  'hero2.png',
+  'icon_king.png',
+  'knight.png',
+  'mage.png',
+  'mage2.png',
+  'mage3.png',
+  'priest.png',
+  'priest2.png',
+  'priest3.png',
+  'swordsman.png',
+  'swordsman2.png',
+  'swordsman3.png',
+  'tank2.png',
+  'tank3.png',
+];
 
+// 拼接成完整路径
+const VICTORY_ICON_POOL = VICTORY_ICON_FILES.map(n => ICON_BASE + n);
+
+// 随机选图；新关卡时重新抽；失败则回退到默认图
+function ensureVictoryPopupImage(levelTag) {
+  if (globalThis._victoryPopupLevelTag !== levelTag) {
+    globalThis._victoryPopupLevelTag = levelTag;
+    globalThis.victoryPopupImage = null;
+  }
+  if (globalThis.victoryPopupImage) return globalThis.victoryPopupImage;
+
+  const src = VICTORY_ICON_POOL[(Math.random() * VICTORY_ICON_POOL.length) | 0];
+  const img = wx.createImage();
+  img.src = src;
+
+  img.onload = () => { globalThis.victoryPopupImage = img; drawGame?.(); };
+
+  // 防止路径写错时报错：回退到旧的 victory_hero.png
+  img.onerror = () => {
+    const fallback = wx.createImage();
+    fallback.src = 'assets/ui/victory_hero.png';
+    fallback.onload = () => { globalThis.victoryPopupImage = fallback; drawGame?.(); };
+  };
+
+  return null; // 首帧显示“加载中…”
+}
+  
 
 globalThis.gridSize = 6;
 let gridData = [];
@@ -829,7 +885,7 @@ if (showVictoryPopup) {
     ctx.fillRect(0, 0, W, H);
   
     /* 2. 标题 */
-    const title = `第 ${levelJustCompleted} 关胜利！`;
+    const title = `胜利！`;
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 36px sans-serif';
     ctx.textAlign = 'center';
@@ -876,16 +932,17 @@ if (dialog) {
 }
 /* ========================================================= */
 
-    if (!globalThis.victoryHeroImage) {
-      const img = wx.createImage();
-      img.src = 'assets/ui/victory_hero.png';
-      img.onload = () => { globalThis.victoryHeroImage = img; drawGame(); };
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '20px sans-serif';
-      ctx.fillText('加载中...', W / 2, heroImgY + 40);
-    } else {
-      ctx.drawImage(globalThis.victoryHeroImage, heroImgX, heroImgY, heroImgW, heroImgH);
-    }
+// 用“当前已过的关卡号”作为随机图的轮换标记，保证每关抽一次
+const picked = ensureVictoryPopupImage(levelJustCompleted);
+if (!picked) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('加载中...', W / 2, heroImgY + 40);
+} else {
+  ctx.drawImage(picked, heroImgX, heroImgY, heroImgW, heroImgH);
+}
+
   
 /* 4. 宝箱金币奖励（只统计宝箱） */
 const goldY = heroImgY + heroImgH + 24;
