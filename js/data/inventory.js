@@ -35,13 +35,37 @@ function addItem(loot) {
 
 /** 获取背包内容（深拷贝避免外部修改） */
 function getItems() {
-  return bag.map(it => ({ ...it }));
-}
-
-/** 清空背包（调试用） */
-function clear() {
-  bag = [];
-  save();
-}
-
-module.exports = { addItem, getItems, clear };
+    return bag.map(it => ({ ...it }));
+  }
+  
+  /** 根据 id 获取一条（引用拷贝） */
+  function getItemById(id) {
+    const it = bag.find(x => x.id === id);
+    return it ? { ...it } : null;
+  }
+  
+  /** 获取某个道具数量（没有则 0） */
+  function getQty(id) {
+    const it = bag.find(x => x.id === id);
+    return it ? it.qty : 0;
+  }
+  
+  /** 扣减/移除道具。成功返回 true；数量不足返回 false。 */
+  function removeItem(id, qty = 1) {
+    const idx = bag.findIndex(x => x.id === id);
+    if (idx < 0) return false;
+    if (bag[idx].qty < qty) return false;
+    bag[idx].qty -= qty;
+    if (bag[idx].qty <= 0) bag.splice(idx, 1);
+    save();
+    return true;
+  }
+  
+  /** 清空背包（调试用） */
+  function clear() {
+    bag = [];
+    save();
+  }
+  
+  module.exports = { addItem, getItems, getItemById, getQty, removeItem, clear };
+  

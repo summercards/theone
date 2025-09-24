@@ -1,4 +1,4 @@
-// js/page_home.js — 首页逻辑（含背包按钮改动完整版本）
+// js/page_home.js — 首页逻辑（商店入口版）
 // ------------------------------------------------------------
 
 import { drawRoundedRect, drawStyledText } from './utils/canvas_utils.js';
@@ -22,7 +22,7 @@ let shareBtnArea     = null;
 let heroIntroBtnArea = null;
 let roguelikeBtnArea = null;
 let musicToggleBtnArea = null;
-let backpackBtnArea  = null;   // ★ 新增
+let backpackBtnArea  = null;   // 仍沿用此变量名，实为“商店”按钮
 let clearSaveBtnArea = null;    // ⭐ 清空存档按钮
 
 let homeLoopId = null;
@@ -156,7 +156,7 @@ const scaleBtn = (key) => clickedButton === key
 function drawHomeUI() {
   if (pageExiting) return;
 
-    // --------------------------------------------------
+  // --------------------------------------------------
   // 处理按钮点击后的缩放动画 & 页面跳转
   // --------------------------------------------------
   if (clickedButton) {
@@ -177,7 +177,7 @@ function drawHomeUI() {
         pageExiting = false;          // 分享完还留在本页
         shareMyStats();
       } else {
-        switchPageFn(cb);             // 进入目标页面（'ranking' / 'backpack' 等）
+        switchPageFn(cb);             // 进入目标页面（'ranking' / 'shop' 等）
       }
       return;                         // 本帧后续绘制不用再跑
     }
@@ -263,7 +263,7 @@ function drawHomeUI() {
   }
 
   // --------------------------------------------------
-  // 四个小按钮：排行榜 / 分享 / 英雄介绍 / 背包
+  // 四个小按钮：排行榜 / 分享 / 英雄介绍 / 商店（原“背包”）
   // --------------------------------------------------
   const smallBtnW = 100;
   const smallBtnH = 40;
@@ -290,7 +290,7 @@ function drawHomeUI() {
   const xRank  = baseX;
   const xShare = baseX + (smallBtnW + spacing);
   const xIntro = baseX + (smallBtnW + spacing) * 2;
-  const xBag   = baseX + (smallBtnW + spacing) * 3;  // ★ 新增位置
+  const xBag   = baseX + (smallBtnW + spacing) * 3;  // 原“背包”位置 → 作为“商店”
   const xClear = baseX + (smallBtnW + spacing) * 4;  // 新增：清空存档按钮
 
   drawSmall('排行榜', xRank,  'ranking',   '#6d2c91', '#f8d6ff');
@@ -302,7 +302,8 @@ function drawHomeUI() {
   drawSmall('英雄介绍', xIntro, 'heroIntro', '#9c275d', '#ffe3e3');
   heroIntroBtnArea = { x: xIntro, y: btnY, width: smallBtnW, height: smallBtnH };
 
-  drawSmall('背包',   xBag,   'backpack', '#2b6e4f', '#eafffb');
+  // ★ 改动：把“背包”按钮改成“商店”，并把 key 改成 'shop'
+  drawSmall('商店',   xBag,   'shop',      '#2b6e4f', '#eafffb');
   backpackBtnArea  = { x: xBag, y: btnY, width: smallBtnW, height: smallBtnH };
 
   // ⭐ 新增“清空存档”按钮
@@ -401,7 +402,8 @@ function onTouch(e) {
   }
   if (backpackBtnArea && inArea(backpackBtnArea)) {
     playClickSound();
-    clickedButton = 'backpack';
+    // ★ 改动：点击这个按钮时跳到 'shop'（而不是 'backpack'）
+    clickedButton = 'shop';
     clickAnimationFrame = 0;
     return;
   }

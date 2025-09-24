@@ -6,7 +6,7 @@
      initCloud,
      queueSave
    } from './js/utils/cloud_save.js';
-   
+   import PageShop       from './js/page_shop.js';
    /* ======= 云存档启动 ======= */
    initCloud();          // ① 初始化（离线时自动降级）
    // ❌ loadAll / migrateLocalToCloudOnce 移到 Loading 页面执行
@@ -36,6 +36,7 @@
      home:       PageHome,
      heroSelect: PageHeroSelect,
      roguelike:  RoguelikeGame,
+     shop:       PageShop,
      game:       PageGame,
      heroIntro:  PageHeroIntro,
      ranking:    PageRanking,
