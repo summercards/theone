@@ -133,133 +133,171 @@ function captureMonsterAsHero(mon) {
   }
 }
 
+
+// 读取当前精灵球数量（读不到时按 0 处理）
+function getBallCount() {
+    try {
+        const { getQty } = require('./data/inventory.js');
+      return typeof getQty === 'function' ? (getQty('capture_ball') || 0) : 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  
 /**
- * 进入捕捉阶段：弹出选择界面，玩家可尝试收服怪物。
- * 传入的 monster 对象仅用于显示名称，不会直接修改其血量。
- * @param {Object} monster
+ * 进入捕捉阶段：显示“准备收服…”提示 → 延迟后弹窗
+ * 新增：需要“精灵球(capture_ball)”，点击【收服】后先扣 1 个（无论成功或失败）
  */
 /**
- * 进入捕捉阶段：弹出选择界面，玩家可尝试收服怪物。
- * 传入的 monster 对象仅用于显示名称，不会直接修改其血量。
- * 【变更点】弹窗改为延迟 ~1s 后再出现；期间锁盘且禁止交互
+ * 进入捕捉阶段（延迟弹窗 + 精灵球消耗 + 状态提醒）
+ * - 弹窗里显示“当前精灵球数量”
+ * - 点击【收服】后先扣 1 个（无论成功失败）
+ * - 失败/无球都会明确提醒原因；成功/失败都会提示剩余数量
  */
 globalThis.enterCapturePhase = function(monster) {
-    // 已在捕捉流程中就不重复进入
     if (globalThis.capturing) return;
     globalThis.capturing = true;
   
-    // ⛔ 一进来就熔断棋盘连锁与连招，并记录是否需要恢复
+    // 熔断棋盘
     if (typeof lockForCapture === 'function') lockForCapture();
   
     const name = monster?.name || '未知怪物';
   
-    // ★ 新增：延迟弹窗的定时器（约 1 秒）
-    const DELAY_MS = 600;
-    wx.showToast({ title: '准备收服…', icon: 'none', duration: DELAY_MS });
-    // 胜利弹窗前的短暂停顿遮罩
-if (globalThis.preVictoryOverlayUntil && Date.now() < globalThis.preVictoryOverlayUntil) {
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('胜利结算中…', canvas.width / 2, canvas.height * 0.25);
-    ctx.restore();
-  } else if (globalThis.preVictoryOverlayUntil) {
-    globalThis.preVictoryOverlayUntil = null; // 超时清理
-  }
-  
+    // 延迟后再弹（同时给“准备收服…”提示）
+    const DELAY_MS = 1000;
+    wx?.showToast?.({ title: '准备收服…', icon: 'none', duration: DELAY_MS });
     globalThis.preCaptureOverlayUntil = Date.now() + DELAY_MS;
-    if (globalThis.captureModalTimerId) {
-      clearTimeout(globalThis.captureModalTimerId);
-    }
+  
+    if (globalThis.captureModalTimerId) clearTimeout(globalThis.captureModalTimerId);
     globalThis.captureModalTimerId = setTimeout(() => {
-        try {
-          const victory = !!globalThis.showVictoryPopup;
-          const exiting = !!globalThis.exitingGame;
-          if (!globalThis.capturing || victory || exiting) {
-            globalThis.captureModalTimerId = null;
-            globalThis.preCaptureOverlayUntil = null;
-            wx?.hideToast?.();
-            return;
-          }
-      
-          // 进弹窗前先把“准备收服…”提示收掉，避免叠层冲突
+      try {
+        if (!globalThis.capturing || globalThis.showVictoryPopup || globalThis.exitingGame) {
+          globalThis.captureModalTimerId = null;
           globalThis.preCaptureOverlayUntil = null;
           wx?.hideToast?.();
-      
-          wx.showModal({
-            title: '收服怪物',
-            content: `${name} 濒临战败，是否尝试收服？`,
-            confirmText: '收服',
-            cancelText: '放弃',
-            success(res) {
-              globalThis.captureModalTimerId = null;
-              globalThis.preCaptureOverlayUntil = null;
-              wx?.hideToast?.();
-              // 👉 放弃/收服分支保持不变……
-              if (!res || !res.confirm) {
-                globalThis.capturing = false;
-                const needResume = !!globalThis._captureResumePending;
-                globalThis._captureResumePending = false;
-                if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
-                return;
-              }
-              const chance = 1.0;
-              if (Math.random() < chance) {
-                const instanceId = captureMonsterAsHero(monster);
-                let heroName = name;
-                try {
-                  const baseId = monster?.heroId;
-                  let baseHero = null;
-                  if (baseId) {
-                    if (HeroData.getHeroById) {
-                      baseHero = HeroData.getHeroById(baseId);
-                    } else if (HeroData.heroes) {
-                      baseHero = HeroData.heroes.find(h => h.id === baseId);
-                    }
-                    if (baseHero && baseHero.name) heroName = baseHero.name;
-                  }
-                } catch (_) {}
-      
-                globalThis.captureRewardActive  = true;
-                globalThis.captureRewardMessage = `恭喜你，获得了${heroName}`;
-                globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
-      
-                endBattleAfterCapture(monster);
-                globalThis.capturing = false;
-              } else {
+          return;
+        }
+  
+        globalThis.preCaptureOverlayUntil = null;
+        wx?.hideToast?.();
+  
+        const ballsNow = getBallCount();
+        wx.showModal({
+          title: '收服怪物',
+          content: `${name} 濒临战败。\n当前精灵球：${ballsNow}（尝试收服会消耗 1 个）`,
+          confirmText: '收服',
+          cancelText: '放弃',
+          success(res) {
+            globalThis.captureModalTimerId = null;
+  
+            // 放弃：结束捕捉并恢复棋盘
+            if (!res || !res.confirm) {
+              globalThis.capturing = false;
+              const needResume = !!globalThis._captureResumePending;
+              globalThis._captureResumePending = false;
+              if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+              return;
+            }
+  
+            // —— 确认收服：检查并消耗精灵球 —— //
+            let afterBalls = ballsNow;
+            try {
+                const { getQty, removeItem } = require('./data/inventory.js');
+              const have = typeof getQty === 'function' ? (getQty('capture_ball') || 0) : 0;
+  
+              if (have <= 0) {
+                // 无球：直接以“失败（原因：精灵球不足）”提示
                 wx.showModal({
                   title: '收服失败',
-                  content: `${name} 挣扎逃脱，继续战斗！`,
-                  showCancel: false,
-                  success() {
+                  content: `原因：精灵球不足（当前：0）。\n是否前往商店购买？`,
+                  confirmText: '去商店',
+                  cancelText: '返回',
+                  success(m) {
+                    // 退出捕捉并恢复
                     globalThis.capturing = false;
                     const needResume = !!globalThis._captureResumePending;
                     globalThis._captureResumePending = false;
                     if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                    try { globalThis.switchPage && globalThis.switchPage('shop'); } catch(_) {}
                   }
                 });
+                return;
               }
-            },
-            complete() {
-              globalThis.captureModalTimerId = null;
-              globalThis.preCaptureOverlayUntil = null;
-              wx?.hideToast?.();
+  
+              // 有球：先扣 1 个（无论结果如何）
+              if (typeof removeItem === 'function') {
+                const ok = removeItem('capture_ball', 1);
+                if (!ok) throw new Error('removeItem failed');
+                afterBalls = have - 1;
+                // 扣除提示（短 Toast，不打断流程）
+                wx?.showToast?.({ title: `已消耗精灵球 ×1（剩余：${afterBalls}）`, icon: 'none', duration: 1000 });
+              }
+            } catch (err) {
+              console.error('capture_ball remove error:', err);
+              wx.showToast({ title: '背包异常，收服已中止', icon: 'none' });
+              globalThis.capturing = false;
+              const needResume = !!globalThis._captureResumePending;
+              globalThis._captureResumePending = false;
+              if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+              return;
             }
-          });
-        } catch (err) {
-          console.error('capture modal error:', err);
-          globalThis.capturing = false;
-          globalThis.captureModalTimerId = null;
-          globalThis.preCaptureOverlayUntil = null;
-          wx?.hideToast?.();
-        }
-      }, DELAY_MS);
-      
-    };
+  
+            // —— 成功率判定（保持你的原逻辑） —— //
+            const chance = 1.0; // 测试期 100% 成功；按需改回实际概率
+            if (Math.random() < chance) {
+              const instanceId = captureMonsterAsHero(monster);
+  
+              // 可选：映射显示为英雄名
+              let heroName = name;
+              try {
+                const baseId = monster?.heroId;
+                let baseHero = null;
+                if (baseId) {
+                  if (HeroData?.getHeroById) baseHero = HeroData.getHeroById(baseId);
+                  else if (HeroData?.heroes) baseHero = HeroData.heroes.find(h => h.id === baseId);
+                  if (baseHero?.name) heroName = baseHero.name;
+                }
+              } catch (_) {}
+  
+              // 胜利奖励提示里也带上剩余球数
+              globalThis.captureRewardActive  = true;
+              globalThis.captureRewardMessage = `恭喜收服 ${heroName}！（剩余精灵球：${afterBalls}）`;
+              globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
+  
+              endBattleAfterCapture(monster);  // 后续弹胜利框我们已做统一延迟
+              globalThis.capturing = false;
+            } else {
+              // 收服失败：明确提醒 + 显示剩余球数
+              wx.showModal({
+                title: '收服失败',
+                content: `可惜，${name} 挣扎逃脱。\n剩余精灵球：${afterBalls}`,
+                showCancel: false,
+                success() {
+                  globalThis.capturing = false;
+                  const needResume = !!globalThis._captureResumePending;
+                  globalThis._captureResumePending = false;
+                  if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                }
+              });
+            }
+          },
+          complete() {
+            globalThis.preCaptureOverlayUntil = null;
+            wx?.hideToast?.();
+          }
+        });
+      } catch (err) {
+        console.error('enterCapturePhase modal error:', err);
+        globalThis.capturing = false;
+        globalThis.captureModalTimerId = null;
+        globalThis.preCaptureOverlayUntil = null;
+        wx?.hideToast?.();
+      }
+    }, DELAY_MS);
+  };
+  
+  
   
 
 /**
