@@ -48,6 +48,7 @@ let earnedGold = 0;
 let levelJustCompleted = 0;
 let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
 let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
+const VICTORY_POPUP_DELAY_MS = 800;  // 想更明显就调 1200/1500
 
 let exitingGame = false;        // ☆ 新增：返回主页时置 true
 
@@ -153,85 +154,112 @@ globalThis.enterCapturePhase = function(monster) {
     const name = monster?.name || '未知怪物';
   
     // ★ 新增：延迟弹窗的定时器（约 1 秒）
-    const DELAY_MS = 1000;
+    const DELAY_MS = 600;
     wx.showToast({ title: '准备收服…', icon: 'none', duration: DELAY_MS });
+    // 胜利弹窗前的短暂停顿遮罩
+if (globalThis.preVictoryOverlayUntil && Date.now() < globalThis.preVictoryOverlayUntil) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('胜利结算中…', canvas.width / 2, canvas.height * 0.25);
+    ctx.restore();
+  } else if (globalThis.preVictoryOverlayUntil) {
+    globalThis.preVictoryOverlayUntil = null; // 超时清理
+  }
+  
     globalThis.preCaptureOverlayUntil = Date.now() + DELAY_MS;
     if (globalThis.captureModalTimerId) {
       clearTimeout(globalThis.captureModalTimerId);
     }
     globalThis.captureModalTimerId = setTimeout(() => {
-      // ✅ 兜底：这 1 秒里如果已经胜利、退出或被取消，就不再弹窗
-      if (!globalThis.capturing || showVictoryPopup || exitingGame) {
-        globalThis.captureModalTimerId = null;
-        return;
-      }
-  
-      wx.showModal({
-        title: '收服怪物',
-        content: `${name} 濒临战败，是否尝试收服？`,
-        confirmText: '收服',
-        cancelText: '放弃',
-        success(res) {
-          globalThis.captureModalTimerId = null;
-  
-          // 👉 放弃收服：结束捕捉并按需恢复棋盘
-          if (!res || !res.confirm) {
-            globalThis.capturing = false;
-            const needResume = !!globalThis._captureResumePending;
-            globalThis._captureResumePending = false;
-            if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+        try {
+          const victory = !!globalThis.showVictoryPopup;
+          const exiting = !!globalThis.exitingGame;
+          if (!globalThis.capturing || victory || exiting) {
+            globalThis.captureModalTimerId = null;
+            globalThis.preCaptureOverlayUntil = null;
+            wx?.hideToast?.();
             return;
           }
-  
-          // 👉 收服判定（保持你原本 100% 方便测试的逻辑）
-          const chance = 1.0;
-          if (Math.random() < chance) {
-            const instanceId = captureMonsterAsHero(monster);
-  
-            // 保留你原来的“获取英雄名”逻辑
-            let heroName = name;
-            try {
-              const baseId = monster?.heroId;
-              let baseHero = null;
-              if (baseId) {
-                if (HeroData.getHeroById) {
-                  baseHero = HeroData.getHeroById(baseId);
-                } else if (HeroData.heroes) {
-                  baseHero = HeroData.heroes.find(h => h.id === baseId);
-                }
-                if (baseHero && baseHero.name) heroName = baseHero.name;
-              }
-            } catch (_) {}
-  
-            // 标记捕捉奖励，进入你现有的胜利流程
-            globalThis.captureRewardActive  = true;
-            globalThis.captureRewardMessage = `恭喜你，获得了${heroName}`;
-            globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
-  
-            endBattleAfterCapture(monster);  // ← 你已有的胜利落地函数
-            globalThis.capturing = false;
-          } else {
-            // 失败：关闭捕捉并“按需恢复”棋盘
-            wx.showModal({
-              title: '收服失败',
-              content: `${name} 挣扎逃脱，继续战斗！`,
-              showCancel: false,
-              success() {
+      
+          // 进弹窗前先把“准备收服…”提示收掉，避免叠层冲突
+          globalThis.preCaptureOverlayUntil = null;
+          wx?.hideToast?.();
+      
+          wx.showModal({
+            title: '收服怪物',
+            content: `${name} 濒临战败，是否尝试收服？`,
+            confirmText: '收服',
+            cancelText: '放弃',
+            success(res) {
+              globalThis.captureModalTimerId = null;
+              globalThis.preCaptureOverlayUntil = null;
+              wx?.hideToast?.();
+              // 👉 放弃/收服分支保持不变……
+              if (!res || !res.confirm) {
                 globalThis.capturing = false;
                 const needResume = !!globalThis._captureResumePending;
                 globalThis._captureResumePending = false;
                 if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                return;
               }
-            });
-          }
-        },
-        complete() {
+              const chance = 1.0;
+              if (Math.random() < chance) {
+                const instanceId = captureMonsterAsHero(monster);
+                let heroName = name;
+                try {
+                  const baseId = monster?.heroId;
+                  let baseHero = null;
+                  if (baseId) {
+                    if (HeroData.getHeroById) {
+                      baseHero = HeroData.getHeroById(baseId);
+                    } else if (HeroData.heroes) {
+                      baseHero = HeroData.heroes.find(h => h.id === baseId);
+                    }
+                    if (baseHero && baseHero.name) heroName = baseHero.name;
+                  }
+                } catch (_) {}
+      
+                globalThis.captureRewardActive  = true;
+                globalThis.captureRewardMessage = `恭喜你，获得了${heroName}`;
+                globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
+      
+                endBattleAfterCapture(monster);
+                globalThis.capturing = false;
+              } else {
+                wx.showModal({
+                  title: '收服失败',
+                  content: `${name} 挣扎逃脱，继续战斗！`,
+                  showCancel: false,
+                  success() {
+                    globalThis.capturing = false;
+                    const needResume = !!globalThis._captureResumePending;
+                    globalThis._captureResumePending = false;
+                    if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                  }
+                });
+              }
+            },
+            complete() {
+              globalThis.captureModalTimerId = null;
+              globalThis.preCaptureOverlayUntil = null;
+              wx?.hideToast?.();
+            }
+          });
+        } catch (err) {
+          console.error('capture modal error:', err);
+          globalThis.capturing = false;
           globalThis.captureModalTimerId = null;
+          globalThis.preCaptureOverlayUntil = null;
+          wx?.hideToast?.();
         }
-      });
-    }, DELAY_MS);
-  };
-  
+      }, DELAY_MS);
+      
+    };
   
 
 /**
@@ -282,7 +310,32 @@ function endBattleAfterCapture(capturedMonster) {
     // 强制本次弹窗重新选择随机插图
 globalThis._victoryPopupLevelTag = null;
 globalThis.victoryPopupImage = null;
-    showVictoryPopup = true;
+// 准备弹窗数据
+popupGoldDisplayed = 0;
+popupGoldStartTime = Date.now();
+globalThis.victoryDialogText =
+  VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
+globalThis.levelRewards      = [];
+globalThis.currentChestStats = {};
+
+// ★ 改为延迟 0.5s 再弹出胜利层
+scheduleVictoryPopup(1200);
+
+// 同步统计 & 存档 & 重绘保持不变
+if (typeof updatePlayerStats === 'function') {
+  updatePlayerStats({
+    stage: currentLevel,
+    damage: 0,
+    gold: getSessionCoins()
+  });
+}
+if (wx && typeof wx.setStorageSync === 'function') {
+  wx.setStorageSync('lastLevel', currentLevel.toString());
+}
+if (typeof drawGame === 'function') {
+  drawGame();
+}
+
     if (typeof updatePlayerStats === 'function') {
       updatePlayerStats({
         stage: currentLevel,
@@ -898,6 +951,7 @@ globalThis.__gridStartY = boardY;
 
 
 
+  
   // 在单独的绘制层绘制UI元素
   drawUI();
 // === 胜利弹窗绘制逻辑（纵向“升级！”版本） ===
@@ -1935,7 +1989,7 @@ function animateSwap(src, dst, callback, rollback = false) {
 
 
     // 绘制特效
-    drawAllEffects(ctxRef);
+    drawAllEffects(ctxRef, canvasRef);
 
     // 绘制UI元素
     drawUI();
@@ -2222,9 +2276,11 @@ const endY = topMargin + size + 8;
     
 
     
-       showVictoryPopup = true;
-       lockForVictory();      // ★ 新增：锁死后续异步流程
-       return;            // 暂停游戏流，等待玩家点击“下一关”
+       lockForVictory();
+       scheduleVictoryPopup();   // 统一用 VICTORY_POPUP_DELAY_MS
+       return;
+       
+       return;
   }
   else {
     // 敌人仍存活：怪物回合已由其他逻辑处理（如 turnsLeft）
@@ -2256,6 +2312,37 @@ function dropBlocks() {
     }
   }
 }
+
+// 延迟触发胜利弹窗（带可见提示）
+function scheduleVictoryPopup(delay = VICTORY_POPUP_DELAY_MS) {
+    try {
+      if (globalThis.victoryPopupTimerId) {
+        clearTimeout(globalThis.victoryPopupTimerId);
+      }
+  
+      // 延迟期间给“胜利结算中…”提示 + 半透明遮罩
+      globalThis.preVictoryOverlayUntil = Date.now() + delay;
+      wx?.showToast?.({ title: '胜利结算中…', icon: 'none', duration: delay });
+  
+      globalThis.victoryPopupTimerId = setTimeout(() => {
+        if (globalThis.exitingGame) return; // 兜底：退出就不弹
+        globalThis.preVictoryOverlayUntil = null;
+        wx?.hideToast?.();
+  
+        showVictoryPopup = true;
+        if (typeof drawGame === 'function') drawGame();
+      }, delay);
+    } catch (e) {
+      globalThis.preVictoryOverlayUntil = null;
+      wx?.hideToast?.();
+      showVictoryPopup = true;
+      if (typeof drawGame === 'function') drawGame();
+    }
+  }
+  
+
+  
+
 function fillNewBlocks() {
     const blocks = globalThis.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F']; // ✅ 使用配置
     for (let row = 0; row < gridSize; row++) {
@@ -2663,6 +2750,12 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
       if (inGameOverBtn) {
         switchPageFn?.('home', () => {
           destroyGamePage();
+
+          if (globalThis.victoryPopupTimerId) {
+            clearTimeout(globalThis.victoryPopupTimerId);
+            globalThis.victoryPopupTimerId = null;
+          }
+          
         });
       }
       
@@ -2681,6 +2774,15 @@ if (btn &&
         
   switchPageFn?.('home', () => {
     destroyGamePage(); // 清理资源
+
+    if (globalThis.victoryPopupTimerId) {
+        clearTimeout(globalThis.victoryPopupTimerId);
+        globalThis.victoryPopupTimerId = null;
+      }
+
+      
+    globalThis.preCaptureOverlayUntil = null;
+wx?.hideToast?.();
   });
   return; // ✅ 不再继续处理滑动
 }
@@ -3025,7 +3127,8 @@ setTimeout(() => {
           globalThis.victoryDialogText =
             VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
   
-          showVictoryPopup = true;
+            scheduleVictoryPopup();   // 统一用全局延迟
+
           clearLootChests?.();
           lockForVictory?.();
           popupGoldDisplayed = 0;
@@ -3089,46 +3192,41 @@ setTimeout(() => {
         if (monster.isBoss) {
           markBossDefeated(monster.level);
         }
-        setTimeout(() => {
-          earnedGold = getMonsterGold();
-          addCoins(earnedGold);
-          goldPopTime       = Date.now();
-          displayedGold     = getSessionCoins();
-          levelJustCompleted = currentLevel;
-  
-          const currentMonster = typeof getMonster === 'function' ? getMonster() : null;
-          const exp = currentMonster?.exp ?? (function(){
-            const lv = currentMonster?.level ?? 1;
-            const isBoss = currentMonster?.isBoss ?? false;
-            return Math.floor(lv * 5 + 10 + (isBoss ? 50 : 0));
-          })();
-          globalThis.expGainedThisRound = exp;
-          if (typeof rewardExpToHeroes === 'function') {
-            rewardExpToHeroes(exp);
-          }
-  
-          globalThis.levelRewards = [];
-          globalThis.victoryDialogText =
-            VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
-  
-          showVictoryPopup = true;
-          clearLootChests?.();
-          lockForVictory?.();
-          popupGoldDisplayed = 0;
-          popupGoldStartTime = Date.now();
-  
-          updatePlayerStats?.({
-            stage: currentLevel,
-            damage: dmg,
-            gold: getSessionCoins()
-          });
-  
-          wx?.setStorageSync?.('lastLevel', currentLevel.toString());
-          drawGame?.();
-        }, 600);
-  
+      
+        // 这些统计和结算仍然“立刻”执行
+        earnedGold = getMonsterGold();
+        addCoins(earnedGold);
+        goldPopTime       = Date.now();
+        displayedGold     = getSessionCoins();
+      
+        if (typeof rewardExpToHeroes === 'function') {
+          rewardExpToHeroes(exp);
+        }
+      
+        globalThis.levelRewards = [];
+        globalThis.victoryDialogText =
+          VictoryDialogLines[Math.floor(Math.random() * VictoryDialogLines.length)];
+      
+        clearLootChests?.();
+        lockForVictory?.();
+        popupGoldDisplayed = 0;
+        popupGoldStartTime = Date.now();
+      
+        updatePlayerStats?.({
+          stage: currentLevel,
+          damage: dmg,
+          gold: getSessionCoins()
+        });
+      
+        wx?.setStorageSync?.('lastLevel', currentLevel.toString());
+        drawGame?.();
+      
+        // ★ 统一延迟弹窗（改这里）
+        scheduleVictoryPopup();   // 用你的全局延迟，比如 800/1000ms
+      
         return; // ❗ 停止继续 loadMonster
-      } else {
+      }
+       else {
         setTimeout(() => { monsterRetaliate(); }, 1000);
       }
   
