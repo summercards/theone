@@ -137,6 +137,11 @@ function captureMonsterAsHero(mon) {
  * 传入的 monster 对象仅用于显示名称，不会直接修改其血量。
  * @param {Object} monster
  */
+/**
+ * 进入捕捉阶段：弹出选择界面，玩家可尝试收服怪物。
+ * 传入的 monster 对象仅用于显示名称，不会直接修改其血量。
+ * 【变更点】弹窗改为延迟 ~1s 后再出现；期间锁盘且禁止交互
+ */
 globalThis.enterCapturePhase = function(monster) {
     // 已在捕捉流程中就不重复进入
     if (globalThis.capturing) return;
@@ -146,66 +151,87 @@ globalThis.enterCapturePhase = function(monster) {
     if (typeof lockForCapture === 'function') lockForCapture();
   
     const name = monster?.name || '未知怪物';
-    wx.showModal({
-      title: '收服怪物',
-      content: `${name} 濒临战败，是否尝试收服？`,
-      confirmText: '收服',
-      cancelText: '放弃',
-      success(res) {
-        // 👉 放弃收服：结束捕捉并按需恢复棋盘
-        if (!res || !res.confirm) {
-          globalThis.capturing = false;
-          const needResume = !!globalThis._captureResumePending;
-          globalThis._captureResumePending = false;
-          if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
-          return;
-        }
   
-        // 👉 收服判定（你原本就是 100% 方便测试，保持不变）
-        const chance = 1.0;
-        if (Math.random() < chance) {
-          // 成功收服：解锁英雄 → 触发你原有的“捕捉胜利结算 + 胜利弹窗”
-          const instanceId = captureMonsterAsHero(monster);
-  
-          // 保留你原来的“获取英雄名”逻辑
-          let heroName = name;
-          try {
-            const baseId = monster?.heroId;
-            let baseHero = null;
-            if (baseId) {
-              if (HeroData.getHeroById) {
-                baseHero = HeroData.getHeroById(baseId);
-              } else if (HeroData.heroes) {
-                baseHero = HeroData.heroes.find(h => h.id === baseId);
-              }
-              if (baseHero && baseHero.name) heroName = baseHero.name;
-            }
-          } catch (_) {}
-  
-          // 标记捕捉奖励，进入你现有的胜利流程
-          globalThis.captureRewardActive  = true;
-          globalThis.captureRewardMessage = `恭喜你，获得了${heroName}`;
-          globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
-  
-          endBattleAfterCapture(monster);  // ← 你已有的胜利落地函数
-          globalThis.capturing = false;
-        } else {
-          // 失败：关闭捕捉并“按需恢复”棋盘
-          wx.showModal({
-            title: '收服失败',
-            content: `${name} 挣扎逃脱，继续战斗！`,
-            showCancel: false,
-            success() {
-              globalThis.capturing = false;
-              const needResume = !!globalThis._captureResumePending;
-              globalThis._captureResumePending = false;
-              if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
-            }
-          });
-        }
+    // ★ 新增：延迟弹窗的定时器（约 1 秒）
+    const DELAY_MS = 1000;
+    wx.showToast({ title: '准备收服…', icon: 'none', duration: DELAY_MS });
+    globalThis.preCaptureOverlayUntil = Date.now() + DELAY_MS;
+    if (globalThis.captureModalTimerId) {
+      clearTimeout(globalThis.captureModalTimerId);
+    }
+    globalThis.captureModalTimerId = setTimeout(() => {
+      // ✅ 兜底：这 1 秒里如果已经胜利、退出或被取消，就不再弹窗
+      if (!globalThis.capturing || showVictoryPopup || exitingGame) {
+        globalThis.captureModalTimerId = null;
+        return;
       }
-    });
+  
+      wx.showModal({
+        title: '收服怪物',
+        content: `${name} 濒临战败，是否尝试收服？`,
+        confirmText: '收服',
+        cancelText: '放弃',
+        success(res) {
+          globalThis.captureModalTimerId = null;
+  
+          // 👉 放弃收服：结束捕捉并按需恢复棋盘
+          if (!res || !res.confirm) {
+            globalThis.capturing = false;
+            const needResume = !!globalThis._captureResumePending;
+            globalThis._captureResumePending = false;
+            if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+            return;
+          }
+  
+          // 👉 收服判定（保持你原本 100% 方便测试的逻辑）
+          const chance = 1.0;
+          if (Math.random() < chance) {
+            const instanceId = captureMonsterAsHero(monster);
+  
+            // 保留你原来的“获取英雄名”逻辑
+            let heroName = name;
+            try {
+              const baseId = monster?.heroId;
+              let baseHero = null;
+              if (baseId) {
+                if (HeroData.getHeroById) {
+                  baseHero = HeroData.getHeroById(baseId);
+                } else if (HeroData.heroes) {
+                  baseHero = HeroData.heroes.find(h => h.id === baseId);
+                }
+                if (baseHero && baseHero.name) heroName = baseHero.name;
+              }
+            } catch (_) {}
+  
+            // 标记捕捉奖励，进入你现有的胜利流程
+            globalThis.captureRewardActive  = true;
+            globalThis.captureRewardMessage = `恭喜你，获得了${heroName}`;
+            globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
+  
+            endBattleAfterCapture(monster);  // ← 你已有的胜利落地函数
+            globalThis.capturing = false;
+          } else {
+            // 失败：关闭捕捉并“按需恢复”棋盘
+            wx.showModal({
+              title: '收服失败',
+              content: `${name} 挣扎逃脱，继续战斗！`,
+              showCancel: false,
+              success() {
+                globalThis.capturing = false;
+                const needResume = !!globalThis._captureResumePending;
+                globalThis._captureResumePending = false;
+                if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+              }
+            });
+          }
+        },
+        complete() {
+          globalThis.captureModalTimerId = null;
+        }
+      });
+    }, DELAY_MS);
   };
+  
   
 
 /**
@@ -1335,6 +1361,21 @@ function drawUI() {
   const ctx = ctxRef;
   const canvas = canvasRef;
   const layoutRects = globalThis.layoutRects || [];
+  
+  // 捕捉前的短暂遮罩，给玩家“即将收服”的反馈
+if (globalThis.preCaptureOverlayUntil && Date.now() < globalThis.preCaptureOverlayUntil) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('准备收服…', canvas.width / 2, canvas.height * 0.2);
+    ctx.restore();
+  } else {
+    globalThis.preCaptureOverlayUntil = null; // 超时后自动清理
+  }
   
 
    // ✅ 插入：让棋盘先声明其区域
@@ -2774,6 +2815,15 @@ function destroyGamePage () {
     /* 3. 解绑触摸事件，防止重复绑定或内存泄漏 */
     wx.offTouchStart(onTouch);
     wx.offTouchEnd(onTouchend);
+  
+    // 🧹 捕捉延迟弹窗的定时器清理
+if (globalThis.captureModalTimerId) {
+    clearTimeout(globalThis.captureModalTimerId);
+    globalThis.captureModalTimerId = null;
+  }
+  // 退出时确保不再处于捕捉态
+  globalThis.capturing = false;
+
   
     /* 4. 结算本局获得的金币 */
     commitSessionCoins();
