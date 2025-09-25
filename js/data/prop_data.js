@@ -49,6 +49,21 @@ const PropData = {
     desc: '用于收服敌人。每次尝试收服都会消耗 1 个（无论成功与否）。'
   },
   
+  {
+    id: 'great_ball',
+    name: '高级精灵球',
+    iconChar: '🔵',
+    price: 28,
+    desc: '收服概率 +20%。使用后消耗 1 个（成功与否都会消耗）。'
+  },
+  {
+    id: 'ultra_ball',
+    name: '超级精灵球',
+    iconChar: '🟣',
+    price: 60,
+    desc: '收服概率 +50%。使用后消耗 1 个（成功与否都会消耗）。'
+  },
+  
       /* === Materials / Buffs ============================================ */
       { id: 'hero_shard',
         name: '英雄碎片',             category: 'material',

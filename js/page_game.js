@@ -190,7 +190,7 @@ globalThis.enterCapturePhase = function(monster) {
           cancelText: '放弃',
           success(res) {
             globalThis.captureModalTimerId = null;
-  
+          
             // 放弃：结束捕捉并恢复棋盘
             if (!res || !res.confirm) {
               globalThis.capturing = false;
@@ -199,89 +199,129 @@ globalThis.enterCapturePhase = function(monster) {
               if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
               return;
             }
-  
-            // —— 确认收服：检查并消耗精灵球 —— //
-            let afterBalls = ballsNow;
-            try {
-                const { getQty, removeItem } = require('./data/inventory.js');
-              const have = typeof getQty === 'function' ? (getQty('capture_ball') || 0) : 0;
-  
-              if (have <= 0) {
-                // 无球：直接以“失败（原因：精灵球不足）”提示
-                wx.showModal({
-                  title: '收服失败',
-                  content: `原因：精灵球不足（当前：0）。\n是否前往商店购买？`,
-                  confirmText: '去商店',
-                  cancelText: '返回',
-                  success(m) {
-                    // 退出捕捉并恢复
-                    globalThis.capturing = false;
-                    const needResume = !!globalThis._captureResumePending;
-                    globalThis._captureResumePending = false;
-                    if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
-                    try { globalThis.switchPage && globalThis.switchPage('shop'); } catch(_) {}
-                  }
-                });
-                return;
-              }
-  
-              // 有球：先扣 1 个（无论结果如何）
-              if (typeof removeItem === 'function') {
-                const ok = removeItem('capture_ball', 1);
-                if (!ok) throw new Error('removeItem failed');
-                afterBalls = have - 1;
-                // 扣除提示（短 Toast，不打断流程）
-                wx?.showToast?.({ title: `已消耗精灵球 ×1（剩余：${afterBalls}）`, icon: 'none', duration: 1000 });
-              }
-            } catch (err) {
-              console.error('capture_ball remove error:', err);
-              wx.showToast({ title: '背包异常，收服已中止', icon: 'none' });
-              globalThis.capturing = false;
-              const needResume = !!globalThis._captureResumePending;
-              globalThis._captureResumePending = false;
-              if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
-              return;
-            }
-  
-            // —— 成功率判定（保持你的原逻辑） —— //
-            const chance = 1.0; // 测试期 100% 成功；按需改回实际概率
-            if (Math.random() < chance) {
-              const instanceId = captureMonsterAsHero(monster);
-  
-              // 可选：映射显示为英雄名
-              let heroName = name;
-              try {
-                const baseId = monster?.heroId;
-                let baseHero = null;
-                if (baseId) {
-                  if (HeroData?.getHeroById) baseHero = HeroData.getHeroById(baseId);
-                  else if (HeroData?.heroes) baseHero = HeroData.heroes.find(h => h.id === baseId);
-                  if (baseHero?.name) heroName = baseHero.name;
-                }
-              } catch (_) {}
-  
-              // 胜利奖励提示里也带上剩余球数
-              globalThis.captureRewardActive  = true;
-              globalThis.captureRewardMessage = `恭喜收服 ${heroName}！（剩余精灵球：${afterBalls}）`;
-              globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
-  
-              endBattleAfterCapture(monster);  // 后续弹胜利框我们已做统一延迟
-              globalThis.capturing = false;
-            } else {
-              // 收服失败：明确提醒 + 显示剩余球数
+          
+            // ① 列出可用的精灵球（只显示库存>0的）
+            const { getQty, removeItem } = require('./data/inventory.js');
+            const candidates = [
+              { id: 'capture_ball', name: '精灵球' },
+              { id: 'great_ball',   name: '高级精灵球' },
+              { id: 'ultra_ball',   name: '超级精灵球' }
+            ].map(b => ({ ...b, qty: (getQty && getQty(b.id)) || 0 }))
+             .filter(b => b.qty > 0);
+          
+            if (candidates.length === 0) {
               wx.showModal({
-                title: '收服失败',
-                content: `可惜，${name} 挣扎逃脱。\n剩余精灵球：${afterBalls}`,
-                showCancel: false,
-                success() {
+                title: '缺少精灵球',
+                content: '你没有可用的精灵球，无法收服。是否前往商店购买？',
+                confirmText: '去商店', cancelText: '返回',
+                success: (m) => {
+                  // 退出捕捉并恢复棋盘
                   globalThis.capturing = false;
                   const needResume = !!globalThis._captureResumePending;
                   globalThis._captureResumePending = false;
                   if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                  if (m?.confirm) { try { globalThis.switchPage?.('shop'); } catch(_){} }
                 }
               });
+              return;
             }
+          
+            // 展示各球的加成（来自 capture_rules.js）
+            let BALL_BONUS = {};
+            try {
+              BALL_BONUS = (require('./data/capture_rules.js').BALL_BONUS) || {};
+            } catch (_) {}
+          
+            const itemList = candidates.map(b => {
+              const bonusPct = Math.round((BALL_BONUS[b.id] || 0) * 100);
+              return `${b.name} ×${b.qty}${bonusPct ? `（+${bonusPct}%）` : ''}`;
+            });
+          
+            // ② 让玩家选择要用的精灵球
+            wx.showActionSheet({
+              itemList,
+              success: sel => {
+                const ball = candidates[sel.tapIndex];
+          
+                // ③ 先扣 1 个（无论成功与否都会消耗）
+                try {
+                  const ok = removeItem && removeItem(ball.id, 1);
+                  if (!ok) throw new Error('removeItem failed');
+                } catch (err) {
+                  console.error('ball remove error:', err);
+                  wx.showToast({ title: '背包异常，收服已取消', icon: 'none' });
+                  globalThis.capturing = false;
+                  const needResume = !!globalThis._captureResumePending;
+                  globalThis._captureResumePending = false;
+                  if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                  return;
+                }
+                const left = (getQty && getQty(ball.id)) || 0;
+                wx?.showToast?.({ title: `已消耗「${ball.name}」×1（剩余：${left}）`, icon: 'none', duration: 900 });
+          
+                // ④ 用 capture_rules.js 计算本次概率（稀有度 × 等级 × 球加成）
+                let final = 0, pct = 0;
+                try {
+                  const rules = require('./data/capture_rules.js');
+                  const res   = rules.computeFinalCaptureChance(monster, ball.id, HeroData);
+                  final = res.final; pct = Math.round(final * 100);
+                } catch (err) {
+                  console.error('computeFinalCaptureChance error:', err);
+                  wx.showToast({ title: '捕捉规则异常，已取消', icon: 'none' });
+                  globalThis.capturing = false;
+                  const needResume = !!globalThis._captureResumePending;
+                  globalThis._captureResumePending = false;
+                  if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                  return;
+                }
+          
+                // ⑤ 概率判定
+                if (Math.random() < final) {
+                  const instanceId = captureMonsterAsHero(monster);
+          
+                  // 名称友好化（沿用你现有逻辑）
+                  let heroName = monster?.name || '未知怪物';
+                  try {
+                    const baseId = monster?.heroId;
+                    let baseHero = null;
+                    if (baseId) {
+                      if (HeroData?.getHeroById) baseHero = HeroData.getHeroById(baseId);
+                      else if (HeroData?.heroes) baseHero = HeroData.heroes.find(h => h.id === baseId);
+                      if (baseHero?.name) heroName = baseHero.name;
+                    }
+                  } catch (_) {}
+          
+                  globalThis.captureRewardActive  = true;
+                  globalThis.captureRewardMessage = `收服成功：${heroName}！（本次概率 ${pct}%）`;
+                  globalThis.levelRewardsHeroId   = instanceId || globalThis.lastCapturedHeroInstanceId;
+          
+                  endBattleAfterCapture(monster);   // 你的统一胜利延迟
+                  globalThis.capturing = false;
+                } else {
+                  wx.showModal({
+                    title: '收服失败',
+                    content: `可惜，挣扎逃脱。\n本次概率：${pct}%\n剩余${ball.name}：${left}`,
+                    showCancel: false,
+                    success: () => {
+                      globalThis.capturing = false;
+                      const needResume = !!globalThis._captureResumePending;
+                      globalThis._captureResumePending = false;
+                      if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+                    }
+                  });
+                }
+              },
+              fail: () => {
+                // 取消选择：退出捕捉并恢复棋盘
+                wx.showToast({ title: '已取消收服', icon: 'none' });
+                globalThis.capturing = false;
+                const needResume = !!globalThis._captureResumePending;
+                globalThis._captureResumePending = false;
+                if (needResume && typeof processClearAndDrop === 'function') processClearAndDrop();
+              }
+            });
           },
+          
           complete() {
             globalThis.preCaptureOverlayUntil = null;
             wx?.hideToast?.();
