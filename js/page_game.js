@@ -144,7 +144,62 @@ function getBallCount() {
     }
   }
 
-  
+  // === 从商店目录生成“可开出道具池” + 权重随机 + 一键发放到背包 ===
+const { getShopCatalog } = require('./data/shop_data.js'); // 读取商店在售清单（含 id）
+
+
+// 用商店 id 白名单构建掉落池（只含“商店里的道具”）
+function getShopLootPool() {
+  const catalog = (typeof getShopCatalog === 'function') ? getShopCatalog() : [];
+  const allowIds = new Set(catalog.map(it => it.id));
+  const list = PropData.getAll ? PropData.getAll() : (PropData.items || PropData.props || []);
+
+  return list
+    .filter(p => p && p.id && allowIds.has(p.id))               // 只要商店里有售的 id
+    .map(p => {
+      const r = p.rarity || p.quality || p.rank || 'blue';
+      const tierMap = {1:'白',2:'绿',3:'蓝',4:'紫',5:'橙',6:'金'};
+      const key = (typeof r === 'number') ? (tierMap[r] || '蓝') : String(r).trim().toLowerCase();
+      const weight = p.lootWeight ?? (
+        // 复用你文件里已有的权重映射 LOOT_WEIGHT_BY_RARITY（若不存在给默认）
+        (typeof LOOT_WEIGHT_BY_RARITY !== 'undefined' ? LOOT_WEIGHT_BY_RARITY[key] : 20)
+      );
+      const qmin = Math.max(1, p.lootMin || 1);
+      const qmax = Math.max(qmin, p.lootMax || qmin);
+      return { id: p.id, name: p.name, icon: p.iconChar, weight: Math.max(1, weight), qmin, qmax };
+    });
+}
+
+function pickWeightedFromShop(pool) {
+  const total = pool.reduce((s, x) => s + x.weight, 0);
+  let r = Math.random() * total;
+  for (const x of pool) { r -= x.weight; if (r <= 0) return x; }
+  return pool[pool.length - 1];
+}
+
+// 按“商店池”roll 若干格战利品，并“立刻发放进背包与胜利清单”
+function rollChestFromShop({ slots = 1 } = {}) {
+  const pool = getShopLootPool();
+  if (!pool.length) return [];
+  const temp = [];
+  for (let i = 0; i < slots; i++) {
+    const base = pickWeightedFromShop(pool);
+    const qty  = Math.floor(base.qmin + Math.random() * (base.qmax - base.qmin + 1));
+    temp.push({ id: base.id, name: base.name, icon: base.icon, qty });
+  }
+  // 合并同类
+  const map = new Map();
+  for (const r of temp) { const t = map.get(r.id); t ? t.qty += r.qty : map.set(r.id, r); }
+  const rewards = [...map.values()];
+
+  // 发放进背包 + 回填胜利奖励（你的弹窗会读 levelRewards）
+  rewards.forEach(r => addItem({ id: r.id, name: r.name, icon: r.icon, qty: r.qty }));
+  globalThis.levelRewards = globalThis.levelRewards || [];
+  rewards.forEach(r => globalThis.levelRewards.push({ type: 'item', id: r.id, qty: r.qty, name: r.name, icon: r.icon }));
+
+  return rewards;
+}
+
 /**
  * 进入捕捉阶段：显示“准备收服…”提示 → 延迟后弹窗
  * 新增：需要“精灵球(capture_ball)”，点击【收服】后先扣 1 个（无论成功或失败）
@@ -471,7 +526,7 @@ import { showDamageText } from './effects_engine.js';
 import SuperBlockSystem from './data/super_block_system.js';
 import { updatePlayerStats } from './utils/player_stats.js'; // ✅ 新增
 import { ensureEncounter } from './data/encounters.js';
-
+import PropData from './data/prop_data.js';
 import { registerGameHooks } from './utils/game_shared.js';
 import { getPlayerHp, getPlayerMaxHp } from './data/player_state.js';
 import { unlockHero } from './data/hero_state.js';
@@ -641,6 +696,87 @@ function getBlockDamage(letter) {
 
 /* 攻击槽：累积伤害数值 */
 let attackGaugeDamage = 0;
+
+
+
+
+// 稀有度 → 掉落权重（数值越大越容易掉；可按你项目稀有度表调整）
+const LOOT_WEIGHT_BY_RARITY = {
+  white: 50,  '白': 50,
+  green: 35,  '绿': 35,
+  blue:  22,  '蓝': 22,
+  purple:12,  '紫': 12,
+  orange:6,   '橙': 6,
+  gold:  2,   '金': 2
+};
+
+// 过滤出可被宝箱开出的道具池：默认“道具表里有 price 的、且不是金币、且未显式 lootable=false”
+function getLootPool() {
+  const list = PropData.getAll
+    ? PropData.getAll()
+    : (PropData.items || PropData.props || []);
+  return list
+    .filter(p => p && p.id && p.id !== 'coin')
+    .filter(p => p.lootable !== false)                 // 你可以在 prop_data 里对个别道具设 lootable:false 来屏蔽
+    .filter(p => typeof p.price === 'number');         // 有价格通常是商店/道具，避免把系统占位项开出来
+}
+
+// 按权重随机 1 项
+function weightedPick(pool) {
+  const pairs = pool.map(p => {
+    const r = (p.rarity || p.quality || p.rank || 'blue');
+    const key = (typeof r === 'number')
+      ? ({1:'白',2:'绿',3:'蓝',4:'紫',5:'橙',6:'金'}[r] || '蓝')
+      : String(r).trim().toLowerCase();
+    const w = LOOT_WEIGHT_BY_RARITY[key] ?? 20;
+    return { p, w: Math.max(1, w) };
+  });
+  const total = pairs.reduce((s, x) => s + x.w, 0);
+  let r = Math.random() * total;
+  for (const x of pairs) {
+    if ((r -= x.w) <= 0) return x.p;
+  }
+  return pairs[pairs.length - 1].p; // 兜底
+}
+
+// 生成一次宝箱奖励（返回 [{id, name, iconChar, qty}]）
+function rollChestRewards({ slots = 2 } = {}) {
+  const pool = getLootPool();
+  if (!pool.length) return [];
+  const rewards = [];
+  for (let i = 0; i < slots; i++) {
+    const prop = weightedPick(pool);
+    // 默认数量 1；如果道具在数据里自带掉落数量范围，可支持 p.lootMin/lootMax
+    const qmin = Math.max(1, prop.lootMin || 1);
+    const qmax = Math.max(qmin, prop.lootMax || qmin);
+    const qty  = Math.floor(qmin + Math.random() * (qmax - qmin + 1));
+    rewards.push({ id: prop.id, name: prop.name, iconChar: prop.iconChar, qty });
+  }
+  return mergeSame(rewards);
+}
+
+// 合并同类项
+function mergeSame(list) {
+  const map = new Map();
+  list.forEach(it => {
+    const k = it.id;
+    const prev = map.get(k);
+    if (prev) prev.qty += it.qty;
+    else map.set(k, { ...it });
+  });
+  return [...map.values()];
+}
+
+// 把奖励发放到背包 + 回填到胜利弹窗用的全局展示数组（如果你已有）
+function grantRewardsToInventory(rewards) {
+  rewards.forEach(r => addItem({ id: r.id, name: r.name, icon: r.iconChar, qty: r.qty }));
+  // 给胜利弹窗展示（与你项目现有的展示结构保持一致）
+  try {
+    globalThis.levelRewards = (globalThis.levelRewards || []).concat(
+      rewards.map(r => ({ type: 'item', id: r.id, qty: r.qty, name: r.name, icon: r.iconChar }))
+    );
+  } catch (_) {}
+}
 
 function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
     let attempt = 0;
@@ -2605,18 +2741,21 @@ function processClearAndDrop() {
   }
   
 
-function openVictoryChest(idx) {
-  globalThis.victoryChestOpened[idx] = true;
-
-  const chestType = globalThis.chestDropsThisRound[idx]; // 0/1/2
-  const loot      = rollLoot(chestType);                 // {icon,name,qty}
-  globalThis.victoryChestLoot[idx] = loot;
-  if (loot.name === '金币' || loot.icon === '💰') {
-    chestGoldEarned += loot.qty;  // ① 统计到关卡累计
-    addCoins(loot.qty);           // ② HUD 数字同步增加
-    goldPopTime = Date.now();     // ③ 触发跳字动画（可选）
+  function openVictoryChest(idx) {
+    globalThis.victoryChestOpened[idx] = true;
+  
+    // 直接按“商店池”roll 1 格，并立刻入包 + 回填 levelRewards
+    const rewards = rollChestFromShop({ slots: 1 });      // [{id,name,icon,qty}]
+    const first   = rewards[0];
+  
+    // 胜利弹窗每只宝箱格子的 UI 仍然期待 {icon, qty}，这里写法兼容原 UI
+    globalThis.victoryChestLoot[idx] = { icon: first.icon, qty: first.qty };
+  
+    // 可选：轻提示（便于你肉眼验证）
+    wx.showToast({ title: `获得 ${first.name}×${first.qty}`, icon: 'none' });
   }
-}
+  
+  
 
 /*
  * 一键开启所有宝箱：逐个依次开启未打开的宝箱。
