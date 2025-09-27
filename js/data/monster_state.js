@@ -25,7 +25,7 @@ const ENEMY_GLOBAL_BUFF = 1.4;  // 敌人全局 +40%（需要时可改 1.0）
 
 // 稀有度 → HP 倍率（注意包含 yellow/gold）
 const RARITY_HP = {
-  white: 1.00, green: 1.25, blue: 1.60, purple: 2.20, yellow: 2.60, gold: 3.20
+    white: 1.00, green: 1.25, blue: 1.90, purple: 2.50, yellow: 3.20, gold: 4.20
 };
 
 // 区域等级范围：不同区域产生不同等级的敌人
@@ -78,7 +78,7 @@ function getBaseMultipliersForTier(tier) {
     };
   }
   if (t === 'gold') {
-    const f = 1.35;
+    const f = 1.60; // 让 atkMul = 1.9 * 1.6 = 3.04
     return {
       hpMul: purple.hpMul * f,
       atkMul: purple.atkMul * f,

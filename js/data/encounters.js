@@ -10,7 +10,7 @@ const BASE_HP_WHITE_L1 = 100;   // 白 1级基准 HP
 const HP_GROWTH        = 1.18;  // 等级成长（温和指数）
 const ENEMY_GLOBAL_BUFF = 1.4;  // 敌人全局 +40%（如需关闭改为 1.0）
 const RARITY_MULT = {           // 稀有度倍率（含 yellow）
-  white: 1.00, green: 1.25, blue: 1.60, purple: 2.20, yellow: 2.60, gold: 3.20
+    white: 1.00, green: 1.25, blue: 1.90, purple: 2.50, yellow: 3.20, gold: 4.20
 };
 // Boss 倍率温和，避免 10 级上万
 const BOSS_MULT = 3.5;

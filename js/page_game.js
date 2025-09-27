@@ -1265,13 +1265,7 @@ ctx.fillText(popupExpText, W / 2, expY);
 const rewards = globalThis.levelRewards || [];
 let afterRewardY = goldY + 32;     // 记录当前 Y，后面还要用
 
-// 5-A. 先画纯文字奖励（如果有别的奖励行）
-ctx.fillStyle = '#FFFFFF';
-ctx.font = '18px sans-serif';
-rewards.forEach((txt, i) => {
-  ctx.fillText(txt, W / 2, afterRewardY + i * 28);
-});
-afterRewardY += rewards.length * 28;   // 更新 Y 基准
+
 
 // 5-B. 再画宝箱 —— 先把掉落索引按 0→2 排序（S1→S3）
 const chestIdxArr = (globalThis.chestDropsThisRound || [])
