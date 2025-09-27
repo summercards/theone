@@ -35,6 +35,35 @@ globalThis.victoryChestOpened = [];   // 标记宝箱是否已开
 globalThis.victoryChestLoot    = [];     // ★ 清空上一关掉落
 // 开箱后具体掉落显示用（与宝箱索引一一对应）
 const { rollLoot } = require('./data/loot_tables.js');   // 引入
+// ==== BOSS 进攻条（只在“有效操作”推进）====
+const GAUGE_PER_VALID_OP = 0.25;   // 每次有效操作推进的比例，可按手感调整 0.2~0.33
+let bossGaugeValue = 0;            // 0~1
+
+function resetBossGauge() {
+  bossGaugeValue = 0;
+  pendingGaugeAttack = false;  // 你已有的半秒计时器保护同步清空
+  stepChangeTime = 0;          // 如进度动画依赖这个时间戳，一并复位
+}
+
+function progressBossGaugeOnValidOp(clearedCount) {
+  // 只有“有效操作”（确实清除了格子）才推进
+  if (!clearedCount || clearedCount <= 0) return;
+
+  bossGaugeValue = Math.min(1, bossGaugeValue + GAUGE_PER_VALID_OP);
+
+  // 到顶后触发 BOSS 攻击（保持你的原有触发方式）
+  if (bossGaugeValue >= 1 && !pendingGaugeAttack) {
+    pendingGaugeAttack = true;
+    // 例如：0.5s 后结算一次攻击 —— 保持你原逻辑
+    setTimeout(() => {
+      // === 这里调用你原来用于 BOSS 出手的函数 ===
+      if (typeof bossDoAttack === 'function') bossDoAttack();
+
+      bossGaugeValue = 0;         // 触发后清空
+      pendingGaugeAttack = false; // 复位等待标记
+    }, 500);
+  }
+}
 
 globalThis.victoryChestLoot = [];   // 与宝箱索引一一对应，用来存抽到的 {icon,qty}
 
@@ -580,16 +609,26 @@ globalThis.enemyAttackProgress  = globalThis.enemyAttackProgress  || 0;
 globalThis.enemyAttackThreshold = globalThis.enemyAttackThreshold || 5;
 
 /**
- * 增加敌人的攻击进度。每当玩家进行一次移动（不论是否形成消除），
- * 调用此函数以增加进度条。若进度达到阈值，则重置并立即发动一次攻击。
+ * 只在“有效操作”（确实发生了三消清除）时推进一次。
+ * 每推进一次，相当于原来任意操作推进一次。
  */
-function increaseEnemyAttackProgress() {
-  globalThis.enemyAttackProgress += 1;
-  if (globalThis.enemyAttackProgress >= globalThis.enemyAttackThreshold) {
-    globalThis.enemyAttackProgress = 0;
-    performEnemyAttack();
+function increaseEnemyAttackProgressOnValidOp() {
+    globalThis.enemyAttackProgress += 1;
+    if (globalThis.enemyAttackProgress >= globalThis.enemyAttackThreshold) {
+      globalThis.enemyAttackProgress = 0;
+      performEnemyAttack();
+    }
   }
-}
+
+  /** 新敌人出现时复位（也可在切关、继续探索时调用） */
+function resetEnemyAttackProgress() {
+    globalThis.enemyAttackProgress = 0;
+  
+    // 若你启用了“BOSS进攻条（只在有效操作推进）”这一组变量，也一起复位
+    bossGaugeValue = 0;        // 0~1
+    pendingGaugeAttack = false;
+    stepChangeTime = 0;        // 若你的进度动画依赖它，顺手清零
+  }
 
 /**
  * 敌人对玩家发动攻击：根据怪物攻击力扣除玩家生命，产生飘字及血条闪烁。
@@ -998,6 +1037,8 @@ wx.onTouchEnd(onTouchend);
   (HeroData.heroes||[]).forEach(h=>console.log(h.id, h.name, h.rarity||h.quality))
   // ★ 加这一行：按配置校正敌人（池外→池内，并重算数值）
 ensureEncounter(currentLevel, getMonster());
+resetEnemyAttackProgress();   // ✅ 新敌人 → 复位进攻条
+resetBossGauge();             // （如果你在用 bossGaugeValue，也一并复位）
 
 // 若你有“胜利→继续探索→再次 loadMonster(currentLevel)”的逻辑，
 // 在那次 loadMonster 后面同样补一行 ensureEncounter(...)
@@ -2874,7 +2915,9 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
         globalThis.gridSize = config.gridSize || 6;
         globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
         loadMonster(currentLevel);
- 
+        resetEnemyAttackProgress();   // ✅ 新敌人 → 复位进攻条
+        resetBossGauge();             // 同步复位 BOSS 进攻条
+        
         initGrid();
         // 重新载入最新出战英雄
         const heroes = getSelectedHeroes();
@@ -3063,12 +3106,13 @@ function handleSwap(src, dst) {
       if (globalThis.capturing) { selected = null; drawGame(); return; }
   
       // 推动敌人攻击进度（保留原逻辑）
-      try { increaseEnemyAttackProgress(); } catch (e) {}
+
   
       if (checkAndClearMatches()) {
         selected = null;
         gaugeCount++;
-  
+  // ✅ 只有“有效操作”（本次确实产生消除）才推进一次
+try { increaseEnemyAttackProgressOnValidOp(); } catch (e) {}
         playerActionCounter++;
   
         const heroes = getSelectedHeroes?.() || [];
