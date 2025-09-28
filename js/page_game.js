@@ -29,6 +29,17 @@ let heroLevelUps = [];           // 本关升级信息，供弹窗读取
 let touchStart = null;     // 记录起始格子位置
 let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
+
+// ===== 敌人攻击“蓄力”延迟相关 =====
+const ENEMY_WINDUP_MS = 700;     // 蓄力时长（手感推荐 600~900ms）
+let enemyAttackPending  = false; // 正在蓄力/准备出手（防止重入）
+let enemyAttackWindupId = null;  // 定时器句柄
+
+// === 玩家三消结算总闸 ===
+let isPlayerResolving = false;  // 玩家是否在进行结算（消除/连锁/掉落/补齐/飘字等）
+// 当敌人进攻条已满，但玩家仍在结算时，把这次攻击“排队”
+let queuedEnemyAttack = false;  // 只排一件，防重复叠加
+
 /* ---------- 胜利弹窗宝箱点击用 ---------- */
 globalThis.victoryChestRects  = [];   // 记录每只宝箱的矩形
 globalThis.victoryChestOpened = [];   // 标记宝箱是否已开
@@ -38,7 +49,20 @@ const { rollLoot } = require('./data/loot_tables.js');   // 引入
 // ==== BOSS 进攻条（只在“有效操作”推进）====
 const GAUGE_PER_VALID_OP = 0.25;   // 每次有效操作推进的比例，可按手感调整 0.2~0.33
 let bossGaugeValue = 0;            // 0~1
-
+// === 棋盘是否应当被锁定（统一入口） ===
+// 规则：胜利弹窗 / 失败弹窗 / 捕捉流程 / 退出切换中 / 敌人处于蓄力或出手阶段 → 锁盘
+function isBoardLocked() {
+    return (
+      showVictoryPopup ||
+      showGameOver ||
+      globalThis.capturing ||
+      globalThis.exitingGame ||                 // ✅ 统一只看全局
+      enemyAttackPending ||                     // 敌人蓄力/出手
+      (globalThis.enemyAttackTelegraphUntil && Date.now() < globalThis.enemyAttackTelegraphUntil)
+    );
+  }
+  
+  
 function resetBossGauge() {
   bossGaugeValue = 0;
   pendingGaugeAttack = false;  // 你已有的半秒计时器保护同步清空
@@ -616,45 +640,116 @@ function increaseEnemyAttackProgressOnValidOp() {
     globalThis.enemyAttackProgress += 1;
     if (globalThis.enemyAttackProgress >= globalThis.enemyAttackThreshold) {
       globalThis.enemyAttackProgress = 0;
-      performEnemyAttack();
+  
+      // ☆ 新增：若玩家仍在结算，就排队；否则直接进攻
+      if (enemyAttackPending) return;
+      if (isPlayerResolving) {
+        queuedEnemyAttack = true;     // 只排一次
+      } else {
+        performEnemyAttack();
+      }
     }
   }
+  
 
   /** 新敌人出现时复位（也可在切关、继续探索时调用） */
-function resetEnemyAttackProgress() {
+  function resetEnemyAttackProgress() {
     globalThis.enemyAttackProgress = 0;
   
     // 若你启用了“BOSS进攻条（只在有效操作推进）”这一组变量，也一起复位
-    bossGaugeValue = 0;        // 0~1
+    bossGaugeValue = 0;
     pendingGaugeAttack = false;
-    stepChangeTime = 0;        // 若你的进度动画依赖它，顺手清零
+    stepChangeTime = 0;
+  
+    // ▼ 新增：清理蓄力状态，避免跨回合残留
+    if (enemyAttackWindupId) {
+      clearTimeout(enemyAttackWindupId);
+      enemyAttackWindupId = null;
+    }
+    enemyAttackPending = false;
+    globalThis.enemyAttackTelegraphUntil = null;
+    queuedEnemyAttack = false;           // ☆ 新增
+isPlayerResolving = false;           // ☆ 新增
   }
+  
 
 /**
  * 敌人对玩家发动攻击：根据怪物攻击力扣除玩家生命，产生飘字及血条闪烁。
  */
+/**
+ * 敌人对玩家发动攻击（带蓄力延迟 + 预警展示）
+ * 原先是立刻扣血，现在改为：先进入蓄力（ENEMY_WINDUP_MS 毫秒）→ 再结算伤害。
+ */
 function performEnemyAttack() {
-  try {
-    const dmg = (typeof getMonsterDamage === 'function' ? getMonsterDamage() : 0) || 0;
-    if (dmg <= 0) return;
-    // 扣减玩家生命
-    takeDamage(dmg);
-    logBattle(`[敌人反击] 敌人对玩家造成伤害 ${dmg}`);
-    // 在玩家 HP 条附近显示伤害飘字
-    const hpBar = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
-    const fx = hpBar.x + hpBar.width * 0.75;
-    const fy = hpBar.y - 10;
-    createFloatingText(`-${dmg}`, fx, fy, '#FF4444');
-    // 触发 HP 条闪红动画
-    createMonsterAttackFlash();
-    // 若玩家死亡，则标记游戏结束
-    if (typeof isPlayerDead === 'function' && isPlayerDead()) {
-      showGameOver = true;
-    }
-  } catch (err) {
-    console.warn('performEnemyAttack error', err);
+      // ☆ 如果此刻仍在玩家结算，就改成排队
+  if (isPlayerResolving) {
+    queuedEnemyAttack = true;
+    return;
   }
-}
+    try {
+      const dmg = (typeof getMonsterDamage === 'function' ? getMonsterDamage() : 0) || 0;
+      if (dmg <= 0) return;
+  
+      // 防重入：蓄力期间不再叠加新的出手
+      if (enemyAttackPending) return;
+      enemyAttackPending = true;
+  
+      // 记录一个“预警结束时间”，UI 层据此画红色提醒、倒计时感
+      globalThis.enemyAttackTelegraphUntil = Date.now() + ENEMY_WINDUP_MS;
+  
+      // 视觉/听觉预警（可选：有文件就播，没有就静默）
+      try { createMonsterAttackFlash(); } catch (_) {}
+      try {
+        if (typeof playSound === 'function') playSound('monster_charge');
+      } catch (_) {}
+  
+      // ENEMY_WINDUP_MS 毫秒后，真正扣血与表现
+      enemyAttackWindupId = setTimeout(() => {
+        enemyAttackWindupId = null;
+  
+        // 如果在蓄力期间玩家已获胜/退出/死亡等，这里兜底
+        if (showVictoryPopup || globalThis.exitingGame) {
+          enemyAttackPending = false;
+          globalThis.enemyAttackTelegraphUntil = null;
+          return;
+        }
+  
+        // 扣减玩家生命
+        takeDamage(dmg);
+        logBattle?.(`[敌人出手] 敌人对玩家造成伤害 ${dmg}`);
+  
+        // 飘字与特效（沿用你原效果）
+        const hpBar = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
+        const fx = hpBar.x + hpBar.width * 0.75;
+        const fy = hpBar.y - 10;
+        try { createFloatingText(`-${dmg}`, fx, fy, '#FF4444'); } catch (_) {}
+        try { createMonsterAttackFlash(); } catch (_) {}
+        try { createShake?.(280, 4); } catch (_) {}
+  
+        // 结束态清理
+        enemyAttackPending = false;
+        globalThis.enemyAttackTelegraphUntil = null;
+  
+        // 判死
+        if (typeof isPlayerDead === 'function' && isPlayerDead()) {
+          showGameOver = true;
+        }
+  
+        // 立即重绘，确保打击后画面更新
+        if (typeof drawGame === 'function') drawGame();
+      }, ENEMY_WINDUP_MS);
+    } catch (err) {
+      console.warn('performEnemyAttack error', err);
+      // 兜底清理，避免卡死
+      enemyAttackPending = false;
+      globalThis.enemyAttackTelegraphUntil = null;
+      if (enemyAttackWindupId) {
+        clearTimeout(enemyAttackWindupId);
+        enemyAttackWindupId = null;
+      }
+    }
+  }
+  
 
   
 function playSound(name) {
@@ -988,9 +1083,11 @@ globalThis.bgmAudioContext = gameBgm;
 
 
     resetSessionState();      //  ← 新增
+    globalThis.exitingGame = false;  // ✅ 明确复位
+exitingGame = false;             // （如果你还保留了局部变量，也复位一次）
+
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
     globalThis.currentLevel = currentLevel; // 兼容其他地方万一有用到
-    haltGame();                               // ☆ 立刻熔断后台循环
     wx.setStorageSync('lastLevel', currentLevel.toString());
     globalThis.expGainedThisRound = 0;
   ctxRef = ctx;
@@ -2168,7 +2265,69 @@ if (showGameOver) {
   ctxRef.fillText('回到主页', boxX + boxW / 2, boxY + 120);
   
 }
+// === 敌人攻击蓄力可视化预警（红色呼吸边框 + 倒计时文字） ===
+if (globalThis.enemyAttackTelegraphUntil && Date.now() < globalThis.enemyAttackTelegraphUntil) {
+    const now   = Date.now();
+    const left  = Math.max(0, globalThis.enemyAttackTelegraphUntil - now);
+    const p     = 1 - left / ENEMY_WINDUP_MS;      // 0 → 1
+    const alpha = 0.25 + 0.25 * Math.sin(p * Math.PI * 2);  // 呼吸亮度
+  
+    // 1) 全屏暗红呼吸边框
+    ctxRef.save();
+    ctxRef.strokeStyle = `rgba(255, 80, 80, ${0.45 + alpha * 0.35})`;
+    ctxRef.lineWidth   = 10;
+    ctxRef.strokeRect(6, 6, canvasRef.width - 12, canvasRef.height - 12);
+    ctxRef.restore();
+  
+    // 2) “来袭！”提示（靠近玩家血条）
+    const hp = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
+    ctxRef.save();
+    ctxRef.font = 'bold 20px sans-serif';
+    ctxRef.textAlign = 'center';
+    ctxRef.textBaseline = 'bottom';
+    ctxRef.fillStyle = `rgba(255, 120, 120, ${0.8})`;
+    ctxRef.fillText('来袭！', hp.x + hp.width / 2, hp.y - 8);
+  
+    // 3) 简易倒计时条（从满到空）
+    const barW = 120, barH = 6;
+    const barX = hp.x + (hp.width - barW)/2;
+    const barY = hp.y - 6 - 6;
+    // 背条
+    ctxRef.fillStyle = 'rgba(60, 20, 20, 0.8)';
+    drawRoundedRect(ctxRef, barX, barY, barW, barH, 3, true, false);
+    // 进度（根据 left 缩短）
+    const w = Math.max(2, Math.floor(barW * (left / ENEMY_WINDUP_MS)));
+    const grad = ctxRef.createLinearGradient(barX, 0, barX + w, 0);
+    grad.addColorStop(0, '#FF6666');
+    grad.addColorStop(1, '#FF2222');
+    ctxRef.fillStyle = grad;
+    drawRoundedRect(ctxRef, barX, barY, w, barH, 3, true, false);
+    ctxRef.restore();
+  } else {
+    globalThis.enemyAttackTelegraphUntil = null; // 超时自动清理
+  }
+  
 
+  // === 敌人进攻锁盘遮罩（只盖住棋盘区域） ===
+if (isBoardLocked()) {
+    const bx = __gridStartX;
+    const by = __gridStartY;
+    const bw = __blockSize * gridSize;
+    const bh = __blockSize * gridSize;
+  
+    ctxRef.save();
+    ctxRef.fillStyle = 'rgba(0,0,0,0.25)';
+    ctxRef.fillRect(bx, by, bw, bh);
+  
+    // 写个小锁图标/提示
+    ctxRef.font = 'bold 18px sans-serif';
+    ctxRef.fillStyle = '#FFD1D1';
+    ctxRef.textAlign = 'center';
+    ctxRef.textBaseline = 'middle';
+    ctxRef.fillText('🔒 敌人进攻中', bx + bw/2, by + bh/2);
+    ctxRef.restore();
+  }
+  
   globalThis.layoutRects = layoutRects;
   drawAllEffects(ctxRef, canvasRef);
 }
@@ -2290,7 +2449,13 @@ if (showVictoryPopup) {
       }
     }
     return;                    // 点到弹窗其它地方
+
+
   }
+
+// ☆ 敌人攻击蓄力/出手期间：完全锁盘（不允许开始选择/拖动）
+if (isBoardLocked()) return;
+
   /* =================================== */
   
 
@@ -2324,6 +2489,11 @@ if (showVictoryPopup) {
 function checkAndClearMatches (returnColors = false) {
 
     
+    if (isBoardLocked()) {
+        return returnColors ? [] : false;   // ✅ 新增：返回与期望类型一致的“空”
+      }
+
+
   // 捕捉期间：不参与任何清除/蓄力/伤害结算
 if (globalThis.capturing) {
     return returnColors ? [] : false;
@@ -2660,11 +2830,13 @@ function processClearAndDrop() {
     // 捕捉或胜利弹窗期间：不跑任何连锁
     if (globalThis.capturing || showVictoryPopup) {
       clearingRunning = false;
+      isPlayerResolving = false;      // ☆ 新增：确保关闸
       return;
     }
   
     clearingRunning = true;
   
+    isPlayerResolving = true;         // ☆ 新增：进入结算期
     const comboQueue = [];
     let comboTimerActive = false;
   
@@ -2685,6 +2857,7 @@ function processClearAndDrop() {
       // 每一个阶段都要检查“捕捉/胜利熔断”
       if (globalThis.capturing || showVictoryPopup) {
         clearingRunning = false;
+        isPlayerResolving = false;          // ☆ 新增：关闸
         return;
       }
   
@@ -2748,6 +2921,13 @@ function processClearAndDrop() {
                     comboCounter = 0;
                     drawGame();
                     clearingRunning = false;
+                    isPlayerResolving = false;                // ☆ 新增：关闸（玩家回合真正结束）
+
+// ☆ 如果期间有挂起的敌人攻击，这里一次性触发
+if (queuedEnemyAttack && !enemyAttackPending) {
+  queuedEnemyAttack = false;
+  performEnemyAttack();
+}
                     tryStartHeroBurst();
                   }, 400);
                 }
@@ -2966,6 +3146,9 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
   const col = Math.floor((x - __gridStartX) / __blockSize);
   const row = Math.floor((y - __gridStartY) / __blockSize);
 
+  // ☆ 敌人攻击蓄力/出手期间：完全锁盘（不允许触发超级方块或交换）
+if (isBoardLocked()) return;
+
     // ✅ 点击超级方块触发技能
     if (
       row >= 0 && row < gridSize &&
@@ -3005,6 +3188,10 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
         switchPageFn?.('home', () => {
           destroyGamePage();
 
+          if (enemyAttackWindupId) { clearTimeout(enemyAttackWindupId); enemyAttackWindupId = null; }
+enemyAttackPending = false;
+globalThis.enemyAttackTelegraphUntil = null;
+
           if (globalThis.victoryPopupTimerId) {
             clearTimeout(globalThis.victoryPopupTimerId);
             globalThis.victoryPopupTimerId = null;
@@ -3028,7 +3215,10 @@ if (btn &&
         
   switchPageFn?.('home', () => {
     destroyGamePage(); // 清理资源
-
+    if (enemyAttackWindupId) { clearTimeout(enemyAttackWindupId); enemyAttackWindupId = null; }
+    enemyAttackPending = false;
+    globalThis.enemyAttackTelegraphUntil = null;
+    
     if (globalThis.victoryPopupTimerId) {
         clearTimeout(globalThis.victoryPopupTimerId);
         globalThis.victoryPopupTimerId = null;
@@ -3094,6 +3284,7 @@ wx?.hideToast?.();
 
 function handleSwap(src, dst) {
     // 捕捉弹窗期间禁止交换
+    if (isBoardLocked()) return;        // ✅ 新增：怪物进攻锁盘时禁止交换
     if (globalThis.capturing) return;
   
     playSound('block_move');
@@ -3111,6 +3302,7 @@ function handleSwap(src, dst) {
       if (checkAndClearMatches()) {
         selected = null;
         gaugeCount++;
+        isPlayerResolving = true;   // ☆ 新增：一旦有有效三消，立刻进入“结算期”
   // ✅ 只有“有效操作”（本次确实产生消除）才推进一次
 try { increaseEnemyAttackProgressOnValidOp(); } catch (e) {}
         playerActionCounter++;
@@ -3184,6 +3376,13 @@ if (globalThis.captureModalTimerId) {
   
     /* 4. 结算本局获得的金币 */
     commitSessionCoins();
+
+    // ✅ 一次性关干净与怪物攻击相关的状态
+if (enemyAttackWindupId) { clearTimeout(enemyAttackWindupId); enemyAttackWindupId = null; }
+enemyAttackPending = false;
+globalThis.enemyAttackTelegraphUntil = null;
+queuedEnemyAttack = false;     // ✅ 新增
+isPlayerResolving = false;     // ✅ 新增
   }
   
 export { expandGridTo };  // ✅ 添加这行
