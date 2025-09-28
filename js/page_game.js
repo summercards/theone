@@ -37,6 +37,15 @@ let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
 const GAME_OVER_BTN_DELAY_MS = 800; // 按钮延迟显示/可点，推荐 800~1200ms
 let gameOverShownAt = 600;            // 记录失败弹窗出现的时间戳
+// === 怪物攻击演出参数 ===
+const MON_ATTACK_ZOOM_MAX = 1.18;   // 放大峰值（1.0~1.3建议）
+const MON_ATTACK_CENTER_Y_RATIO = 0.30; // 放大变换的中心Y，按棋盘顶部到屏幕的比例
+const SCREEN_HIT_FX_MS = 320;       // 前景受击特效持续时间(ms)
+
+// 状态
+let monZoomStart = 0;
+let monZoomUntil = 0;
+let screenHitFx = [];  // 前景受击特效队列 [{t0,dur}]
 
 // ===== 敌人攻击“蓄力”延迟相关 =====
 const ENEMY_WINDUP_MS = 700;     // 蓄力时长（手感推荐 600~900ms）
@@ -704,7 +713,10 @@ function performEnemyAttack() {
   
       // 记录一个“预警结束时间”，UI 层据此画红色提醒、倒计时感
       globalThis.enemyAttackTelegraphUntil = Date.now() + ENEMY_WINDUP_MS;
-  
+  // ☆ 开始放大动画：与蓄力时间一致
+monZoomStart = Date.now();
+monZoomUntil = monZoomStart + ENEMY_WINDUP_MS;
+
       // 视觉/听觉预警（可选：有文件就播，没有就静默）
       try { createMonsterAttackFlash(); } catch (_) {}
       try {
@@ -724,6 +736,8 @@ function performEnemyAttack() {
   
         // 扣减玩家生命
         takeDamage(dmg);
+        // ☆ 命中瞬间：加入一次“屏幕前景受击”特效
+screenHitFx.push({ t0: Date.now(), dur: SCREEN_HIT_FX_MS });
         logBattle?.(`[敌人出手] 敌人对玩家造成伤害 ${dmg}`);
   
         // 飘字与特效（沿用你原效果）
@@ -1813,6 +1827,60 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
 
 // 把“平铺地图层 + 背景层”都压到最底层；顺序：先平铺，再背景
 ctxRef.save();
+
+// === 屏幕前景“受击”特效（在所有UI之上） ===
+(function drawScreenHitFx() {
+    if (!screenHitFx.length) return;
+    const now = Date.now();
+    const W = canvasRef.width;
+    const H = canvasRef.height;
+  
+    // 逐个绘制/清理
+    const alive = [];
+    for (let i = 0; i < screenHitFx.length; i++) {
+      const fx = screenHitFx[i];
+      const t = (now - fx.t0) / fx.dur;
+      if (t >= 1) continue; // 自动过期
+      alive.push(fx);
+  
+      // 透明与尺寸随时间变化
+      const alpha = 0.6 * (1 - t);           // 由亮到淡
+      const rOuter = (W * 0.55) * t + 40;    // 扩散圆半径
+      const rInner = rOuter * 0.5;           // 中心亮圈
+  
+      ctxRef.save();
+      ctxRef.globalCompositeOperation = 'lighter'; // 更亮的叠加
+      ctxRef.globalAlpha = alpha;
+  
+      // 1) 中心白色爆光
+      const grad = ctxRef.createRadialGradient(W/2, H*0.38, rInner, W/2, H*0.38, rOuter);
+      grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+      grad.addColorStop(1, 'rgba(255,255,255,0.0)');
+      ctxRef.fillStyle = grad;
+      ctxRef.beginPath();
+      ctxRef.arc(W/2, H*0.38, rOuter, 0, Math.PI*2);
+      ctxRef.fill();
+  
+      // 2) 斜向冲击线（两条对称）
+      const len = 160 + 240 * t;
+      const w   = 8 + 10 * (1 - t);
+      ctxRef.strokeStyle = 'rgba(255,255,255,0.75)';
+      ctxRef.lineWidth = w;
+      ctxRef.beginPath();
+      ctxRef.moveTo(W/2 - len, H*0.38 - len*0.35);
+      ctxRef.lineTo(W/2 + len, H*0.38 + len*0.35);
+      ctxRef.stroke();
+      ctxRef.beginPath();
+      ctxRef.moveTo(W/2 + len, H*0.38 - len*0.35);
+      ctxRef.lineTo(W/2 - len, H*0.38 + len*0.35);
+      ctxRef.stroke();
+  
+      ctxRef.restore();
+    }
+    screenHitFx = alive;
+  })();
+
+  
 ctxRef.globalCompositeOperation = 'destination-over';
 drawTiledMapOverlay(); // ☆ 新增：半透明四方连续地图（在背景之上）
 drawBackground();      // 原有背景（在最底）
@@ -1881,7 +1949,22 @@ if (globalThis.preCaptureOverlayUntil && Date.now() < globalThis.preCaptureOverl
 
 // ✅ 棋盘外围
 
-drawMonsterSprite(ctxRef, canvasRef); 
+// ☆ 怪物攻击放大：只包裹怪物绘制
+// ☆ 怪物攻击放大：只放大“怪物贴图”
+// monster_ui.js 会读取 globalThis.monsterScale，并仅对贴图缩放
+(() => {
+    const now = Date.now();
+    const inZoom = monZoomUntil && now < monZoomUntil;
+    if (inZoom) {
+      const t = Math.max(0, Math.min(1, (now - monZoomStart) / ENEMY_WINDUP_MS));
+      globalThis.monsterScale = 1 + (MON_ATTACK_ZOOM_MAX - 1) * Math.sin(Math.PI * t);
+    } else {
+      globalThis.monsterScale = null; // 恢复为默认 spriteScale
+    }
+    drawMonsterSprite(ctxRef, canvasRef);
+  })();
+  
+  
 
 /* === 出战栏：固定 5 槽位 + 编号（原来绿色框位置） ================ */
 const heroes      = getSelectedHeroes();   // 长度固定 5
@@ -3294,6 +3377,9 @@ if (btn &&
         
   switchPageFn?.('home', () => {
     destroyGamePage(); // 清理资源
+    monZoomUntil = 0;
+    screenHitFx = [];
+
     if (enemyAttackWindupId) { clearTimeout(enemyAttackWindupId); enemyAttackWindupId = null; }
     enemyAttackPending = false;
     globalThis.enemyAttackTelegraphUntil = null;
