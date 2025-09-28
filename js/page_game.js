@@ -7,6 +7,12 @@ const VictoryDialogLines = [
   "钱袋子变鼓了，心也跟着鼓起来！",
   "回到旅店，召集更多的同伴吧!"
 ];
+const MAP_TILE_SPEED_X = -5;  // 横向速度(px/s)，负数=向左，正数=向右
+const MAP_TILE_SPEED_Y =  5;  // 纵向速度(px/s)，负数=向上，正数=向下
+let _mapTileT0 = 0;            // 内部用：开播时间戳
+const MAP_TILE_SCALE = 1.3;   // 0.2~1.0 都可；0.6=缩到60%
+const MAP_TILE_SRC   = 'assets/maps/forest_tile.png'; // 你的平铺小图（无缝）
+const MAP_TILE_ALPHA = 0.15;                          // 透明度(0~1)
 const { addItem } = require('./data/inventory.js');
 let pendingGaugeAttack = false;   // 正在等待 0.5 s 计时器
 let lastRemainSteps = 5;   // 上一次绘制时的剩余步数
@@ -29,6 +35,8 @@ let heroLevelUps = [];           // 本关升级信息，供弹窗读取
 let touchStart = null;     // 记录起始格子位置
 let dragStartX = 0;        // 记录滑动起点 X
 let dragStartY = 0;        // 记录滑动起点 Y
+const GAME_OVER_BTN_DELAY_MS = 800; // 按钮延迟显示/可点，推荐 800~1200ms
+let gameOverShownAt = 600;            // 记录失败弹窗出现的时间戳
 
 // ===== 敌人攻击“蓄力”延迟相关 =====
 const ENEMY_WINDUP_MS = 700;     // 蓄力时长（手感推荐 600~900ms）
@@ -730,10 +738,11 @@ function performEnemyAttack() {
         enemyAttackPending = false;
         globalThis.enemyAttackTelegraphUntil = null;
   
-        // 判死
         if (typeof isPlayerDead === 'function' && isPlayerDead()) {
-          showGameOver = true;
-        }
+            showGameOver = true;
+            gameOverShownAt = Date.now();   // ☆ 记录出现时间
+          }
+          
   
         // 立即重绘，确保打击后画面更新
         if (typeof drawGame === 'function') drawGame();
@@ -1043,6 +1052,64 @@ let selected = null;
 
 
 /* ================= 背景层：黑 → 紫渐变 =================== */
+
+// === 在背景层之上铺一张半透明的四方连续地图 ===
+// === 在背景层之上铺一张半透明的四方连续地图（匀速滚动） ===
+// === 在背景层之上铺一张半透明的四方连续地图（无缝匀速滚动·手动平铺版） ===
+function drawTiledMapOverlay() {
+    // 懒加载贴图
+    if (!globalThis._mapTileImg) {
+      const img = wx.createImage();
+      img.src = MAP_TILE_SRC;
+      img.onload = () => {
+        globalThis._mapTileImg = img;
+        _mapTileT0 = Date.now();   // ☆ 记录开始时间（用于匀速位移）
+        drawGame?.();
+      };
+      img.onerror = () => {};
+      return; // 首帧未加载好，先不画
+    }
+  
+    const img = globalThis._mapTileImg;
+  
+    // 屏幕尺寸
+    const W = canvasRef.width;
+    const H = canvasRef.height;
+  
+    // ===== 缩放后的单块尺寸（手动平铺用） =====
+    const s = MAP_TILE_SCALE;           // <1 更小 >1 更大（在常量区调）
+    const tileW = Math.max(1, img.width  * s);
+    const tileH = Math.max(1, img.height * s);
+  
+    // ===== 基于时间的位移，得到当前“相位”（始终落在一个 tile 尺寸内）=====
+    const tSec = Math.max(0, (Date.now() - _mapTileT0) / 1000);
+    const dx = MAP_TILE_SPEED_X * tSec;   // 速度在常量区调：MAP_TILE_SPEED_X/Y
+    const dy = MAP_TILE_SPEED_Y * tSec;
+  
+    // 取模到 [0, tileW/H) 区间；负数也能正确处理
+    const phaseX = ((dx % tileW) + tileW) % tileW;
+    const phaseY = ((dy % tileH) + tileH) % tileH;
+  
+    // ===== 开始绘制：先设透明度，再手动把小图平铺到整屏 =====
+    ctxRef.save();
+    ctxRef.globalAlpha = MAP_TILE_ALPHA;
+  
+    // 从“相位”向左上多铺一圈，避免边缘裸露
+    const startX = -phaseX - tileW;
+    const startY = -phaseY - tileH;
+  
+    for (let y = startY; y < H + tileH; y += tileH) {
+      for (let x = startX; x < W + tileW; x += tileW) {
+        ctxRef.drawImage(img, x, y, tileW, tileH);
+      }
+    }
+  
+    ctxRef.restore();
+  }
+  
+  
+  
+  
 function drawBackground() {
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   
@@ -1744,11 +1811,13 @@ function drawHeroIconFull(ctx, hero, x, y, size = 48, scale = 0.8) {
     ctx.fillText(`${attrValue}`, textX, textY);
     ctx.restore();
 
-    // 把背景放到 UI 的最后，用 destination-over 压到最底层
+// 把“平铺地图层 + 背景层”都压到最底层；顺序：先平铺，再背景
 ctxRef.save();
 ctxRef.globalCompositeOperation = 'destination-over';
-drawBackground();
+drawTiledMapOverlay(); // ☆ 新增：半透明四方连续地图（在背景之上）
+drawBackground();      // 原有背景（在最底）
 ctxRef.restore();
+
   }
   
   
@@ -2240,31 +2309,39 @@ if (comboCounter >= 1 && Date.now() - lastComboUpdateTime < 2500) {
   
   
   
-
-if (showGameOver) {
-  const boxW = 260, boxH = 160;
-  const boxX = (canvasRef.width - boxW) / 2;
-  const boxY = (canvasRef.height - boxH) / 2;
+  if (showGameOver) {
+    const boxW = 260, boxH = 160;
+    const boxX = (canvasRef.width - boxW) / 2;
+    const boxY = (canvasRef.height - boxH) / 2;
   
-
-  // 背景
-  ctxRef.fillStyle = 'rgba(0, 0, 0, 0.85)';
-  ctxRef.fillRect(boxX, boxY, boxW, boxH);
-
-  // 文本
-  ctxRef.fillStyle = '#FFF';
-  ctxRef.font = '24px sans-serif';
-  ctxRef.textAlign = 'center';
-  ctxRef.fillText('游戏失败', boxX + boxW / 2, boxY + 50);
-
-  // 按钮
-  ctxRef.fillStyle = '#F33';
-  drawRoundedRect(ctxRef, boxX + 60, boxY + 100, 140, 40, 10, true, false);
-  ctxRef.fillStyle = '#FFF';
-  ctxRef.font = '18px sans-serif';
-  ctxRef.fillText('回到主页', boxX + boxW / 2, boxY + 120);
+    // 背景
+    ctxRef.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctxRef.fillRect(boxX, boxY, boxW, boxH);
   
-}
+    // 文本
+    ctxRef.fillStyle = '#FFF';
+    ctxRef.font = '24px sans-serif';
+    ctxRef.textAlign = 'center';
+    ctxRef.fillText('游戏失败', boxX + boxW / 2, boxY + 50);
+  
+    // ☆ 是否到“可显示按钮”的时间
+    const canShowBtn = (Date.now() - gameOverShownAt) >= GAME_OVER_BTN_DELAY_MS;
+  
+    if (canShowBtn) {
+      // 按钮
+      ctxRef.fillStyle = '#F33';
+      drawRoundedRect(ctxRef, boxX + 60, boxY + 100, 140, 40, 10, true, false);
+      ctxRef.fillStyle = '#FFF';
+      ctxRef.font = '18px sans-serif';
+      ctxRef.fillText('回到主页', boxX + boxW / 2, boxY + 120);
+    } else {
+      // 未到时间：画个占位（可换成淡入动画）
+      ctxRef.font = '16px sans-serif';
+      ctxRef.fillStyle = 'rgba(255,255,255,0.6)';
+      ctxRef.fillText('……', boxX + boxW / 2, boxY + 120);
+    }
+  }
+  
 // === 敌人攻击蓄力可视化预警（红色呼吸边框 + 倒计时文字） ===
 if (globalThis.enemyAttackTelegraphUntil && Date.now() < globalThis.enemyAttackTelegraphUntil) {
     const now   = Date.now();
@@ -2309,23 +2386,39 @@ if (globalThis.enemyAttackTelegraphUntil && Date.now() < globalThis.enemyAttackT
   
 
   // === 敌人进攻锁盘遮罩（只盖住棋盘区域） ===
+// === 锁盘遮罩（分情景提示） ===
 if (isBoardLocked()) {
-    const bx = __gridStartX;
-    const by = __gridStartY;
-    const bw = __blockSize * gridSize;
-    const bh = __blockSize * gridSize;
+    // 失败/胜利弹窗时不再画“敌人进攻/捕捉中”的提示，避免误导
+    if (!showGameOver && !showVictoryPopup) {
+      const bx = __gridStartX;
+      const by = __gridStartY;
+      const bw = __blockSize * gridSize;
+      const bh = __blockSize * gridSize;
   
-    ctxRef.save();
-    ctxRef.fillStyle = 'rgba(0,0,0,0.25)';
-    ctxRef.fillRect(bx, by, bw, bh);
+      // 选择提示语：捕捉优先；否则看是否为敌人进攻；都不是就不显示文字
+      let lockMsg = '';
+      if (globalThis.capturing) {
+        lockMsg = '⏸ 捕捉进行中';
+      } else if (enemyAttackPending ||
+                 (globalThis.enemyAttackTelegraphUntil && Date.now() < globalThis.enemyAttackTelegraphUntil)) {
+        lockMsg = '🔒 敌人进攻中';
+      } else {
+        lockMsg = '';
+      }
   
-    // 写个小锁图标/提示
-    ctxRef.font = 'bold 18px sans-serif';
-    ctxRef.fillStyle = '#FFD1D1';
-    ctxRef.textAlign = 'center';
-    ctxRef.textBaseline = 'middle';
-    ctxRef.fillText('🔒 敌人进攻中', bx + bw/2, by + bh/2);
-    ctxRef.restore();
+      // 只在有文案时画遮罩
+      if (lockMsg) {
+        ctxRef.save();
+        ctxRef.fillStyle = 'rgba(0,0,0,0.25)';
+        ctxRef.fillRect(bx, by, bw, bh);
+        ctxRef.font = 'bold 18px sans-serif';
+        ctxRef.fillStyle = '#FFD1D1';
+        ctxRef.textAlign = 'center';
+        ctxRef.textBaseline = 'middle';
+        ctxRef.fillText(lockMsg, bx + bw/2, by + bh/2);
+        ctxRef.restore();
+      }
+    }
   }
   
   globalThis.layoutRects = layoutRects;
@@ -3141,6 +3234,27 @@ setSelectedHeroes(team);                 // ↙️ 刷新内存
       return;
     }
 
+    // ☆ 失败弹窗：按钮点击（带延迟可点）
+if (showGameOver) {
+    const boxW = 260;
+    const boxH = 160;
+    const boxX = (canvasRef.width - boxW) / 2;
+    const boxY = (canvasRef.height - boxH) / 2;
+    const btnX = boxX + 60;
+    const btnY = boxY + 100;
+    const btnW = 140;
+    const btnH = 40;
+  
+    const canClickBack = (Date.now() - gameOverShownAt) >= GAME_OVER_BTN_DELAY_MS;
+    const inGameOverBtn = (x >= btnX && x <= btnX + btnW && y >= btnY && y <= btnY + btnH);
+  
+    if (inGameOverBtn && canClickBack) {
+      // 已到可点时间才执行
+      switchPageFn?.('heroSelect');
+    }
+    return; // 有失败弹窗时，其他点击不再处理
+  }
+  
     
   // ✅ 点击超级方块立即触发技能（提早处理）
   const col = Math.floor((x - __gridStartX) / __blockSize);
@@ -3168,41 +3282,6 @@ if (isBoardLocked()) return;
     }
 
   
-
-  // ✅ 失败弹窗点击“回到主页”
-  if (showGameOver) {
-    const boxW = 260;
-    const boxH = 160;
-    const boxX = (canvasRef.width - boxW) / 2;
-    const boxY = (canvasRef.height - boxH) / 2;
-    const btnX = boxX + 60;
-    const btnY = boxY + 100;
-    const btnW = 140;
-    const btnH = 40;
-
-    const inGameOverBtn =
-      x >= btnX && x <= btnX + btnW &&
-      y >= btnY && y <= btnY + btnH;
-
-      if (inGameOverBtn) {
-        switchPageFn?.('home', () => {
-          destroyGamePage();
-
-          if (enemyAttackWindupId) { clearTimeout(enemyAttackWindupId); enemyAttackWindupId = null; }
-enemyAttackPending = false;
-globalThis.enemyAttackTelegraphUntil = null;
-
-          if (globalThis.victoryPopupTimerId) {
-            clearTimeout(globalThis.victoryPopupTimerId);
-            globalThis.victoryPopupTimerId = null;
-          }
-          
-        });
-      }
-      
-
-    return; // ❗ 禁止继续滑动行为
-  }
 
   // ✅ 检测是否点击了左上角“返回”按钮
 const btn = globalThis.backToHomeBtn;
@@ -3720,6 +3799,7 @@ function monsterRetaliate() {
 
   if (isPlayerDead()) {
     showGameOver = true;
+    gameOverShownAt = Date.now();
   }
 }
 
