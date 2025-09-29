@@ -14,6 +14,7 @@ const MAP_TILE_SCALE = 1.3;   // 0.2~1.0 都可；0.6=缩到60%
 const MAP_TILE_SRC   = 'assets/maps/forest_tile.png'; // 你的平铺小图（无缝）
 const MAP_TILE_ALPHA = 0.15;                          // 透明度(0~1)
 const { addItem } = require('./data/inventory.js');
+const MON_ATTACK_ZOOM_DELAY_MS = 700;  // 放大从蓄力开始后延迟多少毫秒再启动
 let pendingGaugeAttack = false;   // 正在等待 0.5 s 计时器
 let lastRemainSteps = 5;   // 上一次绘制时的剩余步数
 let stepChangeTime  = 0;   // 最近一次数值变化的时间戳(ms)
@@ -713,9 +714,11 @@ function performEnemyAttack() {
   
       // 记录一个“预警结束时间”，UI 层据此画红色提醒、倒计时感
       globalThis.enemyAttackTelegraphUntil = Date.now() + ENEMY_WINDUP_MS;
-  // ☆ 开始放大动画：与蓄力时间一致
-monZoomStart = Date.now();
-monZoomUntil = monZoomStart + ENEMY_WINDUP_MS;
+// ☆ 放大动画：延迟启动 + 时长对齐蓄力剩余
+const _delay = Math.max(0, Math.min(MON_ATTACK_ZOOM_DELAY_MS, ENEMY_WINDUP_MS - 120));
+monZoomStart = Date.now() + _delay;
+monZoomUntil = monZoomStart + Math.max(120, ENEMY_WINDUP_MS - _delay);
+
 
       // 视觉/听觉预警（可选：有文件就播，没有就静默）
       try { createMonsterAttackFlash(); } catch (_) {}
@@ -1954,15 +1957,23 @@ if (globalThis.preCaptureOverlayUntil && Date.now() < globalThis.preCaptureOverl
 // monster_ui.js 会读取 globalThis.monsterScale，并仅对贴图缩放
 (() => {
     const now = Date.now();
-    const inZoom = monZoomUntil && now < monZoomUntil;
+  
+    // 只有到达 monZoomStart 才开始放大；超出 monZoomUntil 就结束
+    const inZoom = monZoomUntil && now >= monZoomStart && now < monZoomUntil;
+  
     if (inZoom) {
-      const t = Math.max(0, Math.min(1, (now - monZoomStart) / ENEMY_WINDUP_MS));
+      const dur = Math.max(1, monZoomUntil - monZoomStart);                 // 实际持续时长
+      const t   = Math.max(0, Math.min(1, (now - monZoomStart) / dur));     // 0~1
+  
+      // 若你想要单脉冲就用正弦；想多脉冲也可换成 cycles 版本（我先给单脉冲）
       globalThis.monsterScale = 1 + (MON_ATTACK_ZOOM_MAX - 1) * Math.sin(Math.PI * t);
     } else {
-      globalThis.monsterScale = null; // 恢复为默认 spriteScale
+      globalThis.monsterScale = null; // 恢复默认
     }
+  
     drawMonsterSprite(ctxRef, canvasRef);
   })();
+  
   
   
 
