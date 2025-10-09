@@ -1,11 +1,17 @@
 {
-  "networkTimeout": {
-    "request": 5000
-  },
-  "requiredPrivateInfos": [],
-  "plugins": {},
-  "ad": {
-    "adIntervals": {},
-    "adType": ["rewardedVideo"]
+    "deviceOrientation": "portrait",
+    "showStatusBar": false,
+    "networkTimeout": {
+      "request": 10000,
+      "connectSocket": 10000,
+      "uploadFile": 10000,
+      "downloadFile": 10000
+    },
+    "plugins": {},
+    "requiredPrivateInfos": [],
+    "ad": { "adType": ["rewardedVideo"] },
+    "subpackages": [
+      { "root": "assets", "name": "assets" }
+    ]
   }
-}
+  

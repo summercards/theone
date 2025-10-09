@@ -4,70 +4,59 @@
 
    import { loadAll, migrateLocalToCloudOnce } from './utils/cloud_save.js';
    const HeroData = require('./data/hero_data.js');
-
-// ===== 兼容迁移：把旧稀有度(R/SR/SSR/UR)转成新稀有度(white/green/blue/purple/yellow/gold) =====
-function migrateRarityScheme() {
-  try {
-    const prog = wx.getStorageSync('heroProgress') || {};
-    let changed = false;
-    const mapOldToNew = { R:'white', SR:'blue', SSR:'purple', UR:'gold' };
-    for (const k in prog) {
-      const r = prog[k]?.rarity;
-      if (!r) continue;
-      if (mapOldToNew[r]) {
-        prog[k].rarity = mapOldToNew[r];
-        changed = true;
-      }
-    }
-    if (changed) wx.setStorageSync('heroProgress', prog);
-  } catch (e) { console.warn('[migrate] rarity scheme failed', e); }
-}
-
+   
+   // —— 旧稀有度到新稀有度的迁移（保持你原逻辑）
+   function migrateRarityScheme() {
+     try {
+       const prog = wx.getStorageSync('heroProgress') || {};
+       let changed = false;
+       const mapOldToNew = { R:'white', SR:'blue', SSR:'purple', UR:'gold' };
+       for (const k in prog) {
+         const r = prog[k]?.rarity;
+         if (!r) continue;
+         if (mapOldToNew[r]) {
+           prog[k].rarity = mapOldToNew[r];
+           changed = true;
+         }
+       }
+       if (changed) wx.setStorageSync('heroProgress', prog);
+     } catch (e) { console.warn('[migrate] rarity scheme failed', e); }
+   }
    
    let ctxRef, canvasRef, switchPageFn;
-   let progress = 0;
+   let progress = 0;        // 逐项预加载进度 0~100
    let loadedCount = 0;
-   let tipText = ''; // 当前加载页面显示的小贴士
+   let tipText = '';
    
-   // ---------- 小贴士内容（“小贴士：”为固定前缀） ----------
+   let subpkgProgress = 0;  // 分包下载 0~100
+   
    const tips = [
      '超级方块直接点击施放！',
      '部分英雄的技能可以清除特殊障碍！',
      '尝试不同的英雄配对吧',
      '不同英雄搭配，策略翻倍！',
      '多留意每步操作，节省步数才是王道！',
-     '连锁越多，伤害越高！',
+     '连锁越多，伤害越高！'
    ];
    
-   /* ---------- ① 构建预加载列表 ---------- */
+   /* ---------- 预加载清单（保持你的原始清单） ---------- */
    const preloadList = HeroData.heroes.map(hero => ({
      key : hero.icon.toLowerCase(),
      path: `assets/icons/${hero.icon}`
    }));
    
-   // block 方块贴图
    ['A','B','C','D','E','F'].forEach(letter => {
-     preloadList.push({
-       key : `block_${letter}`,
-       path: `assets/blocks/${letter}.png`
-     });
+     preloadList.push({ key: `block_${letter}`, path: `assets/blocks/${letter}.png` });
    });
    
-   // 超级方块贴图
    ['S1','S2','S3','S4','S5','S6'].forEach(type => {
-     preloadList.push({
-       key : `super_${type}`,
-       path: `assets/superblocks/${type.toLowerCase()}.png`
-     });
+     preloadList.push({ key: `super_${type}`, path: `assets/superblocks/${type.toLowerCase()}.png` });
    });
    
-   // 📦LootChest ─ 三种随机宝箱贴图（s4-s6，对应 superblocks 4-6）
-   ['s4','s5','s6'].forEach((fname, idx) => {          // 📦LootChest
-     preloadList.push({                                // 📦LootChest
-       key : `loot_chest_${idx}`,                      // 0 / 1 / 2
-       path: `assets/superblocks/${fname}.png`         // 📦LootChest (修正路径)
-     });                                               // 📦LootChest
-   });                                                 // 📦LootChest
+   // 📦 superblocks 4-6 做宝箱
+   ['s4','s5','s6'].forEach((fname, idx) => {
+     preloadList.push({ key: `loot_chest_${idx}`, path: `assets/superblocks/${fname}.png` });
+   });
    
    // 其他 UI / 场景
    preloadList.push({ key: 'lock.png',   path: 'assets/ui/lock.png' });
@@ -81,11 +70,11 @@ function migrateRarityScheme() {
    }
    preloadList.push({ key: 'hero_window', path: 'assets/ui/hero-window.png' });
    
-   /* ---------- ② 创建全局缓存 ---------- */
+   /* ---------- 全局缓存 ---------- */
    globalThis.imageCache = {};
-   globalThis.imageCache.lootChests = [];          // 📦LootChest
+   globalThis.imageCache.lootChests = [];
    
-   /* ---------- ③ 资源预加载（返回 Promise） ---------- */
+   /* ---------- 逐项预加载（分包完成后再调用） ---------- */
    function preloadAssets() {
      return new Promise(resolve => {
        for (const item of preloadList) {
@@ -93,7 +82,10 @@ function migrateRarityScheme() {
          img.src   = item.path;
    
          img.onload  = () => handleFinish(img, item.key, true, resolve);
-         img.onerror = () => handleFinish(img, item.key, false, resolve);
+         img.onerror = () => {
+           console.error('[preload] fail:', item.path); // 便于排查大小写/路径
+           handleFinish(img, item.key, false, resolve);
+         };
        }
      });
    }
@@ -101,33 +93,58 @@ function migrateRarityScheme() {
    function handleFinish(img, key, ok, resolve) {
      if (ok) {
        globalThis.imageCache[key] = img;
-       // 📦LootChest ─ 把宝箱贴图同时写入数组，方便随机索引
-       if (key.startsWith('loot_chest_')) {               // 📦LootChest
-         const idx = Number(key.split('_').pop());        // 📦LootChest
-         globalThis.imageCache.lootChests[idx] = img;     // 📦LootChest
-       }                                                  // 📦LootChest
+       if (key.startsWith('loot_chest_')) {
+         const idx = Number(key.split('_').pop());
+         globalThis.imageCache.lootChests[idx] = img;
+       }
      }
-   
      loadedCount++;
      progress = Math.floor((loadedCount / preloadList.length) * 100);
      drawLoading();
    
-     if (loadedCount === preloadList.length) {
-       resolve();                       // 全部资源结束（成功 / 失败均算）
-     }
+     if (loadedCount === preloadList.length) resolve();
    }
    
-   /* ---------- ④ 页面初始化 ---------- */
+   /* ---------- 先加载分包，再开始逐项预加载 ---------- */
+   function loadAssetsSubpackage(onProgress) {
+     return new Promise((resolve, reject) => {
+       const task = wx.loadSubpackage({
+         name: 'assets',
+         success: () => {
+           console.log('[assets subpackage] loaded');
+           resolve();
+         },
+         fail: (err) => reject(err)
+       });
+       if (task && typeof task.onProgressUpdate === 'function' && typeof onProgress === 'function') {
+         task.onProgressUpdate(({ progress }) => onProgress(progress));
+       }
+     });
+   }
+   
+   /* ---------- 页面初始化 ---------- */
    function initLoadingPage(ctx, switchPage, canvas) {
      ctxRef       = ctx;
      canvasRef    = canvas;
      switchPageFn = switchPage;
    
-     tipText = '小贴士：' + tips[Math.floor(Math.random() * tips.length)]; // 只随机一次
+     tipText = '小贴士：' + tips[Math.floor(Math.random() * tips.length)];
      drawLoading();
    
-     // 并行执行：资源加载 + 云存档
-     const assetPromise = preloadAssets();
+     // A) 先下载 assets 分包
+     const subpkgPromise = loadAssetsSubpackage((p) => {
+       subpkgProgress = p;   // 0~100
+       drawLoading();
+     }).catch(err => {
+       console.error('[subpackage] 下载失败：', err);
+       wx.showToast({ title: '资源包下载失败', icon: 'none' });
+       throw err;
+     });
+   
+     // B) 分包成功后再逐项预加载
+     const assetPromise = subpkgPromise.then(() => preloadAssets());
+   
+     // C) 云存档并行
      const cloudPromise = (async () => {
        try {
          await loadAll();                 // 云 → 本地
@@ -137,14 +154,16 @@ function migrateRarityScheme() {
        }
      })();
    
-     Promise.all([assetPromise, cloudPromise]).then(() => {
-      try { migrateRarityScheme(); } catch(_) {}
-       // 留 0.5 秒给玩家看到 100%，再切 Home
+     Promise.allSettled([assetPromise, cloudPromise]).then(() => {
+       // ✅ 资源准备完成
+       globalThis.ASSETS_READY = true;
+   
+       try { migrateRarityScheme(); } catch(_) {}
        setTimeout(() => switchPageFn('home'), 500);
      });
    }
    
-   /* ---------- ⑤ 绘制 Loading 画面 ---------- */
+   /* ---------- 绘制 Loading 画面 ---------- */
    function drawLoading() {
      const ctx = ctxRef;
      const w   = canvasRef.width;
@@ -152,6 +171,9 @@ function migrateRarityScheme() {
    
      ctx.fillStyle = '#000';
      ctx.fillRect(0, 0, w, h);
+   
+     // 合并显示进度：分包 30% + 逐项 70%
+     const overall = Math.min(100, Math.floor(0.3 * subpkgProgress + 0.7 * progress));
    
      const barW = w * 0.6;
      const barH = 22;
@@ -179,7 +201,7 @@ function migrateRarityScheme() {
      ctx.fill();
    
      // 填充条
-     const fillW = (progress / 100) * barW;
+     const fillW = (overall / 100) * barW;
      roundRect(barX, barY, fillW, barH, radius);
      ctx.fillStyle = '#C2185B';
      ctx.fill();
@@ -190,34 +212,25 @@ function migrateRarityScheme() {
      ctx.strokeStyle = '#6A5ACD';
      ctx.stroke();
    
-     // 百分比文字
+     // 百分比
      ctx.fillStyle = '#FFF';
-     ctx.font = '20px gameFont';
+     ctx.font = '20px sans-serif';
      ctx.textAlign = 'center';
-     ctx.shadowColor = '#000';
-     ctx.shadowBlur = 2;
-     ctx.fillText(`${progress}%`, w/2, barY + barH + 32);
-     ctx.shadowBlur = 0;
+     ctx.fillText(`${overall}%`, w/2, barY + barH + 32);
    
-     // 显示固定小贴士（只随机一次）
+     // 小贴士
      ctx.fillStyle = '#FFD700';
-     ctx.font = '18px gameFont';
-     ctx.textAlign = 'center';
-     ctx.shadowColor = '#000';
-     ctx.shadowBlur = 2;
+     ctx.font = '18px sans-serif';
      ctx.fillText(tipText, w / 2, barY - 60);
-     ctx.shadowBlur = 0;
    
-     // 文案
+     // 阶段文案
+     const stageText = subpkgProgress < 100 ? '下载资源包…' : '加载素材…';
      ctx.fillStyle = '#FF3399';
-     ctx.font = 'bold 30px gameFont';
-     ctx.shadowColor = '#000';
-     ctx.shadowBlur = 3;
-     ctx.fillText('召唤中…', w/2, barY - 20);
-     ctx.shadowBlur = 0;
+     ctx.font = 'bold 26px sans-serif';
+     ctx.fillText(stageText, w/2, barY - 20);
    }
    
-   /* ---------- ⑥ 对外接口 ---------- */
+   /* ---------- 对外接口 ---------- */
    export default {
      init    : initLoadingPage,
      update  : () => {},
