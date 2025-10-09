@@ -13,6 +13,43 @@ let turnCounter = 0;
 let defeatedBossLevel = 0; // 记录击败的最高 boss 等级
 // === 平原(原“雪地”) 购买解锁存档键 ===
 const PLAINS_UNLOCK_KEY = 'plains_unlocked_v1';
+// === 平原(原“雪地”) 已存在 ===
+// const PLAINS_UNLOCK_KEY = 'plains_unlocked_v1';
+// function getCoins() { ... } function setCoins(v) { ... }
+// export function isPlainsUnlocked() { ... }
+// export function tryUnlockPlainsWithGold(cost = 2000) { ... }
+
+// === 新增：荒漠 / 火山 购买解锁存档键 ===
+const DESERT_UNLOCK_KEY  = 'desert_unlocked_v1';
+const VOLCANO_UNLOCK_KEY = 'volcano_unlocked_v1';
+
+// 是否已解锁 荒漠 / 火山
+export function isDesertUnlocked() {
+  return !!wx.getStorageSync(DESERT_UNLOCK_KEY);
+}
+export function isVolcanoUnlocked() {
+  return !!wx.getStorageSync(VOLCANO_UNLOCK_KEY);
+}
+
+// 花费金币尝试解锁 荒漠（需先解锁平原），默认 5000
+export function tryUnlockDesertWithGold(cost = 5000) {
+  if (!isPlainsUnlocked()) return { ok: false, reason: 'need_plains_first' };
+  const coins = Number(wx.getStorageSync('totalCoins') || 0);
+  if (coins < cost) return { ok: false, reason: 'not_enough_gold' };
+  wx.setStorageSync('totalCoins', Math.max(0, (coins - cost) | 0));
+  wx.setStorageSync(DESERT_UNLOCK_KEY, 1);
+  return { ok: true };
+}
+
+// 花费金币尝试解锁 火山（需先解锁荒漠），默认 10000
+export function tryUnlockVolcanoWithGold(cost = 10000) {
+  if (!isDesertUnlocked()) return { ok: false, reason: 'need_desert_first' };
+  const coins = Number(wx.getStorageSync('totalCoins') || 0);
+  if (coins < cost) return { ok: false, reason: 'not_enough_gold' };
+  wx.setStorageSync('totalCoins', Math.max(0, (coins - cost) | 0));
+  wx.setStorageSync(VOLCANO_UNLOCK_KEY, 1);
+  return { ok: true };
+}
 
 // === 金币存取（与项目现有用法一致：使用 totalCoins 键） ===
 function getCoins() {

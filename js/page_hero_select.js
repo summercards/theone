@@ -46,7 +46,11 @@ let areaButtonRects = [];
 
 // 导入地图解锁条件
 // 导入地图解锁条件（荒漠/火山仍用原 Boss 条件；平原改为金币购买）
-const { isPlainsUnlocked, tryUnlockPlainsWithGold, hasDefeatedBoss3, hasDefeatedBoss4 } = require('./data/monster_state.js');
+const {
+    isPlainsUnlocked,  tryUnlockPlainsWithGold,
+    isDesertUnlocked,  tryUnlockDesertWithGold,
+    isVolcanoUnlocked, tryUnlockVolcanoWithGold
+  } = require('./data/monster_state.js');
 
 // 🗨️ 随机台词池（酒馆NPC）
 const barDialogLines = [
@@ -560,23 +564,13 @@ function onTouch(e) {
             switchPageFn('game', { level });
           });
         } else {
-            // 未解锁逻辑：平原(原 snow) 支持用金币购买解锁，其它仍然提示不可用
+            // 未解锁：按 key 分区域触发购买解锁
             if (btn.key === 'snow') {
-              wx.showModal({
-                title: '解锁「平原」',
-                content: '花费 2000 金币解锁该地图，是否继续？',
-                success(res) {
-                  if (!res.confirm) return;
-                  const r = tryUnlockPlainsWithGold ? tryUnlockPlainsWithGold(2000) : { ok: false };
-                  if (r.ok) {
-                    wx.showToast({ title: '已解锁', icon: 'success' });
-                    // 刷新地图解锁状态并重画
-                    render();
-                  } else {
-                    wx.showToast({ title: '金币不足', icon: 'none' });
-                  }
-                }
-              });
+              promptUnlockPlains();   // 平原（原“雪地”）：2000
+            } else if (btn.key === 'desert') {
+              promptUnlockDesert();   // 荒漠：前置=平原，5000
+            } else if (btn.key === 'volcano') {
+              promptUnlockVolcano();  // 火山：前置=荒漠，10000
             } else {
               wx.showToast({ title: '该区域未解锁', icon: 'none' });
             }
@@ -1430,13 +1424,14 @@ globalThis.adBtnRect = adBtnRect;
     drawText(ctx, '选择探索区域', canvas.width / 2, canvas.height * 0.15,
       'bold 24px IndieFlower', '#FFFFFF', 'center', 'middle');
   
-// 区域配置：平原(原“雪地”) 改为金币购买解锁
+// 区域配置：key 不变（兼容资源/遭遇表），label 为显示名
 const areas = [
     { key: 'forest',  label: '森林', unlocked: true },
-    { key: 'snow',    label: '平原', unlocked: typeof isPlainsUnlocked === 'function' ? isPlainsUnlocked() : false },
-    { key: 'desert',  label: '荒漠', unlocked: typeof hasDefeatedBoss3 === 'function' ? hasDefeatedBoss3() : false },
-    { key: 'volcano', label: '火山', unlocked: typeof hasDefeatedBoss4 === 'function' ? hasDefeatedBoss4() : false }
+    { key: 'snow',    label: '平原', unlocked: isPlainsUnlocked(),  onClickUnlock: () => promptUnlockPlains()   },
+    { key: 'desert',  label: '荒漠', unlocked: isDesertUnlocked(),  onClickUnlock: () => promptUnlockDesert()   },
+    { key: 'volcano', label: '火山', unlocked: isVolcanoUnlocked(), onClickUnlock: () => promptUnlockVolcano()  },
   ];
+  
   
   
     // 保持你现在的卡片布局尺寸与位置（仅把绘制改为 drawAreaCard）
@@ -1777,7 +1772,66 @@ function drawText(ctx, text, x, y,
 
 // 图片缓存
 const heroImageCache = {};
-
+function rerenderAfterUnlock() {
+    // 用你的页面刷新方法；本文件已有 render()，直接调用即可
+    if (typeof render === 'function') render();
+  }
+  
+  // 平原：2000 金币
+  function promptUnlockPlains() {
+    if (typeof isPlainsUnlocked === 'function' && isPlainsUnlocked()) return;
+    wx.showModal({
+      title: '解锁「平原」',
+      content: '花费 2000 金币解锁该地图，是否继续？',
+      success(res) {
+        if (!res.confirm) return;
+        const r = typeof tryUnlockPlainsWithGold === 'function' ? tryUnlockPlainsWithGold(2000) : { ok: false };
+        if (r.ok) { wx.showToast({ title: '已解锁', icon: 'success' }); rerenderAfterUnlock(); }
+        else { wx.showToast({ title: '金币不足', icon: 'none' }); }
+      }
+    });
+  }
+  
+  // 荒漠：需先平原解锁 + 5000 金币
+  function promptUnlockDesert() {
+    if (typeof isDesertUnlocked === 'function' && isDesertUnlocked()) return;
+    if (!(typeof isPlainsUnlocked === 'function' && isPlainsUnlocked())) {
+      wx.showToast({ title: '请先解锁「平原」', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '解锁「荒漠」',
+      content: '花费 5000 金币解锁该地图，是否继续？',
+      success(res) {
+        if (!res.confirm) return;
+        const r = typeof tryUnlockDesertWithGold === 'function' ? tryUnlockDesertWithGold(5000) : { ok: false };
+        if (r.ok) { wx.showToast({ title: '已解锁', icon: 'success' }); rerenderAfterUnlock(); }
+        else if (r.reason === 'need_plains_first') { wx.showToast({ title: '请先解锁「平原」', icon: 'none' }); }
+        else { wx.showToast({ title: '金币不足', icon: 'none' }); }
+      }
+    });
+  }
+  
+  // 火山：需先荒漠解锁 + 10000 金币
+  function promptUnlockVolcano() {
+    if (typeof isVolcanoUnlocked === 'function' && isVolcanoUnlocked()) return;
+    if (!(typeof isDesertUnlocked === 'function' && isDesertUnlocked())) {
+      wx.showToast({ title: '请先解锁「荒漠」', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '解锁「火山」',
+      content: '花费 10000 金币解锁该地图，是否继续？',
+      success(res) {
+        if (!res.confirm) return;
+        const r = typeof tryUnlockVolcanoWithGold === 'function' ? tryUnlockVolcanoWithGold(10000) : { ok: false };
+        if (r.ok) { wx.showToast({ title: '已解锁', icon: 'success' }); rerenderAfterUnlock(); }
+        else if (r.reason === 'need_desert_first') { wx.showToast({ title: '请先解锁「荒漠」', icon: 'none' }); }
+        else { wx.showToast({ title: '金币不足', icon: 'none' }); }
+      }
+    });
+  }
+  
 // ======================= 导出接口 ========================
 module.exports = {
   init: initHeroSelectPage,
