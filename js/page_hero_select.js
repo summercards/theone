@@ -45,7 +45,9 @@ let showAreaMap = false;
 let areaButtonRects = [];
 
 // 导入地图解锁条件
-const { hasDefeatedBoss2, hasDefeatedBoss3, hasDefeatedBoss4 } = require('./data/monster_state.js');
+// 导入地图解锁条件（荒漠/火山仍用原 Boss 条件；平原改为金币购买）
+const { isPlainsUnlocked, tryUnlockPlainsWithGold, hasDefeatedBoss3, hasDefeatedBoss4 } = require('./data/monster_state.js');
+
 // 🗨️ 随机台词池（酒馆NPC）
 const barDialogLines = [
   "欢迎来到魅影旅店，勇者…你可真香。",
@@ -558,8 +560,28 @@ function onTouch(e) {
             switchPageFn('game', { level });
           });
         } else {
-          wx.showToast({ title: '该区域未解锁', icon: 'none' });
-        }
+            // 未解锁逻辑：平原(原 snow) 支持用金币购买解锁，其它仍然提示不可用
+            if (btn.key === 'snow') {
+              wx.showModal({
+                title: '解锁「平原」',
+                content: '花费 2000 金币解锁该地图，是否继续？',
+                success(res) {
+                  if (!res.confirm) return;
+                  const r = tryUnlockPlainsWithGold ? tryUnlockPlainsWithGold(2000) : { ok: false };
+                  if (r.ok) {
+                    wx.showToast({ title: '已解锁', icon: 'success' });
+                    // 刷新地图解锁状态并重画
+                    render();
+                  } else {
+                    wx.showToast({ title: '金币不足', icon: 'none' });
+                  }
+                }
+              });
+            } else {
+              wx.showToast({ title: '该区域未解锁', icon: 'none' });
+            }
+          }
+          
         return;
       }
     }
@@ -1408,13 +1430,14 @@ globalThis.adBtnRect = adBtnRect;
     drawText(ctx, '选择探索区域', canvas.width / 2, canvas.height * 0.15,
       'bold 24px IndieFlower', '#FFFFFF', 'center', 'middle');
   
-    // 区域配置（解锁条件与之前一致）
-    const areas = [
-      { key: 'forest',  label: '森林', unlocked: true },
-      { key: 'snow',    label: '雪地', unlocked: typeof hasDefeatedBoss2 === 'function' ? hasDefeatedBoss2() : true },
-      { key: 'desert',  label: '荒漠', unlocked: typeof hasDefeatedBoss3 === 'function' ? hasDefeatedBoss3() : false },
-      { key: 'volcano', label: '火山', unlocked: typeof hasDefeatedBoss4 === 'function' ? hasDefeatedBoss4() : false }
-    ];
+// 区域配置：平原(原“雪地”) 改为金币购买解锁
+const areas = [
+    { key: 'forest',  label: '森林', unlocked: true },
+    { key: 'snow',    label: '平原', unlocked: typeof isPlainsUnlocked === 'function' ? isPlainsUnlocked() : false },
+    { key: 'desert',  label: '荒漠', unlocked: typeof hasDefeatedBoss3 === 'function' ? hasDefeatedBoss3() : false },
+    { key: 'volcano', label: '火山', unlocked: typeof hasDefeatedBoss4 === 'function' ? hasDefeatedBoss4() : false }
+  ];
+  
   
     // 保持你现在的卡片布局尺寸与位置（仅把绘制改为 drawAreaCard）
     const btnW = canvas.width * 0.36;

@@ -11,6 +11,30 @@ let currentLevel = 1;
 let monster = null;
 let turnCounter = 0;
 let defeatedBossLevel = 0; // 记录击败的最高 boss 等级
+// === 平原(原“雪地”) 购买解锁存档键 ===
+const PLAINS_UNLOCK_KEY = 'plains_unlocked_v1';
+
+// === 金币存取（与项目现有用法一致：使用 totalCoins 键） ===
+function getCoins() {
+  return Number(wx.getStorageSync('totalCoins') || 0);
+}
+function setCoins(v) {
+  wx.setStorageSync('totalCoins', Math.max(0, v | 0));
+}
+
+// 是否已解锁平原（购买）
+export function isPlainsUnlocked() {
+  return !!wx.getStorageSync(PLAINS_UNLOCK_KEY);
+}
+
+// 花费金币尝试解锁平原，默认 2000
+export function tryUnlockPlainsWithGold(cost = 2000) {
+  const coins = getCoins();
+  if (coins < cost) return { ok: false, reason: 'not_enough_gold' };
+  setCoins(coins - cost);
+  wx.setStorageSync(PLAINS_UNLOCK_KEY, 1);
+  return { ok: true };
+}
 
 // 记录区域探索中遭遇敌人的次数，用于触发必定出现高稀有度敌人。
 let battleCounter = 0;
