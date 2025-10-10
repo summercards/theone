@@ -558,11 +558,13 @@ function onTouch(e) {
     for (const btn of areaButtonRects) {
       if (mx >= btn.x && mx <= btn.x + btn.width && my >= btn.y && my <= btn.y + btn.height) {
         if (btn.unlocked) {
-          globalThis.selectedArea = btn.key;
-          showAreaMap = false;
-          getLastLevel((level) => {
-            switchPageFn('game', { level });
-          });
+            globalThis.selectedArea = btn.key;
+            showAreaMap = false;
+            const mapKey = (btn.key === 'snow') ? 'plains' : btn.key; // “雪地”改名为“平原”
+            wx.setStorageSync('currentMap', mapKey);
+            getLastLevel((level) => {
+              switchPageFn('game', { level, map: mapKey });
+            });
         } else {
             // 未解锁：按 key 分区域触发购买解锁
             if (btn.key === 'snow') {

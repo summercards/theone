@@ -11,7 +11,8 @@ const MAP_TILE_SPEED_X = -5;  // 横向速度(px/s)，负数=向左，正数=向
 const MAP_TILE_SPEED_Y =  5;  // 纵向速度(px/s)，负数=向上，正数=向下
 let _mapTileT0 = 0;            // 内部用：开播时间戳
 const MAP_TILE_SCALE = 1.3;   // 0.2~1.0 都可；0.6=缩到60%
-const MAP_TILE_SRC   = 'assets/maps/forest_tile.png'; // 你的平铺小图（无缝）
+let MAP_TILE_SRC   = 'assets/maps/forest_tile.png';
+
 const MAP_TILE_ALPHA = 0.15;                          // 透明度(0~1)
 const { addItem } = require('./data/inventory.js');
 const MON_ATTACK_ZOOM_DELAY_MS = 700;  // 放大从蓄力开始后延迟多少毫秒再启动
@@ -1144,6 +1145,22 @@ function drawBackground() {
   
 
 export function initGamePage(ctx, switchPage, canvas, options = {}) {
+
+    // === 根据地图选择小纹理贴图，并清理缓存强制重载 ===
+const mapKey = (options && options.map) || wx.getStorageSync('currentMap') || 'forest';
+globalThis.currentMap = mapKey;
+
+const TILE_BY_MAP = {
+  forest:  'assets/maps/forest_tile.png',
+  plains:  'assets/maps/plains_tile.png',
+  desert:  'assets/maps/desert_tile.png',
+  volcano: 'assets/maps/volcano_tile.png'
+};
+
+MAP_TILE_SRC = TILE_BY_MAP[mapKey] || TILE_BY_MAP.forest;
+// 切换贴图后清掉懒加载缓存，确保下一帧按新贴图重载
+globalThis._mapTileImg = null;
+
 
   // 停止主页 BGM（如果存在）
 if (globalThis.bgmAudioContext) {

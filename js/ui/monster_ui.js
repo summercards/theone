@@ -37,10 +37,16 @@ export function drawMonsterSprite(ctx, canvas) {
   if (!monster || !canvas) return;
 
   const layoutRects = globalThis.layoutRects || [];
-  const level = monster.level || 1; // ✅ 直接用怪物数据中带的关卡号
-  let bgIndex = Math.floor((level - 1) / 10) + 1;
-  let bgKey = `scene_bg${String(bgIndex).padStart(2, '0')}`;
+  const mapKey = globalThis.currentMap || wx.getStorageSync('currentMap') || 'forest';
+  const BG_BY_MAP = {
+    forest:  'scene_bg01',
+    plains:  'scene_bg02',
+    desert:  'scene_bg03',
+    volcano: 'scene_bg04'
+  };
+  const bgKey = BG_BY_MAP[mapKey] || 'scene_bg01';
   const bgImage = globalThis.imageCache[bgKey] || globalThis.imageCache['scene_bg01'];
+  
 
   const BG_W = 460;
   const BG_H = 380;
