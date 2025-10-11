@@ -27,7 +27,8 @@ const oneThird = Math.max(1, Math.floor(remaining.length / 3));
 const snow    = remaining.slice(0, oneThird);
 const desert  = remaining.slice(oneThird, oneThird * 2);
 const volcano = remaining.slice(oneThird * 2);
-const areaHeroes = { forest, snow, desert, volcano };
+const areaHeroes = { forest, snow, desert, volcano, plains: snow };
+
 
 // 兜底：如果某个区域没有英雄，则退回全列表
 for (const key of Object.keys(areaHeroes)) {

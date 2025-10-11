@@ -1149,6 +1149,9 @@ export function initGamePage(ctx, switchPage, canvas, options = {}) {
     // === 根据地图选择小纹理贴图，并清理缓存强制重载 ===
 const mapKey = (options && options.map) || wx.getStorageSync('currentMap') || 'forest';
 globalThis.currentMap = mapKey;
+// 归一化：逻辑层仍沿用 snow，视觉层用 plains
+const areaKey = (mapKey === 'plains') ? 'snow' : mapKey;
+globalThis.selectedArea = areaKey;
 
 const TILE_BY_MAP = {
   forest:  'assets/maps/forest_tile.png',

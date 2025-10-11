@@ -91,12 +91,18 @@ const RARITY_HP = {
 
 // 区域等级范围：不同区域产生不同等级的敌人
 const areaLevelRanges = {
-  forest:  { min: 1,  max: 10 },
-  snow:    { min: 4,  max: 6  },
-  desert:  { min: 7,  max: 9  },
-  volcano: { min: 10, max: 12 }
-};
-
+    forest:  { min: 1,  max: 10 },
+    snow:    { min: 4,  max: 6  },
+    plains:  { min: 9,  max: 15  },   // 平原 = 原“雪地”
+    desert:  { min: 7,  max: 9  },
+    volcano: { min: 10, max: 12 }
+  };
+  // 将历史残留的 "snow" 统一视为 "plains"
+const normalizeArea = (key) => {
+    if (!key) return null;
+    return key === 'snow' ? 'plains' : key;
+  };
+  
 // -----------------------------------------------------------
 // 敌人稀有度设定（基础权重/颜色/倍率表；yellow/gold 在下方派生）
 const rarityOptions = [
@@ -169,7 +175,8 @@ export function loadMonster(level = 1) {
   // 每加载一个敌人都计入战斗计数器。战斗计数达到一定次数会触发高稀有度。
   battleCounter++;
   try {
-    const area = globalThis.selectedArea || 'forest';
+    const rawArea = globalThis.selectedArea || globalThis.currentMap || 'forest';
+    const area    = normalizeArea(rawArea) || 'forest';
     let pool = areaMonsters[area];
     if (!pool || pool.length === 0) pool = HeroData.heroes || [];
 
@@ -178,8 +185,10 @@ export function loadMonster(level = 1) {
     const chosen = hero || (HeroData.heroes && HeroData.heroes[0]) || {};
 
     // 根据区域随机生成等级范围
-    const range  = areaLevelRanges[area] || { min: 1, max: 1 };
-    const randLv = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+// 兜底不再用 {1,1}，而是用 forest 的区间，避免永远 1 级
+const range  = areaLevelRanges[area] || areaLevelRanges.forest;
+const randLv = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+
 
     // 稀有度强制：第10次必紫（不被传奇覆盖）；否则按概率出金
     let forcedRarity = null;
