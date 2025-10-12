@@ -94,8 +94,8 @@ const areaLevelRanges = {
     forest:  { min: 1,  max: 10 },
     snow:    { min: 4,  max: 6  },
     plains:  { min: 9,  max: 15  },   // 平原 = 原“雪地”
-    desert:  { min: 7,  max: 9  },
-    volcano: { min: 10, max: 12 }
+    desert:  { min: 12,  max: 26  },
+    volcano: { min: 23, max: 35 }
   };
   // 将历史残留的 "snow" 统一视为 "plains"
 const normalizeArea = (key) => {
