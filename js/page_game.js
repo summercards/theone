@@ -1126,16 +1126,49 @@ function drawTiledMapOverlay() {
   }
   
   
+  // === 背景调色板（按地图切换） ===
+const BG_PALETTES = {
+    forest: [
+        { pos: 0.00, color: '#b993d6' }, // 顶部淡紫（等同 addColorStop(0, ...)）
+        { pos: 0.65, color: '#6a5cab' }, // 过渡的紫蓝
+        { pos: 1.00, color: '#2b1055' }  // 底部深紫
+    ],
+    plains: [
+      { pos: 0.00, color: '#9FD6FF' },
+      { pos: 0.60, color: '#FFEEB3' },
+      { pos: 1.00, color: '#FFD27A' }
+    ],
+    desert: [
+      { pos: 0.00, color: '#F6E6C9' },
+      { pos: 0.55, color: '#EAC58F' },
+      { pos: 1.00, color: '#C7893E' }
+    ],
+    volcano: [
+      { pos: 0.00, color: '#2B0A0A' },
+      { pos: 0.50, color: '#6B1A1A' },
+      { pos: 1.00, color: '#0A0000' }
+    ],
+    snow: [
+      { pos: 0.00, color: '#EEF6FF' },
+      { pos: 0.60, color: '#CFE6FF' },
+      { pos: 1.00, color: '#9CC3FF' }
+    ]
+  };
   
   
-function drawBackground() {
+  function drawBackground() {
+    // 复位矩阵，避免受到平移/缩放影响
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);
   
-    // 淡紫 → 深紫（与森林背景更和谐，不与天空打架）
+    // 读取当前地图键（initGamePage 已经赋值）
+    const key = (globalThis && globalThis.currentMap) ? globalThis.currentMap : 'forest';
+    const stops = BG_PALETTES[key] || BG_PALETTES.forest;
+  
+    // 竖向线性渐变：顶部 -> 底部
     const g = ctxRef.createLinearGradient(0, 0, 0, canvasRef.height);
-    g.addColorStop(0, '#b993d6'); // 顶部淡紫
-    g.addColorStop(0.65, '#6a5cab'); // 过渡的紫蓝
-    g.addColorStop(1, '#2b1055'); // 底部深紫
+    for (const s of stops) {
+      g.addColorStop(s.pos, s.color);
+    }
   
     ctxRef.fillStyle = g;
     ctxRef.fillRect(0, 0, canvasRef.width, canvasRef.height);
