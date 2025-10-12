@@ -2547,6 +2547,7 @@ function animateSwap(src, dst, callback, rollback = false) {
   const startY = __gridStartY;
 
   const drawWithOffset = (offsetX1, offsetY1, offsetX2, offsetY2) => {
+    if (globalThis.exitingGame) return; // 🛑 退出中，不再绘制当前帧
     globalThis.layoutRects = [];  // ✅ 补这一句！每帧动画中也要清空 layoutRects
     ctxRef.setTransform(1, 0, 0, 1, 0, 0);
     // 只绘制当前正在移动的方块
@@ -2614,6 +2615,7 @@ function animateSwap(src, dst, callback, rollback = false) {
   const deltaY = (dst.row - src.row) * blockSize / steps;
 
   function step() {
+    if (globalThis.exitingGame) return;
     if (currentStep <= steps) {
       const offsetX1 = rollback ? deltaX * (steps - currentStep) : deltaX * currentStep;
       const offsetY1 = rollback ? deltaY * (steps - currentStep) : deltaY * currentStep;
@@ -3397,35 +3399,35 @@ if (isBoardLocked()) return;
 
   
 
-  // ✅ 检测是否点击了左上角“返回”按钮
+ // ✅ 检测是否点击了左上角“返回”按钮
 const btn = globalThis.backToHomeBtn;
 if (btn &&
     x >= btn.x && x <= btn.x + btn.width &&
     y >= btn.y && y <= btn.y + btn.height) {
 
-        wx.setStorageSync('lastLevel', currentLevel.toString());
+  // 先把当局进度写入（如你原逻辑）
+  wx.setStorageSync('lastLevel', currentLevel.toString());
 
-        
-  switchPageFn?.('home', () => {
-    destroyGamePage(); // 清理资源
-    monZoomUntil = 0;
-    screenHitFx = [];
+  // ⛔️ 拉下总闸 + 关停一切后台流程
+  globalThis.exitingGame = true;
+  haltGame();            // 停掉棋盘连锁/连招等
+  destroyGamePage();     // 解绑触摸、清特效、销 BGM/定时器、提交金币等
 
-    if (enemyAttackWindupId) { clearTimeout(enemyAttackWindupId); enemyAttackWindupId = null; }
-    enemyAttackPending = false;
-    globalThis.enemyAttackTelegraphUntil = null;
-    
-    if (globalThis.victoryPopupTimerId) {
-        clearTimeout(globalThis.victoryPopupTimerId);
-        globalThis.victoryPopupTimerId = null;
-      }
+  // 兜底：清可见提示与攻击蓄力
+  monZoomUntil = 0;
+  screenHitFx = [];
+  if (enemyAttackWindupId) { clearTimeout(enemyAttackWindupId); enemyAttackWindupId = null; }
+  enemyAttackPending = false;
+  globalThis.enemyAttackTelegraphUntil = null;
+  if (globalThis.victoryPopupTimerId) { clearTimeout(globalThis.victoryPopupTimerId); globalThis.victoryPopupTimerId = null; }
+  globalThis.preCaptureOverlayUntil = null;
+  wx?.hideToast?.();
 
-      
-    globalThis.preCaptureOverlayUntil = null;
-wx?.hideToast?.();
-  });
+  // 直接切页（不要等回调）
+  switchPageFn?.('home');
   return; // ✅ 不再继续处理滑动
 }
+
 
 
 
