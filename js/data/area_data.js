@@ -1,46 +1,39 @@
 // js/data/area_data.js
 // ------------------------------------------------------------
-// 区域配置：用于“探索”模式下按区域随机选择敌人。
-// 本模块基于 hero_data 而非怪物数据，
-// 将英雄列表按索引划分到不同区域，作为可能遇到的敌人池。
+// 区域配置：用于“探索/地图”按区域随机选择敌人（用英雄做敌人池）。
+// 本模块基于 hero_data，而不是独立的怪物表。
 
 const HeroData = require('./hero_data.js');
 
+// 小工具：把 ID 数组转为对象数组并过滤无效 ID
+function idsToObjs(ids) {
+  return ids
+    .map(id => (typeof HeroData.getHeroById === 'function'
+      ? HeroData.getHeroById(id)
+      : null))
+    .filter(Boolean);
+}
+
 /**
- * 区域与可遇敌人的映射。可根据需要扩展更多区域。
- * 这里采用简单的索引划分：
- * forest 区域包括英雄列表中前半部分；
- * snow 区域包括英雄列表中后半部分。
- * 如需更复杂的划分，可根据 hero.id 或自定义字段筛选。
+ * 固定分布（按你的要求）：
+ * - forest : hero001 - hero005
+ * - plains : hero006 - hero010
+ * - desert : hero011 - hero015
+ * - volcano: hero015 - hero019   // 15 同时属于荒漠与火山
  */
-const heroes = HeroData.heroes || [];
+const areaHeroes = {
+  forest:  idsToObjs(['hero001','hero002','hero003','hero004','hero005']),
+  plains:  idsToObjs(['hero006','hero007','hero008','hero009','hero010']),
+  desert:  idsToObjs(['hero011','hero012','hero013','hero014','hero015']),
+  volcano: idsToObjs(['hero015','hero016','hero017','hero018','hero019']),
+};
 
-// 计算四等分索引，尽量平均地划分英雄池
-const total = heroes.length;
-const quarter = Math.max(1, Math.floor(total / 4));
-// ---- Custom split: forest fixed to hero001–hero005; others auto-sliced ----
-const forestIds = ["hero001","hero002","hero003","hero004","hero005"];
-const forestSet = new Set(forestIds);
-const forest = forestIds.map(id => HeroData.getHeroById(id)).filter(Boolean);
-const remaining = heroes.filter(h => !forestSet.has(h.id));
-const oneThird = Math.max(1, Math.floor(remaining.length / 3));
-const snow    = remaining.slice(0, oneThird);
-const desert  = remaining.slice(oneThird, oneThird * 2);
-const volcano = remaining.slice(oneThird * 2);
-const areaHeroes = { forest, snow, desert, volcano, plains: snow };
-
-
-// 兜底：如果某个区域没有英雄，则退回全列表
+// 兜底：如果某个区域为空（比如对应 ID 在 hero_data 中不存在），退回全列表
+const heroes = Array.isArray(HeroData.heroes) ? HeroData.heroes.slice() : [];
 for (const key of Object.keys(areaHeroes)) {
   if (!Array.isArray(areaHeroes[key]) || areaHeroes[key].length === 0) {
     areaHeroes[key] = heroes.slice();
   }
 }
 
-// Fallback: if any area ends up empty, revert to full list
-for (const k of Object.keys(areaHeroes)) {
-  if (!Array.isArray(areaHeroes[k]) || areaHeroes[k].length === 0) {
-    areaHeroes[k] = heroes.slice();
-  }
-}
 module.exports = areaHeroes;

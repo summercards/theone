@@ -1183,7 +1183,8 @@ export function initGamePage(ctx, switchPage, canvas, options = {}) {
 const mapKey = (options && options.map) || wx.getStorageSync('currentMap') || 'forest';
 globalThis.currentMap = mapKey;
 // 归一化：逻辑层仍沿用 snow，视觉层用 plains
-const areaKey = (mapKey === 'plains') ? 'snow' : mapKey;
+// 直接使用当前地图键作为区域键，不再做 plains→snow 的别名映射
+const areaKey = mapKey;
 globalThis.selectedArea = areaKey;
 
 const TILE_BY_MAP = {
