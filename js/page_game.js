@@ -570,15 +570,15 @@ function haltGame() {           // ☆ 统一熔断函数
 // 调整关卡配置信息：前几关采用更小的棋盘和较少的方块类型，以便新手快速上手。
 const LevelConfigs = {
     // 关卡 1 采用 4×4 棋盘，只有 A/D/F 三种方块，匹配机会更多
-    1: { gridSize: 5, allowedBlocks: ['A', 'D', 'F'] },
+    1: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
     // 关卡 2 添加游侠方块并维持 5×5，大幅提升可消玩法
-    2: { gridSize: 5, allowedBlocks: ['A', 'B', 'F'] },
+    2: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
     // 关卡 3 起使用原有难度设置
-    3: { gridSize: 5, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    4: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    5: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    6: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
-    7: { gridSize: 6, allowedBlocks: ['A', 'B', 'D', 'F'] },
+    3: { gridSize: 5, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    4: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    5: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    6: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
+    7: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
     8: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
     9: { gridSize: 6, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },
     10: { gridSize: 7, allowedBlocks: ['A', 'B', 'C', 'D', 'F'] },

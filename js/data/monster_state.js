@@ -77,7 +77,7 @@ export function tryUnlockPlainsWithGold(cost = 2000) {
 let battleCounter = 0;
 
 // 测试用传奇敌人出现概率。正式版本可以调低至 0.1。
-const LEGENDARY_PROB = 0.3;
+const LEGENDARY_PROB = 0.05;
 
 // ===== 统一成长（稳定 & 只出整数） =====
 const BASE_HP_WHITE_L1  = 100;  // 白色1级基准HP
