@@ -85,16 +85,50 @@ const PropData = {
         iconChar: '⚔️',
         desc: '本场战斗内，将目标英雄的某项属性 +10',
         price: 24 },
-      { id: 'level_chip',
-        name: '经验芯片',             category: 'level',
-        iconChar: '⭐',
-        desc: '永久使目标英雄等级 +1',
-        price: 20 },
-      { id: 'level_chip_plus',
-        name: '经验芯片·高阶',         category: 'level',
-        iconChar: '⭐',
-        desc: '永久使目标英雄等级 +2',
-        price: 40 },
+      // —— 普通经验芯片：+100 芯片经验（进入英雄页用来升级）
+{
+    id: 'level_chip',
+    name: '经验芯片',
+    category: 'level',
+    iconChar: '⭐',
+    desc: '为经验池 +100，用于给任意英雄升级',
+    price: 20,
+    onUse() {
+      try {
+        const { addChipExp, getChipExp } = require('./exp_state.js');
+        addChipExp(100);
+        const pool = getChipExp();
+        wx.showToast?.({ title: `经验池 +100（现有：${pool}）`, icon: 'none' });
+        return true; // 成功使用 => 背包扣 1 个
+      } catch (e) {
+        wx.showToast?.({ title: '使用失败', icon: 'none' });
+        return false;
+      }
+    }
+  },
+  
+  // —— 高阶经验芯片：+250 芯片经验
+  {
+    id: 'level_chip_plus',
+    name: '经验芯片·高阶',
+    category: 'level',
+    iconChar: '⭐',
+    desc: '为经验池 +250，用于给任意英雄升级',
+    price: 40,
+    onUse() {
+      try {
+        const { addChipExp, getChipExp } = require('./exp_state.js');
+        addChipExp(250);
+        const pool = getChipExp();
+        wx.showToast?.({ title: `经验池 +250（现有：${pool}）`, icon: 'none' });
+        return true;
+      } catch (e) {
+        wx.showToast?.({ title: '使用失败', icon: 'none' });
+        return false;
+      }
+    }
+  },
+  
       { id: 'extra_action',
         name: '行动令牌',             category: 'action',
         iconChar: '🎯',

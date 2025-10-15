@@ -43,6 +43,8 @@ let synthBtnRect = null;
 // ⭐ 地图选择弹层开关与按钮列表
 let showAreaMap = false;
 let areaButtonRects = [];
+// 原来可能：import { spendCoins, getTotalCoins } from './data/coin_state.js';
+import { getChipExp, expToNext, tryLevelUp } from './data/exp_state.js';
 
 // 导入地图解锁条件
 // 导入地图解锁条件（荒漠/火山仍用原 Boss 条件；平原改为金币购买）
@@ -822,52 +824,71 @@ if (hit(x, y, globalThis.adBtnRect)) {
 
 /* ---------- 头像下方“升级”按钮 ---------- */
 for (const { hero } of iconRects) {
-  const btn = hero?.upgradeButtonRect;
-  if (btn && hit(x, y, btn)) {
-    const progress = wx.getStorageSync('heroProgress')?.[hero.id];
-    const cost     = (progress?.level ?? 1) * 100;
-    const coins    = getTotalCoins();
-
-    if (coins >= cost) {
-      // ✅ 升级英雄（保存到 heroProgress）
-      const hs = new HeroState(hero.id);
-
-      // 🔥 在英雄池中升级时设置升级特效坐标回调
-      hs.onLevelUp = () => {
-        const { createHeroLevelUpEffectAt, createFloatingTextUp } = require('./effects_engine.js');
-
-        const rect = iconRects.find(r => r.hero?.id === hero.id)?.rect;
-        if (rect) {
-          const centerX = rect.x + rect.width / 2;
-          const centerY = rect.y;
-          createHeroLevelUpEffectAt(centerX, centerY); // 在头像正上方播放特效
-          createFloatingTextUp(`+${hs.expToNextLevel} 经验`, centerX, centerY - 16, '#33AAFF', 20, 1000);
-
-        }
-      };
-      
-      hs.gainExp(hs.expToNextLevel);
-                      // 自动保存
-
-      wx.setStorageSync('totalCoins', coins - cost);  // 扣金币
-
-      // ✅ 更新当前 UI 中的 hero 显示
-      Object.assign(hero, hs);
-
-      // ✅ 检查是否在出战栏中，如是则刷新出战栏缓存
-      const indexInTeam = selectedHeroes.findIndex(id => id === hero.id);
-      if (indexInTeam !== -1) {
-        selectedHeroes[indexInTeam] = hero.id;          // 用 ID 重新覆盖
-        setSelectedHeroes(selectedHeroes);              // 重建 HeroState 实例，读取最新状态
+    const btn = hero?.upgradeButtonRect;
+    if (btn && hit(x, y, btn)) {
+      const heroId    = hero.id;
+      const progress  = wx.getStorageSync('heroProgress')?.[heroId];
+      const level     = progress?.level ?? hero.level ?? 1;
+      const MAX_LEVEL = 15;
+  
+      // 已满级
+      if (level >= MAX_LEVEL) {
+        wx.showToast({ title: '已满级', icon: 'none' });
+        return;
       }
-
-      return render();
-    } else {
-      wx.showToast({ title: '金币不足', icon: 'none' });
+  
+      // 经验池与需求
+      const need = expToNext(heroId);
+      const pool = getChipExp();
+  
+      // 不足提示
+      if (pool < need) {
+        wx.showModal?.({
+          title: '经验不足',
+          content: `升到下一级需要 ${need} 经验\n经验池现有：${pool}\n请在背包使用「经验芯片」后再来升级。`,
+          showCancel: false
+        });
+        return;
+      }
+  
+      // 尝试只升 1 级
+      const r = tryLevelUp(heroId, 1);
+  
+      if (r.gainedLevels > 0) {
+        // ✅ 升级英雄（保存到 heroProgress 的逻辑在 tryLevelUp 使用到的存储里完成）
+        const hs = new HeroState(heroId);
+  
+        // 🔥 升级特效与飘字
+        hs.onLevelUp = () => {
+          const { createHeroLevelUpEffectAt, createFloatingTextUp } = require('./effects_engine.js');
+          const rect = iconRects.find(r => r.hero?.id === heroId)?.rect;
+          if (rect) {
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y;
+            createHeroLevelUpEffectAt(centerX, centerY); // 在头像正上方播放特效
+            createFloatingTextUp(`升级成功`, centerX, centerY - 16, '#33AAFF', 20, 1000);
+          }
+        };
+  
+        hs.onLevelUp?.();
+  
+        // ✅ 更新当前 UI 中的 hero 显示
+        Object.assign(hero, hs);
+  
+        // ✅ 如果在出战栏中，刷新出战栏缓存
+        const indexInTeam = selectedHeroes.findIndex(id => id === heroId);
+        if (indexInTeam !== -1) {
+          selectedHeroes[indexInTeam] = heroId;
+          setSelectedHeroes(selectedHeroes);
+        }
+  
+        return render();
+      } else {
+        wx.showToast({ title: '经验不足', icon: 'none' });
+      }
     }
   }
-}
-
+  
 
   /* ---------- 确认按钮 ---------- */
   const confirmRect = globalThis.confirmRect;
@@ -1713,23 +1734,35 @@ const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
     // ==== 升级按钮 ====
     if (isFromPool && showUpgradeButtons && !hero.locked) {
         // 获取当前等级（来自缓存或初始）
-        const saved = wx.getStorageSync('heroProgress')?.[hero.id];
-        const level = saved?.level ?? hero.level ?? 1;
+        const saved    = wx.getStorageSync('heroProgress')?.[hero.id];
+        const level    = saved?.level ?? hero.level ?? 1;
         const maxLevel = 15;
-        const isMax = level >= maxLevel;
+        const isMax    = level >= maxLevel;
       
-        // 设置按钮文字和颜色
-        const displayText = isMax ? '满级' : `${level * 100}金`;
-        const bgColor = isMax ? '#9B59B6' : '#FFD700';
-        const textColor = '#2E003E';
+        // 读取所需经验 & 经验池
+        const needExp  = expToNext(hero.id);
+        const poolExp  = getChipExp();
+      
+        // 文案：满级→“满级”；否则“需XX经验”
+        const displayText = isMax ? '满级' : `需${needExp}经验`;
+      
+        // 颜色：满级=紫；未满且够经验=亮金；不够=灰
+        let bgColor, textColor = '#2E003E';
+        if (isMax) {
+          bgColor = '#9B59B6';
+        } else if (poolExp >= needExp) {
+          bgColor = '#FFD700';
+        } else {
+          bgColor = '#777777';
+        }
       
         ctx.font = 'bold 12px IndieFlower';
         ctx.textBaseline = 'middle';
       
-        const textWidth = ctx.measureText(displayText).width;
+        const textWidth  = ctx.measureText(displayText).width;
         const btnPadding = 8;
-        const btnW = textWidth + btnPadding * 4;
-        const btnH = 22;
+        const btnW       = textWidth + btnPadding * 4;
+        const btnH       = 22;
       
         const btnRect = {
           x: x + size / 2 - btnW / 2,
@@ -1743,14 +1776,23 @@ const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
         drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
       
         // 绘制按钮文字
-        drawText(ctx, displayText, btnRect.x + btnW / 2, btnRect.y + btnH / 2,
-          '12px IndieFlower', textColor, 'center', 'middle');
+        drawText(
+          ctx,
+          displayText,
+          btnRect.x + btnW / 2,
+          btnRect.y + btnH / 2,
+          '12px IndieFlower',
+          textColor,
+          'center',
+          'middle'
+        );
       
         // 注册点击区域（仅非满级才响应）
         hero.upgradeButtonRect = isMax
           ? null
           : { x: btnRect.x, y: btnRect.y, width: btnW, height: btnH };
       }
+      
       
        else {
       hero.upgradeButtonRect = null;
