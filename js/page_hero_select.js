@@ -43,8 +43,6 @@ let synthBtnRect = null;
 // ⭐ 地图选择弹层开关与按钮列表
 let showAreaMap = false;
 let areaButtonRects = [];
-// 原来可能：import { spendCoins, getTotalCoins } from './data/coin_state.js';
-import { getChipExp, expToNext, tryLevelUp } from './data/exp_state.js';
 
 // 导入地图解锁条件
 // 导入地图解锁条件（荒漠/火山仍用原 Boss 条件；平原改为金币购买）
@@ -80,6 +78,14 @@ const {
   setSelectedHeroes     // 方法
 } = require('./data/hero_state.js');
 const HeroData          = require('./data/hero_data.js');
+// 引入背包接口，用于检测并消耗经验芯片
+const { getQty, removeItem } = require('./data/inventory.js');
+
+// 全局返回页面键，用于背包返回时回到英雄选择
+// 当从英雄选择跳转到背包时，将此键设置为 'hero'
+// 背包页面点击返回时会检查此键并跳回对应页面，默认跳回 home
+// 这样避免从背包回到主页
+
 
 // ======================= 英雄库存逻辑 =======================
 // 获取已收集的英雄库存数组，支持重复。该数组包含每个英雄ID。
@@ -708,6 +714,20 @@ function onTouch(e) {
     openSynthesisDialog();
     return;
   }
+  // ⭐ 背包按钮：打开背包页面
+  if (globalThis.backpackRect && hit(x, y, globalThis.backpackRect)) {
+    // 切换到背包页面
+    // 设置返回键，使得背包返回后能回到英雄选择界面
+    globalThis._backpackReturnPage = 'heroSelect';
+    // 同时写入持久化存储，避免跨页面失效
+    if (typeof wx !== 'undefined' && wx.setStorageSync) {
+      try { wx.setStorageSync('_backpackReturnPage', 'heroSelect'); } catch (e) {}
+    }
+    if (typeof switchPageFn === 'function') {
+      switchPageFn('backpack');
+    }
+    return;
+  }
 // ---------- 点击“看广告得金币” ----------
 
 // 全局冷却控制（若已声明，可略）
@@ -824,71 +844,178 @@ if (hit(x, y, globalThis.adBtnRect)) {
 
 /* ---------- 头像下方“升级”按钮 ---------- */
 for (const { hero } of iconRects) {
-    const btn = hero?.upgradeButtonRect;
-    if (btn && hit(x, y, btn)) {
-      const heroId    = hero.id;
-      const progress  = wx.getStorageSync('heroProgress')?.[heroId];
-      const level     = progress?.level ?? hero.level ?? 1;
-      const MAX_LEVEL = 15;
-  
-      // 已满级
-      if (level >= MAX_LEVEL) {
-        wx.showToast({ title: '已满级', icon: 'none' });
-        return;
-      }
-  
-      // 经验池与需求
-      const need = expToNext(heroId);
-      const pool = getChipExp();
-  
-      // 不足提示
-      if (pool < need) {
-        wx.showModal?.({
-          title: '经验不足',
-          content: `升到下一级需要 ${need} 经验\n经验池现有：${pool}\n请在背包使用「经验芯片」后再来升级。`,
-          showCancel: false
+  const btn = hero?.upgradeButtonRect;
+  if (btn && hit(x, y, btn)) {
+    // ======================= 经验芯片消耗升级逻辑 =======================
+    try {
+      // 查询背包中普通和高阶经验芯片数量
+      const qtyPlus  = typeof getQty === 'function' ? getQty('level_chip_plus') : 0;
+      const qtyBasic = typeof getQty === 'function' ? getQty('level_chip')      : 0;
+      // 如果背包中有经验芯片，提供选择与批量使用
+      if ((qtyPlus > 0) || (qtyBasic > 0)) {
+        // 定义芯片类型数据：id、名称、每个增加的经验值、库存数量
+        const chipTypes = [];
+        if (qtyPlus > 0) {
+          chipTypes.push({ id: 'level_chip_plus', name: '经验芯片·高阶', exp: 250, qty: qtyPlus });
+        }
+        if (qtyBasic > 0) {
+          chipTypes.push({ id: 'level_chip',      name: '经验芯片',     exp: 100, qty: qtyBasic });
+        }
+        // 引导用户选择芯片类型（如果只有一种则直接选中）
+        const chooseChipType = (callback) => {
+          if (chipTypes.length === 1) {
+            callback(chipTypes[0]);
+            return;
+          }
+          // 多种芯片：显示选择列表
+          const itemList = chipTypes.map(t => `${t.name} (×${t.qty})`);
+          wx.showActionSheet({
+            alertText: '请选择要使用的经验芯片',
+            itemList,
+            success: (res) => {
+              const tap = res && typeof res.tapIndex === 'number' ? res.tapIndex : -1;
+              if (tap >= 0 && tap < chipTypes.length) {
+                callback(chipTypes[tap]);
+              }
+            }
+          });
+        };
+        // 引导用户选择使用数量
+        const chooseQuantity = (type, callback) => {
+          const avail = type.qty;
+          // 构建数量选项：1、5、10、全部
+          const qtyOptions = [];
+          const labels     = [];
+          // 最少一个
+          qtyOptions.push(1);
+          labels.push('使用 1 个');
+          if (avail >= 5) {
+            qtyOptions.push(5);
+            labels.push('使用 5 个');
+          }
+          if (avail >= 10) {
+            qtyOptions.push(10);
+            labels.push('使用 10 个');
+          }
+          // 总是提供使用全部选项
+          if (avail > 1) {
+            qtyOptions.push(avail);
+            labels.push(`使用全部 (${avail} 个)`);
+          }
+          wx.showActionSheet({
+            alertText: `请选择使用数量 (${type.name})`,
+            itemList: labels,
+            success: (res) => {
+              const tap = res && typeof res.tapIndex === 'number' ? res.tapIndex : -1;
+              if (tap >= 0 && tap < qtyOptions.length) {
+                callback(type, qtyOptions[tap]);
+              }
+            }
+          });
+        };
+        // 确认消耗并执行经验增加
+        const confirmUse = (type, count) => {
+          const totalExp = type.exp * count;
+          wx.showModal({
+            title: '使用经验芯片',
+            content: `是否消耗 ${count} 个${type.name}？\n总计获得 ${totalExp} 经验。`,
+            confirmText: '使用',
+            cancelText: '取消',
+            success: (modalRes) => {
+              if (modalRes && modalRes.confirm) {
+                // 实际消耗道具并增加经验
+                try {
+                  const removedNow = typeof removeItem === 'function' ? removeItem(type.id, count) : false;
+                  if (removedNow) {
+                    const hs = new HeroState(hero.id);
+                    const beforeLevel = hs.level;
+                    hs.onLevelUp = null;
+                    hs.gainExp(totalExp);
+                    const gainedLevels = hs.level - beforeLevel;
+                    // 播放特效与经验/升级提示
+                    try {
+                      const { createHeroLevelUpEffectAt, createFloatingTextUp } = require('./effects_engine.js');
+                      const found = iconRects.find(r => r.hero?.id === hero.id);
+                      if (found && found.rect) {
+                        const cx = found.rect.x + found.rect.width / 2;
+                        const cy = found.rect.y;
+                        createHeroLevelUpEffectAt(cx, cy);
+                        // 先显示经验获取文字
+                        createFloatingTextUp(`+${totalExp} 经验`, cx, cy - 16, '#33AAFF', 20, 1000);
+                        // 若有升级则额外提示
+                        if (gainedLevels > 0) {
+                          createFloatingTextUp(`升${gainedLevels}级`, cx, cy - 32, '#33AAFF', 20, 1000);
+                        }
+                      }
+                    } catch (_err) {
+                      // 忽略特效异常
+                    }
+                    // 更新 hero 对象显示最新等级/属性
+                    Object.assign(hero, hs);
+                    // 如果在出战栏中，刷新出战栏缓存
+                    const idx = selectedHeroes.findIndex(id => id === hero.id);
+                    if (idx !== -1) {
+                      selectedHeroes[idx] = hero.id;
+                      setSelectedHeroes(selectedHeroes);
+                    }
+                    render();
+                  } else {
+                    wx.showToast({ title: '背包中道具不足', icon: 'none' });
+                  }
+                } catch (_err2) {
+                  wx.showToast({ title: '使用失败', icon: 'none' });
+                }
+              }
+            }
+          });
+        };
+        // 流程：选择类型→选择数量→确认
+        chooseChipType((type) => {
+          chooseQuantity(type, (t, cnt) => {
+            confirmUse(t, cnt);
+          });
         });
         return;
       }
-  
-      // 尝试只升 1 级
-      const r = tryLevelUp(heroId, 1);
-  
-      if (r.gainedLevels > 0) {
-        // ✅ 升级英雄（保存到 heroProgress 的逻辑在 tryLevelUp 使用到的存储里完成）
-        const hs = new HeroState(heroId);
-  
-        // 🔥 升级特效与飘字
-        hs.onLevelUp = () => {
-          const { createHeroLevelUpEffectAt, createFloatingTextUp } = require('./effects_engine.js');
-          const rect = iconRects.find(r => r.hero?.id === heroId)?.rect;
-          if (rect) {
-            const centerX = rect.x + rect.width / 2;
-            const centerY = rect.y;
-            createHeroLevelUpEffectAt(centerX, centerY); // 在头像正上方播放特效
-            createFloatingTextUp(`升级成功`, centerX, centerY - 16, '#33AAFF', 20, 1000);
-          }
-        };
-  
-        hs.onLevelUp?.();
-  
-        // ✅ 更新当前 UI 中的 hero 显示
-        Object.assign(hero, hs);
-  
-        // ✅ 如果在出战栏中，刷新出战栏缓存
-        const indexInTeam = selectedHeroes.findIndex(id => id === heroId);
-        if (indexInTeam !== -1) {
-          selectedHeroes[indexInTeam] = heroId;
-          setSelectedHeroes(selectedHeroes);
+    } catch (_errMain) {
+      // 查询背包数量失败，继续执行金币升级逻辑
+    }
+    // ======================= 经验芯片逻辑结束，执行金币升级 =======================
+    const progress = wx.getStorageSync('heroProgress')?.[hero.id];
+    const cost     = (progress?.level ?? 1) * 100;
+    const coins    = getTotalCoins();
+    if (coins >= cost) {
+      // ✅ 升级英雄（保存到 heroProgress）
+      const hs = new HeroState(hero.id);
+      // 设置升级特效坐标回调：播放粒子并显示经验文本
+      hs.onLevelUp = () => {
+        const { createHeroLevelUpEffectAt, createFloatingTextUp } = require('./effects_engine.js');
+        const rect = iconRects.find(r => r.hero?.id === hero.id)?.rect;
+        if (rect) {
+          const centerX = rect.x + rect.width / 2;
+          const centerY = rect.y;
+          createHeroLevelUpEffectAt(centerX, centerY);
+          createFloatingTextUp(`+${hs.expToNextLevel} 经验`, centerX, centerY - 16, '#33AAFF', 20, 1000);
         }
-  
-        return render();
-      } else {
-        wx.showToast({ title: '经验不足', icon: 'none' });
+      };
+      hs.gainExp(hs.expToNextLevel);
+      // 扣金币
+      wx.setStorageSync('totalCoins', coins - cost);
+      // ✅ 更新 hero 显示
+      Object.assign(hero, hs);
+      // ✅ 检查是否在出战栏中，如是则刷新出战栏缓存
+      const indexInTeam = selectedHeroes.findIndex(id => id === hero.id);
+      if (indexInTeam !== -1) {
+        selectedHeroes[indexInTeam] = hero.id;
+        setSelectedHeroes(selectedHeroes);
       }
+      return render();
+    } else {
+      wx.showToast({ title: '金币不足', icon: 'none' });
     }
   }
-  
+}
+
 
   /* ---------- 确认按钮 ---------- */
   const confirmRect = globalThis.confirmRect;
@@ -1291,6 +1418,10 @@ ctx.restore();
       // 根据 heroObj.id 实例化 HeroState 来获取当前属性
       const heroState = new HeroState(heroObj.id);
       drawIcon(ctx, heroState, scaled.x, scaled.y, scaled.width, true);
+      // ⚠️ 将升级按钮热区回写到原 heroObj 以便点击检测
+      if (heroState && heroState.upgradeButtonRect) {
+        heroObj.upgradeButtonRect = heroState.upgradeButtonRect;
+      }
     } else {
       // 绘制空槽占位
       ctx.fillStyle = '#4B0073';
@@ -1298,6 +1429,7 @@ ctx.restore();
       drawText(ctx, '?', scaled.x + scaled.width / 2, scaled.y + scaled.height / 2,
         '20px IndieFlower', '#FFF', 'center', 'middle');
     }
+    // ⚠️ 将 hero 对象（实例 id）与其可点击区域一同存入，用于点击检测
     iconRects.push({ rect: { x: scaled.x, y: scaled.y, width: scaled.width, height: scaled.height }, hero: heroObj });
   });
 // 🟡 插入在这里，确保 drawIcon 后才能访问
@@ -1435,6 +1567,28 @@ drawStyledText(ctx, '分享得金币',
 });
 
 globalThis.adBtnRect = adBtnRect;
+
+  // === 背包按钮：放置在分享按钮左侧，打开背包页面 ===
+  // 使用与分享按钮相同的尺寸和样式
+  let backpackRect = {
+    x: adBtnRect.x - (ICON * 1.2) - 12,
+    y: toggleY,
+    width: ICON * 1.2,
+    height: ICON * 0.8
+  };
+  backpackRect = avoidOverlap(backpackRect, layoutRects);
+  layoutRects.push(backpackRect);
+  globalThis.backpackRect = backpackRect;
+  ctx.fillStyle = '#9c275d';
+  drawRoundedRect(ctx, backpackRect.x, backpackRect.y, backpackRect.width, backpackRect.height, 8, true, false);
+  drawStyledText(ctx, '背包',
+    backpackRect.x + backpackRect.width / 2,
+    backpackRect.y + backpackRect.height / 2, {
+      font: 'bold 18px IndieFlower',
+      fill: '#ffe3e3',
+      align: 'center',
+      baseline: 'middle'
+    });
 
   // === 地图选择弹层绘制 ===
   if (showAreaMap) {
@@ -1733,70 +1887,78 @@ const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
   
     // ==== 升级按钮 ====
     if (isFromPool && showUpgradeButtons && !hero.locked) {
-        // 获取当前等级（来自缓存或初始）
-        const saved    = wx.getStorageSync('heroProgress')?.[hero.id];
-        const level    = saved?.level ?? hero.level ?? 1;
+        // 获取当前等级和经验（来自缓存或初始）
+        const savedData = wx.getStorageSync('heroProgress')?.[hero.id] || {};
+        const level    = savedData?.level ?? hero.level ?? 1;
+        const exp      = savedData?.exp   ?? hero.exp  ?? 0;
         const maxLevel = 15;
         const isMax    = level >= maxLevel;
-      
-        // 读取所需经验 & 经验池
-        const needExp  = expToNext(hero.id);
-        const poolExp  = getChipExp();
-      
-        // 文案：满级→“满级”；否则“需XX经验”
+
+        // 计算升级所需经验：50 + level^2 * 10
+        const requiredExp = 50 + level * level * 10;
+        const needExp     = Math.max(0, requiredExp - exp);
+
+        // 计算金币成本（旧逻辑：等级 × 100 金）
+        const coinCost = (savedData?.level ?? level) * 100;
+        const coins    = getTotalCoins();
+
+        // 检查背包中是否有经验芯片可用（含普通、高阶）
+        let hasChip = false;
+        try {
+          const qtyPlus  = typeof getQty === 'function' ? getQty('level_chip_plus') : 0;
+          const qtyBasic = typeof getQty === 'function' ? getQty('level_chip')      : 0;
+          hasChip = (qtyPlus > 0) || (qtyBasic > 0);
+        } catch (e) {
+          hasChip = false;
+        }
+
+        // 设置按钮文字：满级显示“满级”，否则显示所需经验
         const displayText = isMax ? '满级' : `需${needExp}经验`;
-      
-        // 颜色：满级=紫；未满且够经验=亮金；不够=灰
-        let bgColor, textColor = '#2E003E';
+
+        // 颜色逻辑：满级=紫；有芯片或金币足够=亮金；否则灰
+        let bgColor;
+        const textColor = '#2E003E';
         if (isMax) {
           bgColor = '#9B59B6';
-        } else if (poolExp >= needExp) {
+        } else if (hasChip || coins >= coinCost) {
           bgColor = '#FFD700';
         } else {
           bgColor = '#777777';
         }
-      
+
         ctx.font = 'bold 12px IndieFlower';
         ctx.textBaseline = 'middle';
-      
+
         const textWidth  = ctx.measureText(displayText).width;
         const btnPadding = 8;
         const btnW       = textWidth + btnPadding * 4;
         const btnH       = 22;
-      
+
         const btnRect = {
           x: x + size / 2 - btnW / 2,
           y: y + size + 3,
           width: btnW,
           height: btnH
         };
-      
+
         // 绘制按钮背景
         ctx.fillStyle = bgColor;
         drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
-      
+
         // 绘制按钮文字
-        drawText(
-          ctx,
-          displayText,
+        drawText(ctx, displayText,
           btnRect.x + btnW / 2,
           btnRect.y + btnH / 2,
-          '12px IndieFlower',
-          textColor,
-          'center',
-          'middle'
-        );
-      
+          '12px IndieFlower', textColor, 'center', 'middle');
+
         // 注册点击区域（仅非满级才响应）
         hero.upgradeButtonRect = isMax
           ? null
           : { x: btnRect.x, y: btnRect.y, width: btnW, height: btnH };
+      } else {
+        // 非显示条件下清空热区
+        hero.upgradeButtonRect = null;
       }
-      
-      
-       else {
-      hero.upgradeButtonRect = null;
-    }
   
 
   }

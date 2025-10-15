@@ -3,7 +3,7 @@ const HeroData = {
   heroes: [
     {
       id: "hero001",
-      name: "勇者",
+      name: "乌鲁鲁",
       icon: "swordsman.png",
       role: "战士",
       rarity: "R",
@@ -31,7 +31,7 @@ const HeroData = {
     },
     {
       id: "hero002",
-      name: "凯瑟琳",
+      name: "巴拉拉",
       icon: "mage.png",
       role: "法师",
       rarity: "R",
@@ -60,7 +60,7 @@ const HeroData = {
     },
     {
       id: "hero003",
-      name: "阿紫",
+      name: "谷谷",
       icon: "archer.png",
       role: "游侠",
       maxCharge: 120,
@@ -93,7 +93,7 @@ const HeroData = {
    
     {
       id: "hero004",
-      name: "旺财",
+      name: "阿兹",
       icon: "knight.png",
       role: "坦克",
       maxCharge: 180,
@@ -122,7 +122,7 @@ const HeroData = {
     },
     {
       id: "hero005",
-      name: "鼠鼠",
+      name: "瓦拉哇啦",
       icon: "assassin.png",
       role: "刺客",
       maxCharge: 210,
@@ -151,7 +151,7 @@ const HeroData = {
 
     {
       id: "hero006",
-      name: "小蘑菇",
+      name: "咪度",
       icon: "priest.png",
       role: "辅助",
       maxCharge: 110,
@@ -181,7 +181,7 @@ const HeroData = {
 
     {
       id: "hero007",
-      name: "地狱吼",
+      name: "蚌埠拉",
       icon: "swordsman2.png",
       role: "战士",
       maxCharge: 210, // ← 新增能量上限字段
@@ -222,7 +222,7 @@ const HeroData = {
 
     {
       id: "hero008",
-      name: "塞尔达",
+      name: "塞达",
       icon: "archer2.png",
       role: "游侠",
       maxCharge: 160, // ← 新增能量上限字段
@@ -276,7 +276,7 @@ const HeroData = {
 
     {
       id: "hero010",
-      name: "小画师",
+      name: "迷人怪",
       icon: "tank2.png",
       role: "法师",
       maxCharge: 110, // ← 新增能量上限字段
@@ -303,7 +303,7 @@ const HeroData = {
 
     {
       id: "hero011",
-      name: "影刃",
+      name: "咕咕鸟",
       icon: "assassin2.png",
       role: "刺客",
       maxCharge: 130, // ← 新增能量上限字段
@@ -332,7 +332,7 @@ const HeroData = {
     
     {
       id: "hero012",
-      name: "冰魔女",
+      name: "莎莎",
       icon: "priest2.png",
       role: "辅助",
       maxCharge: 190, // ← 新增能量上限字段
@@ -360,7 +360,7 @@ const HeroData = {
     
     {
       id: "hero013",
-      name: "狮子",
+      name: "糖布鲁",
       icon: "swordsman3.png",
       role: "战士",
       maxCharge: 100, // ← 新增能量上限字段
@@ -386,7 +386,7 @@ const HeroData = {
     },
     {
       id: "hero014",
-      name: "夜影",
+      name: "猫草",
       icon: "archer3.png",
       role: "游侠",
       rarity: "SSR",

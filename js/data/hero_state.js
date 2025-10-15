@@ -101,7 +101,9 @@ class HeroState {
     this.rarity = base.rarity;
     this.skill  = base.skill;
     this.levelUpConfig   = base.levelUpConfig || {};
-    this.expToNextLevel  = 50 + (base.level || 1) * (base.level || 1) * 10;
+    // 使用实例等级而非模板等级计算下一级所需经验（修复经验需求计算错误）
+    // 注意：this.level 尚未赋值，这里先占位；将在 this.level 赋值后重新计算
+    this.expToNextLevel  = 0;
     this.unlockCost      = base.unlockCost     || 0;
     // 将雇佣费用统一调整为友好的默认值：若定义了 hireCost，则不超过 10；否则默认为 10
     this.hireCost        = base.hireCost !== undefined
@@ -117,6 +119,9 @@ class HeroState {
     this.exp        = saved?.exp        ?? base.exp   ?? 0;
     // 锁定状态：实例化的派生 ID 默认为解锁状态
     this.locked     = saved?.locked ?? base.locked ?? false;
+
+    // 根据当前等级重新计算下一等级所需经验
+    this.expToNextLevel = 50 + this.level * this.level * 10;
 
     /* 关键改动：
        —— 忽略存档里的 hp/attributes，统一“从基础模板 + 等级 + 稀有度”重算 —— */
