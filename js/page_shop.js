@@ -278,7 +278,17 @@ function onTouchend(e) {
           if (!res.confirm) return;
           const ok = removeItem(p.id, n);
           if (!ok) { wx.showToast({ title: '数量不足', icon: 'none' }); return; }
-          addGold(income);
+          // 卖出物品时，将收入直接累积到永久金币，而非本局金币
+          try {
+            // 读取当前永久金币并增加收益
+            const cur = (getTotalCoins?.() || 0);
+            const newTotal = Math.max(0, cur + income);
+            if (typeof wx !== 'undefined' && wx.setStorageSync) {
+              wx.setStorageSync('totalCoins', newTotal);
+            }
+          } catch (_e) {
+            // 如果写入失败，退回旧值不影响流程
+          }
           wx.showToast({ title: '出售成功', icon: 'none' });
         }
       });

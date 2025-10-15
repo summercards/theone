@@ -16,7 +16,7 @@ import { logBattle } from '../utils/battle_log.js';
  */
 export function onEliminateYellowBlock(count) {
   // 调整：提升金币收益，每个黄色方块给予 10 枚金币
-  const added = count * 10;
+  const added = count * 1;
   addGold(added);
   logBattle(`[黄方块] 消除 ×${count} → 获得金币 +${added}`);
 }

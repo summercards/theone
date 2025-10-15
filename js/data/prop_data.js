@@ -45,7 +45,7 @@ const PropData = {
     id: 'capture_ball',
     name: '精灵球',
     iconChar: '⚪',           // 你项目里用的是字符图标，这里先用白球；有专用贴图也可换
-    price: 12,                // 商店购买价；会自动出现在“购买”页，出售默认对折
+    price: 120,                // 商店购买价；会自动出现在“购买”页，出售默认对折
     desc: '用于收服敌人。每次尝试收服都会消耗 1 个（无论成功与否）。'
   },
   
@@ -53,14 +53,14 @@ const PropData = {
     id: 'great_ball',
     name: '高级精灵球',
     iconChar: '🔵',
-    price: 28,
+    price: 280,
     desc: '收服概率 +20%。使用后消耗 1 个（成功与否都会消耗）。'
   },
   {
     id: 'ultra_ball',
     name: '超级精灵球',
     iconChar: '🟣',
-    price: 60,
+    price: 800,
     desc: '收服概率 +50%。使用后消耗 1 个（成功与否都会消耗）。'
   },
   
@@ -79,54 +79,54 @@ const PropData = {
         name: '属性精炼石',           category: 'attribute',
         iconChar: '⚔️',
         desc: '本场战斗内，将目标英雄的某项属性 +5',
-        price: 12 },
+        price: 1200 },
       { id: 'attr_boost_plus',
         name: '属性精炼石·高阶',       category: 'attribute',
         iconChar: '⚔️',
         desc: '本场战斗内，将目标英雄的某项属性 +10',
-        price: 24 },
+        price: 2400 },
       { id: 'level_chip',
         name: '经验芯片',             category: 'level',
         iconChar: '⭐',
-        // 修改描述：增加 100 经验，用于给英雄升级
-        desc: '使用后获得 100 经验，可用于提升英雄等级',
-        price: 20 },
+        // 修改描述：增加 10 经验，用于给英雄升级
+        desc: '使用后获得 20 经验，可用于提升英雄等级',
+        price: 200 },
       { id: 'level_chip_plus',
         name: '经验芯片·高阶',         category: 'level',
         iconChar: '⭐',
         // 修改描述：增加 250 经验，用于给英雄升级
-        desc: '使用后获得 250 经验，可用于提升英雄等级',
-        price: 40 },
+        desc: '使用后获得 1000 经验，可用于提升英雄等级',
+        price: 1200 },
       { id: 'extra_action',
         name: '行动令牌',             category: 'action',
         iconChar: '🎯',
         desc: '下一场战斗玩家可操作次数 +1',
-        price: 15 },
+        price: 15000 },
       { id: 'extra_action_plus',
         name: '行动令牌·高阶',         category: 'action',
         iconChar: '🎯',
         desc: '下一场战斗玩家可操作次数 +2',
-        price: 30 },
+        price: 30000 },
       { id: 'extra_turn',
         name: '延时沙漏',             category: 'turn',
         iconChar: '⏳',
         desc: '下一场战斗初始回合 +1',
-        price: 15 },
+        price: 1500 },
       { id: 'extra_turn_plus',
         name: '延时沙漏·高阶',         category: 'turn',
         iconChar: '⏳',
         desc: '下一场战斗初始回合 +2',
-        price: 30 },
+        price: 3000 },
       { id: 'gold_double',
         name: '贪婪金币符',           category: 'gold',
         iconChar: '💰',
         desc: '下一场战斗获得金币翻倍',
-        price: 18 },
+        price: 1800 },
       { id: 'gold_triple',
         name: '狂热金币符',           category: 'gold',
         iconChar: '💰',
         desc: '下一场战斗获得金币三倍',
-        price: 36 }
+        price: 3600 }
     ],
   
     /* ———————— API ———————— */

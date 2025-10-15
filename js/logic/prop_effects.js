@@ -1,13 +1,17 @@
 // js/logic/prop_effects.js
 import PropData from '../data/prop_data';
 
+/* ================= 经验芯片数值（按需修改） ================= */
+const CHIP_EXP_NORMAL = 20; // 普通经验芯片每次增加的经验值
+const CHIP_EXP_PLUS   = 100; // 高级经验芯片每次增加的经验值
+
 /* ----------------- 对外 API ----------------- */
 
 /**
  * 立即消耗并应用一个道具
  * @param {string} id
  * @param {object} ctx   - 战斗上下文（写日志等）
- * @param {object} extra - 额外参数（部分道具需要）
+ * @param {object} extra - 额外参数（部分道具需要），常见 { hero }
  */
 export function applyProp(id, ctx = {}, extra = {}) {
   switch (id) {
@@ -15,8 +19,9 @@ export function applyProp(id, ctx = {}, extra = {}) {
     case 'attr_boost'      : return attrBoost(ctx, extra, +5);
     case 'attr_boost_plus' : return attrBoost(ctx, extra, +10);
 
-    case 'level_chip'      : return levelChip(ctx, extra, 1);
-    case 'level_chip_plus' : return levelChip(ctx, extra, 2);
+    // ★ 经验芯片改为“加固定经验值”
+    case 'level_chip'      : return gainChipExp(ctx, extra, CHIP_EXP_NORMAL);
+    case 'level_chip_plus' : return gainChipExp(ctx, extra, CHIP_EXP_PLUS);
 
     /* ------- 跨战斗 FLAG ------- */
     case 'extra_action'      : return flagNextBattle('extraAction', 1);
@@ -44,11 +49,11 @@ export function applyNextBattleFlags(sessionCtx) {
   const flag = wx.getStorageSync(STORAGE_KEY_NEXT);
   if (!flag) return;
 
-  sessionCtx.actionLimit   += flag.extraAction   || 0;
-  sessionCtx.turnsLeft     += flag.extraTurn     || 0;
-  sessionCtx.goldMultiplier = flag.goldMultiplier || 1;
-  sessionCtx.autoRevive     = !!flag.autoRevive;
-  sessionCtx.reroll         = (flag.reroll || 0);
+  sessionCtx.actionLimit    += flag.extraAction   || 0;
+  sessionCtx.turnsLeft      += flag.extraTurn     || 0;
+  sessionCtx.goldMultiplier  = flag.goldMultiplier || 1;
+  sessionCtx.autoRevive      = !!flag.autoRevive;
+  sessionCtx.reroll          = (flag.reroll || 0);
 
   wx.removeStorageSync(STORAGE_KEY_NEXT);
 }
@@ -62,13 +67,24 @@ function attrBoost(ctx, { hero, key = 'physical' }, delta) {
   return true;
 }
 
-function levelChip(ctx, { hero }, lvInc) {
-  if (!hero) return false;
-  for (let i = 0; i < lvInc; i++) {
-    const need = hero.expToNextLevel - hero.exp;
-    hero.gainExp(need);
+/**
+ * 按“固定数值”给经验（用于经验芯片）
+ * @param {object} ctx
+ * @param {{hero: object}} param1
+ * @param {number} amount
+ */
+function gainChipExp(ctx, { hero }, amount) {
+  if (!hero || !amount) return false;
+  if (typeof hero.gainExp === 'function') {
+    hero.gainExp(amount);
+  } else if (typeof hero.addExp === 'function') {
+    // 若项目里叫 addExp 也兼容一下
+    hero.addExp(amount);
+  } else {
+    // 兜底：直接改数值（不建议，尽量走 gainExp 以触发升级判定）
+    hero.exp = (hero.exp || 0) + amount;
   }
-  ctx.logBattle?.(`${hero.name} 等级 +${lvInc} → Lv.${hero.level}`);
+  ctx.logBattle?.(`${hero.name} 获得 ${amount} 经验`);
   return true;
 }
 
