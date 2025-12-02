@@ -71,9 +71,18 @@ export default class Main {
   // 处理通关逻辑
   handleWin() {
     if (!databus.gameWin) return
-    // 如果尚未创建通关弹窗，则创建，保持透明度为 1
+    // 如果尚未创建通关弹窗，则创建
+    // 计算通关分数和评级并存储，用于弹窗显示
     if (!databus.levelText) {
-      databus.levelText = { text: 'LEVEL CLEAR!', opacity: 1 }
+      // 计算得分和评级。评分按分数/目标分数比例
+      const score = databus.score
+      const target = databus.enemyMaxHp || 1
+      const ratio = score / target
+      let rating = 'C'
+      if (ratio >= 2.0) rating = 'S'
+      else if (ratio >= 1.5) rating = 'A'
+      else if (ratio >= 1.2) rating = 'B'
+      databus.levelText = { text: 'LEVEL CLEAR!', score, rating, opacity: 1 }
     }
     // 通关状态下停止棋盘处理
     databus.isProcessing = false
@@ -679,7 +688,8 @@ export default class Main {
       ctx.save()
       // 弹窗尺寸与位置
       const popupW = SCREEN_WIDTH * 0.8
-      const popupH = SCREEN_HEIGHT * 0.3
+      // 增加弹窗高度以容纳分数和评级
+      const popupH = SCREEN_HEIGHT * 0.35
       const px = (SCREEN_WIDTH - popupW) / 2
       const py = (SCREEN_HEIGHT - popupH) / 2
       // 半透明黑色背景
@@ -696,12 +706,29 @@ export default class Main {
       ctx.fillStyle = '#ffffff'
       ctx.font = 'bold 42px system-ui'
       ctx.textAlign = 'center'
-      ctx.fillText(databus.levelText.text, SCREEN_WIDTH / 2, py + popupH * 0.35)
+      // 将标题位置上移一些
+      ctx.fillText(databus.levelText.text, SCREEN_WIDTH / 2, py + popupH * 0.25)
+      // 若有分数和评级，显示在弹窗中部
+      if (databus.levelText && typeof databus.levelText.score !== 'undefined') {
+        ctx.font = 'bold 30px system-ui'
+        ctx.fillStyle = '#ffffff'
+        ctx.fillText('分数: ' + databus.levelText.score, SCREEN_WIDTH / 2, py + popupH * 0.45)
+        // 根据评级选择颜色
+        let gradeColor = '#34d399'
+        if (databus.levelText.rating === 'S') gradeColor = '#facc15'
+        else if (databus.levelText.rating === 'A') gradeColor = '#22d3ee'
+        else if (databus.levelText.rating === 'B') gradeColor = '#a855f7'
+        else gradeColor = '#f87171'
+        ctx.font = 'bold 32px system-ui'
+        ctx.fillStyle = gradeColor
+        ctx.fillText('评级: ' + databus.levelText.rating, SCREEN_WIDTH / 2, py + popupH * 0.60)
+      }
       // 绘制下一关按钮
       const btnW = 160
       const btnH = 48
       const btnX = (SCREEN_WIDTH - btnW) / 2
-      const btnY = py + popupH * 0.6
+      // 将按钮放在更靠下的位置，避免与文本重叠
+      const btnY = py + popupH * 0.75
       // 将按钮范围保存到 databus，以便检测点击
       databus.nextButtonBounds = { x: btnX, y: btnY, width: btnW, height: btnH }
       // 按钮背景
@@ -996,7 +1023,8 @@ export default class Main {
 
   createShockwave(type) {
       databus.shockwaves.push({ 
-        scale: 0.5, opacity: 1, color: GEM_STYLES[type].color 
+        // 初始缩放较小，透明度稍低，避免刺眼
+        scale: 0.5, opacity: 0.6, color: GEM_STYLES[type].color 
       })
   }
 
@@ -1091,14 +1119,18 @@ export default class Main {
           databus.gameWin = true
       }
       // 当敌人死亡时触发死亡爆炸特效（只触发一次）
-      if (databus.isEnemyDead && databus.enemyDeathEffects.length === 0) {
-          databus.enemyDeathEffects.push({ scale: 0.5, opacity: 1 })
+      if (databus.isEnemyDead && !databus.enemyDeathPlayed) {
+          // 怪物死亡时生成柔和爆炸特效，颜色取当前怪物颜色
+          databus.enemyDeathEffects.push({ scale: 0.5, opacity: 1, color: databus.devilColor })
+          // 设置已播放标记，避免重复触发
+          databus.enemyDeathPlayed = true
       }
 
       // 随时间增加背景色调，实现霓虹色轮旋转
       this.hue = (this.hue + 0.1) % 360
 
-      if (databus.frame % 5 === 0) this.spawnRain()
+      // 每隔 8 帧生成一条赛博雨，减少数量
+      if (databus.frame % 8 === 0) this.spawnRain()
       // 每 20 帧生成一个霓虹方块（数量减少一半）
       // 每 40 帧生成一个霓虹方块（再次降低生成频率），数量减少一半
       if (databus.frame % 40 === 0) this.spawnCyberBlock()
@@ -1125,7 +1157,11 @@ export default class Main {
       databus.flyTexts.forEach(t => { t.y -= 2; t.life -= 0.02; t.scale += 0.01 })
       databus.flyTexts = databus.flyTexts.filter(t => t.life > 0)
 
-      databus.shockwaves.forEach(w => { w.scale += 0.1; w.opacity -= 0.05 })
+      // 更新攻击扩散波：放慢扩散速度并降低透明度
+      databus.shockwaves.forEach(w => {
+        w.scale += 0.05
+        w.opacity -= 0.03
+      })
       databus.shockwaves = databus.shockwaves.filter(w => w.opacity > 0)
 
       // 更新附加回响波
@@ -1154,17 +1190,17 @@ export default class Main {
         if (currentBeat % 3 === 0) {
           databus.boardScaleTimer = 12
         }
-        // 每拍触发怪物摇头，使摇摆频率更快
-        // 切换怪物摇头方向（仅左右两个姿态，不经过中间帧）
+        // 怪物在每拍摇头，频率翻倍
         databus.devilTiltState = -databus.devilTiltState
         databus.devilTiltCounter += 1
-        // 每 2 次摇头后：产生一个节拍圈并切换颜色
+        // 每两次摇头切换颜色，但不再固定与环生成绑定
         if (databus.devilTiltCounter >= 2) {
           databus.devilTiltCounter = 0
-          // 颜色循环
           databus.devilColorIndex = (databus.devilColorIndex + 1) % GEM_STYLES.length
           databus.devilColor = GEM_STYLES[databus.devilColorIndex].color
-          // 创建节拍环特效（粗圈），固定大小不扩散
+        }
+        // 每 4 拍（重拍）生成节拍环特效，频率减半
+        if (currentBeat % 4 === 0) {
           databus.devilRings.push({ scale: 1, opacity: 1, color: databus.devilColor })
         }
         this.prevBeatIndex = currentBeat
@@ -1179,15 +1215,15 @@ export default class Main {
 
       // 更新怪物节拍环特效：不再增长，仅透明度衰减
       databus.devilRings.forEach(r => {
-        // 环保持原始尺寸，只淡出
-        r.opacity -= 0.15
+        // 环保持原始尺寸，只淡出。较慢的衰减使频率降低时视觉更柔和
+        r.opacity -= 0.08
       })
       databus.devilRings = databus.devilRings.filter(r => r.opacity > 0)
 
-      // 更新怪物死亡特效：缩放扩散并淡出
+      // 更新怪物死亡特效：缩放扩散并淡出。为了柔和，仅小幅增长并减小不那么刺眼
       databus.enemyDeathEffects.forEach(e => {
-        e.scale += 0.2
-        e.opacity -= 0.1
+        e.scale += 0.1
+        e.opacity -= 0.05
       })
       databus.enemyDeathEffects = databus.enemyDeathEffects.filter(e => e.opacity > 0)
 
@@ -1260,8 +1296,10 @@ export default class Main {
     databus.devilRings.forEach(r => {
       const cx = SCREEN_WIDTH / 2
       const cy = databus.startY * 0.4
-      // 环半径基于棋盘宝石大小
-      const radius = databus.gemSize * 2.5 * r.scale
+      // 计算敌人的膨胀程度，环半径随怪物大小变化
+      const hpRatio = databus.enemyMaxHp > 0 ? databus.enemyHp / databus.enemyMaxHp : 0
+      const bloat = 1 + hpRatio * 1.5
+      const radius = databus.gemSize * 2.5 * bloat * r.scale
       ctx.save()
       ctx.globalAlpha = Math.max(r.opacity, 0)
       ctx.strokeStyle = r.color
@@ -1272,14 +1310,17 @@ export default class Main {
       ctx.restore()
     })
 
-    // 2d. 敌人死亡爆炸特效：白色扩散圆圈
+    // 2d. 敌人死亡爆炸特效：柔和扩散圆圈，颜色随怪物颜色
     databus.enemyDeathEffects.forEach(e => {
       const cx = SCREEN_WIDTH / 2
       const cy = databus.startY * 0.4
       const radius = databus.gemSize * 4 * e.scale
       ctx.save()
-      ctx.globalAlpha = Math.max(e.opacity, 0)
-      ctx.fillStyle = '#ffffff'
+      // 效果透明度略低，避免刺眼
+      ctx.globalAlpha = Math.max(e.opacity * 0.6, 0)
+      // 使用特效自身的颜色字段，无字母则默认为白色
+      const col = e.color || '#ffffff'
+      ctx.fillStyle = col
       ctx.beginPath()
       ctx.arc(cx, cy, radius, 0, PI2)
       ctx.fill()
@@ -1455,16 +1496,17 @@ export default class Main {
       if (!databus.isEnemyDead) {
         ctx.save()
         ctx.translate(cx, cy)
-        // 光晕半径基于宝石大小，可随棋盘缩放略微脉冲
-        const baseRadius = databus.gemSize * 4
+        // 光晕半径基于宝石大小，可随棋盘缩放略微脉冲。减小范围使光晕更紧凑
+        const baseRadius = databus.gemSize * 3
         const auraScale = 1 + 0.1 * (databus.boardScaleTimer / 12)
         const radius = baseRadius * auraScale
         const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius)
-        // 内圈使用当前怪物颜色带透明度
-        grad.addColorStop(0, databus.devilColor + 'AA')
+        // 内圈使用当前怪物颜色，透明度降低
+        grad.addColorStop(0, databus.devilColor + '66')
         // 外圈完全透明
         grad.addColorStop(1, databus.devilColor + '00')
-        ctx.globalAlpha = 0.6
+        // 整体降低光晕强度
+        ctx.globalAlpha = 0.4
         ctx.fillStyle = grad
         ctx.beginPath()
         ctx.arc(0, 0, radius, 0, PI2)

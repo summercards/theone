@@ -95,6 +95,11 @@ export default class DataBus {
 
     // 怪物死亡特效队列：敌人击败后触发一次爆炸扩散效果
     this.enemyDeathEffects = []
+    // 重置死亡特效播放标记
+    this.enemyDeathPlayed = false
+
+    // 标记怪物死亡特效是否已播放，用于避免重复触发
+    this.enemyDeathPlayed = false
 
     // 怪物节拍环队列：每逢特定拍子会生成粗圈
     this.devilRings = []
