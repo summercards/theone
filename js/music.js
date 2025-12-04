@@ -5,12 +5,25 @@ export default class MusicManager {
     if (instance) return instance
     instance = this
 
-    // 微信小游戏音频上下文
-    this.ctx = wx.createWebAudioContext()
-    this.masterGain = this.ctx.createGain()
-    this.masterGain.gain.value = 0.4
-    this.masterGain.connect(this.ctx.destination)
-    
+    // 微信小游戏音频上下文（做兼容处理）
+    const supportWebAudio =
+      typeof wx !== 'undefined' &&
+      (
+        typeof wx.createWebAudioContext === 'function' ||
+        (wx.canIUse && wx.canIUse('createWebAudioContext'))
+      )
+
+    if (supportWebAudio) {
+      this.ctx = wx.createWebAudioContext()
+      this.masterGain = this.ctx.createGain()
+      this.masterGain.gain.value = 0.4
+      this.masterGain.connect(this.ctx.destination)
+    } else {
+      console.warn('当前基础库不支持 wx.createWebAudioContext，音效将被禁用')
+      this.ctx = null
+      this.masterGain = null
+    }
+
     this.bpm = 125
     this.isPlaying = false
   }
@@ -19,8 +32,8 @@ export default class MusicManager {
   checkRhythm() {
     const now = Date.now() / 1000
     const spb = 60 / this.bpm
-    const beatPos = (now % spb) / spb 
-    
+    const beatPos = (now % spb) / spb
+
     // 容差判定: 接近0或1为准
     if (beatPos < 0.15 || beatPos > 0.85) return 'PERFECT'
     if (beatPos < 0.3 || beatPos > 0.7) return 'GOOD'
@@ -28,16 +41,24 @@ export default class MusicManager {
   }
 
   playTone(freq, type, duration, startTime = 0) {
-    if (this.ctx.state === 'suspended') this.ctx.resume()
+    // 不支持 WebAudio 时直接返回，避免在真机报错
+    if (!this.ctx) return
+
+    if (this.ctx.state === 'suspended' && this.ctx.resume) {
+      this.ctx.resume()
+    }
     const osc = this.ctx.createOscillator()
     const gain = this.ctx.createGain()
-    
+
     osc.type = type
     osc.frequency.setValueAtTime(freq, this.ctx.currentTime + startTime)
-    
+
     gain.gain.setValueAtTime(0.2, this.ctx.currentTime + startTime)
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + startTime + duration)
-    
+    gain.gain.exponentialRampToValueAtTime(
+      0.01,
+      this.ctx.currentTime + startTime + duration
+    )
+
     osc.connect(gain)
     gain.connect(this.masterGain)
     osc.start(this.ctx.currentTime + startTime)
@@ -47,15 +68,37 @@ export default class MusicManager {
   playMatch(combo, typeIndex) {
     // 连击越高，音调越高
     const pitchMod = 1 + (combo * 0.1)
-    const freqs = [440, 110, 261.63, 261.63, 110, 440, 880] 
-    const types = ['sawtooth', 'square', 'triangle', 'triangle', 'square', 'sawtooth', 'sine']
+    const freqs = [440, 110, 261.63, 261.63, 110, 440, 880]
+    const types = [
+      'sawtooth',
+      'square',
+      'triangle',
+      'triangle',
+      'square',
+      'sawtooth',
+      'sine'
+    ]
     const idx = Math.min(typeIndex, freqs.length - 1)
     this.playTone(freqs[idx] * pitchMod, types[idx], 0.3)
   }
 
-  playSwap() { this.playTone(600, 'sine', 0.05) }
-  playInvalid() { this.playTone(150, 'sawtooth', 0.2) }
-  playBoombox() { this.playTone(50, 'square', 0.6) } // 低音轰鸣
-  playLaser() { this.playTone(1200, 'sawtooth', 0.15) } // 激光音
-  playVinyl() { this.playTone(800, 'sine', 0.5) } // 刮擦声模拟
+  playSwap() {
+    this.playTone(600, 'sine', 0.05)
+  }
+
+  playInvalid() {
+    this.playTone(150, 'sawtooth', 0.2)
+  }
+
+  playBoombox() {
+    this.playTone(50, 'square', 0.6) // 低音轰鸣
+  }
+
+  playLaser() {
+    this.playTone(1200, 'sawtooth', 0.15) // 激光音
+  }
+
+  playVinyl() {
+    this.playTone(800, 'sine', 0.5) // 刮擦声模拟
+  }
 }
