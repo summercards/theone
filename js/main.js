@@ -39,8 +39,16 @@ const LEVEL_CONFIGS = [
 export default class Main {
   constructor() {
     this.restart()
+
+    // 触摸交互：按下 + 抬起
     wx.onTouchStart(this.touchStartHandler.bind(this))
-    
+    wx.onTouchEnd(this.touchEndHandler.bind(this))
+
+    // 记录滑动起点
+    this.touchStartX = 0
+    this.touchStartY = 0
+    this.touchStartGem = null
+
     // 初始化背景雨
     for (let i = 0; i < 6; i++) this.spawnRain(true)
 
@@ -64,6 +72,28 @@ export default class Main {
     this.loop()
   }
 
+  // 屏幕坐标 -> 棋盘格子坐标（带缩放反算）
+  screenToBoard(screenX, screenY) {
+    const cx = databus.startX + (databus.width * databus.gemSize) / 2
+    const cy = databus.startY + (databus.height * databus.gemSize) / 2
+    const dx = screenX - cx
+    const dy = screenY - cy
+    const unscaledX = cx + dx / databus.boardScale
+    const unscaledY = cy + dy / databus.boardScale
+
+    if (
+      unscaledX >= databus.startX &&
+      unscaledX <= databus.startX + databus.width * databus.gemSize &&
+      unscaledY >= databus.startY &&
+      unscaledY <= databus.startY + databus.height * databus.gemSize
+    ) {
+      const col = Math.floor((unscaledX - databus.startX) / databus.gemSize)
+      const row = Math.floor((unscaledY - databus.startY) / databus.gemSize)
+      return { col, row }
+    }
+    return null
+  }
+
   // 处理通关逻辑
   handleWin() {
     if (!databus.gameWin) return
@@ -75,7 +105,7 @@ export default class Main {
       if (ratio >= 2.0) rating = 'S'
       else if (ratio >= 1.5) rating = 'A'
       else if (ratio >= 1.2) rating = 'B'
-      databus.levelText = { text: 'LEVEL CLEAR!', score, rating, opacity: 1 }
+      databus.levelText = { text: '关卡完成！', score, rating, opacity: 1 }
     }
     databus.isProcessing = false
   }
@@ -84,7 +114,7 @@ export default class Main {
   handleGameOver() {
     if (!databus.gameOver) return
     if (!databus.levelText) {
-      databus.levelText = { text: 'GAME OVER', timer: 120, opacity: 1 }
+      databus.levelText = { text: '游戏结束', timer: 120, opacity: 1 }
     }
     if (databus.levelText && databus.levelText.timer <= 0) {
       databus.reset()
@@ -119,6 +149,10 @@ export default class Main {
     databus.boardScaleTimer = 0
     databus.devilColorIndex = 0
     databus.devilColor = GEM_STYLES[0].color
+
+    // 背景节奏脉冲相关
+    databus.bgPulse = 0        // 0~1，越大越亮
+    databus.bgColorIndex = 0   // 使用哪种宝石颜色做背景脉冲
   }
 
   initBoardLayout() {
@@ -179,8 +213,10 @@ export default class Main {
 
   // --- 2. 交互逻辑 ---
 
+  // 按下：记录起点和起始宝石
   touchStartHandler(e) {
     if (databus.isProcessing) return
+
     // 通关/失败状态
     if (databus.gameOver || databus.gameWin) {
       if (databus.gameWin && databus.nextButtonBounds) {
@@ -206,29 +242,95 @@ export default class Main {
     }
 
     const touch = e.touches[0]
-    const x = touch.clientX
-    const y = touch.clientY
+    this.touchStartX = touch.clientX
+    this.touchStartY = touch.clientY
 
-    // 反向缩放点击坐标
-    const cx = databus.startX + (databus.width * databus.gemSize) / 2
-    const cy = databus.startY + (databus.height * databus.gemSize) / 2
-    const dx = x - cx
-    const dy = y - cy
-    const unscaledX = cx + dx / databus.boardScale
-    const unscaledY = cy + dy / databus.boardScale
-
-    if (
-      unscaledX >= databus.startX &&
-      unscaledX <= databus.startX + databus.width * databus.gemSize &&
-      unscaledY >= databus.startY &&
-      unscaledY <= databus.startY + databus.height * databus.gemSize
-    ) {
-      const col = Math.floor((unscaledX - databus.startX) / databus.gemSize)
-      const row = Math.floor((unscaledY - databus.startY) / databus.gemSize)
-      const gem = this.getGemAt(col, row)
-      if (gem && !gem.isLocked) this.onGemClick(gem)
-      else music.playInvalid()
+    const pos = this.screenToBoard(touch.clientX, touch.clientY)
+    if (pos) {
+      this.touchStartGem = this.getGemAt(pos.col, pos.row)
+    } else {
+      this.touchStartGem = null
     }
+  }
+
+  // 抬起：判断是点击还是滑动
+  touchEndHandler(e) {
+    if (databus.isProcessing) return
+    if (databus.gameOver || databus.gameWin) return
+
+    if (!e.changedTouches || !e.changedTouches[0]) return
+    const touch = e.changedTouches[0]
+    const endX = touch.clientX
+    const endY = touch.clientY
+
+    const dx = endX - this.touchStartX
+    const dy = endY - this.touchStartY
+    const distSq = dx * dx + dy * dy
+    const startGem = this.touchStartGem
+
+    // 起点不在棋盘上：当成在终点点了一下
+    if (!startGem) {
+      const pos = this.screenToBoard(endX, endY)
+      if (pos) {
+        const gem = this.getGemAt(pos.col, pos.row)
+        if (gem) this.onGemClick(gem)
+      }
+      return
+    }
+
+    // 距离太小：当作点击起点宝石
+    const threshold = databus.gemSize * 0.3
+    if (distSq < threshold * threshold) {
+      this.onGemClick(startGem)
+      return
+    }
+
+    // 真正滑动：判断方向（横 / 竖）
+    let dirX = 0
+    let dirY = 0
+    if (Math.abs(dx) > Math.abs(dy)) {
+      dirX = dx > 0 ? 1 : -1
+    } else {
+      dirY = dy > 0 ? 1 : -1
+    }
+
+    const targetCol = startGem.x + dirX
+    const targetRow = startGem.y + dirY
+
+    // 出界，判定为失误
+    if (
+      targetCol < 0 || targetCol >= databus.width ||
+      targetRow < 0 || targetRow >= databus.height
+    ) {
+      music.playInvalid()
+      this.createFlyText('失误', startGem.realX + databus.gemSize / 2, startGem.realY - 20)
+      return
+    }
+
+    const targetGem = this.getGemAt(targetCol, targetRow)
+    if (!targetGem || targetGem.isLocked) {
+      music.playInvalid()
+      this.createFlyText('失误', startGem.realX + databus.gemSize / 2, startGem.realY - 20)
+      return
+    }
+
+    // 滑动触发节奏判定
+    const rhythm = music.checkRhythm()
+    databus.lastRhythm = rhythm
+    const textX = startGem.realX + databus.gemSize / 2
+    const textY = startGem.realY - 20
+
+    if (rhythm === 'PERFECT') {
+      this.createFlyText('完美！', textX, textY)
+    } else if (rhythm === 'GOOD') {
+      this.createFlyText('不错', textX, textY)
+    } else {
+      this.createFlyText('失误', textX, textY)
+    }
+
+    // 滑动直接换位，不走选中逻辑
+    databus.selectedGem = null
+    this.swapGems(startGem, targetGem)
   }
 
   getGemAt(x, y) {
@@ -239,11 +341,11 @@ export default class Main {
     const rhythm = music.checkRhythm()
     databus.lastRhythm = rhythm
     if (rhythm === 'PERFECT') {
-      this.createFlyText('PERFECT!', gem.realX + databus.gemSize / 2, gem.realY - 20)
+      this.createFlyText('完美！', gem.realX + databus.gemSize / 2, gem.realY - 20)
     } else if (rhythm === 'GOOD') {
-      this.createFlyText('GOOD', gem.realX + databus.gemSize / 2, gem.realY - 20)
+      this.createFlyText('不错', gem.realX + databus.gemSize / 2, gem.realY - 20)
     } else {
-      this.createFlyText('MISS', gem.realX + databus.gemSize / 2, gem.realY - 20)
+      this.createFlyText('失误', gem.realX + databus.gemSize / 2, gem.realY - 20)
     }
 
     if (!databus.selectedGem) {
@@ -389,7 +491,8 @@ export default class Main {
     // 建立索引
     hMatches.forEach(group =>
       group.forEach(g => {
-        if (!gemInH.has(g.id)) gemInH.set(g.id, [])
+        if (!gemInH.has(g.id)) gemInH.set(g.id, []
+        )
         gemInH.get(g.id).push(group)
       })
     )
@@ -574,16 +677,16 @@ export default class Main {
     )
     if (databus.combo > 1) {
       this.createFlyText(
-        databus.combo + ' COMBO!',
+        databus.combo + ' 连击！',
         SCREEN_WIDTH / 2,
         databus.startY - 100,
         true
       )
     }
     if (rhythm === 'GOOD') {
-      this.createFlyText('GOOD!', SCREEN_WIDTH / 2, databus.startY - 130)
+      this.createFlyText('不错！', SCREEN_WIDTH / 2, databus.startY - 130)
     } else if (rhythm === 'PERFECT') {
-      this.createFlyText('PERFECT!', SCREEN_WIDTH / 2, databus.startY - 130)
+      this.createFlyText('完美！', SCREEN_WIDTH / 2, databus.startY - 130)
     }
 
     // 特效
@@ -684,10 +787,21 @@ export default class Main {
   render() {
     const now = this.now || Date.now()
 
-    // 背景：低开销纯色（根据 hue 轻微变色）
+    // 背景底色（缓慢变色，成本低）
     const hue = this.hue || 220
     ctx.fillStyle = `hsl(${hue}, 40%, 5%)`
     ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+
+    // 纯色节奏脉冲叠加（无渐变，只一层 fillRect）
+    if (databus.bgPulse > 0) {
+      const idx = databus.bgColorIndex || 0
+      const col = GEM_STYLES[idx % GEM_STYLES.length].color
+      ctx.save()
+      ctx.globalAlpha = databus.bgPulse * 0.25 // 最大透明度 0.25
+      ctx.fillStyle = col
+      ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+      ctx.restore()
+    }
 
     this.renderBattleScene()
     this.renderHpBar()
@@ -1059,7 +1173,7 @@ export default class Main {
       x: Math.random() * SCREEN_WIDTH,
       y: randomY ? Math.random() * SCREEN_HEIGHT * 0.4 : -50,
       speed: 2 + Math.random() * 4,
-      len: 10 + Math.random() * 20,
+      len: 10 + Math.random() * 40,
       opacity: 0.1 + Math.random() * 0.3
     })
   }
@@ -1325,7 +1439,7 @@ export default class Main {
       p => p.progress < 1
     )
 
-    // 节拍 & 棋盘缩放 / 怪物摇头 / 颜色
+    // 节拍 & 棋盘缩放 / 怪物摇头 / 颜色 / 背景脉冲
     const beatLength = 60000 / music.bpm
     const elapsed = (this.now || Date.now()) - this.startTime
     const currentBeat = Math.floor(elapsed / beatLength)
@@ -1348,8 +1462,19 @@ export default class Main {
           opacity: 1,
           color: databus.devilColor
         })
+
+        // 重拍触发背景纯色脉冲
+        databus.bgPulse = 1
+        databus.bgColorIndex =
+          Math.floor(currentBeat / 4) % GEM_STYLES.length
       }
       this.prevBeatIndex = currentBeat
+    }
+
+    // 背景脉冲渐隐（0~1）
+    if (databus.bgPulse > 0) {
+      databus.bgPulse -= 0.08
+      if (databus.bgPulse < 0) databus.bgPulse = 0
     }
 
     // 棋盘缩放
@@ -1550,7 +1675,7 @@ export default class Main {
     ctx.save()
     databus.cyberRain.forEach(r => {
       ctx.fillStyle = `rgba(34, 211, 238, ${r.opacity})`
-      ctx.fillRect(r.x, r.y, 2, r.len)
+      ctx.fillRect(r.x, r.y, 8, r.len)
     })
     ctx.restore()
 
@@ -1649,7 +1774,7 @@ export default class Main {
   renderDevil(cx, cy) {
     if (databus.isEnemyDead) return
 
-    // 光晕（缩小范围，去掉 filter）
+    // 光晕（缩小范围）
     ctx.save()
     ctx.translate(cx, cy)
     const baseRadius = databus.gemSize * 2.4
