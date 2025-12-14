@@ -22,18 +22,133 @@ const GEM_STYLES = [
   { type: 6, color: '#ffffff', ring: '#ffffff', shadow: '#ffffff' }   // WHITE
 ]
 
+// 关卡棋盘布局（数字形状）。'1' 表示该格为有效位置，'0' 表示空洞/不可用。
+// 参考 H5 版本霓虹律动的设计，这些布局可以形成数字 1~10 的形状。
+const LEVEL_LAYOUTS = {
+  1: [
+    '001100',
+    '011100',
+    '001100',
+    '001100',
+    '001100',
+    '001100',
+    '011110',
+    '011110'
+  ],
+  2: [
+    '0111110',
+    '1111111',
+    '0000011',
+    '0000011',
+    '0111110',
+    '1100000',
+    '1100000',
+    '1111111',
+    '1111111'
+  ],
+  3: [
+    '0111110',
+    '1111111',
+    '0000011',
+    '0011110',
+    '0000011',
+    '0000011',
+    '1100011',
+    '1111111',
+    '0111110'
+  ],
+  4: [
+    '00000110',
+    '00001110',
+    '00011110',
+    '00110110',
+    '01100110',
+    '11111111',
+    '11111111',
+    '00000110',
+    '00000110'
+  ],
+  5: [
+    '1111111',
+    '1111111',
+    '1100000',
+    '1111110',
+    '0000011',
+    '0000011',
+    '1100011',
+    '1111111',
+    '0111110'
+  ],
+  6: [
+    '0011110',
+    '0110000',
+    '1100000',
+    '1111110',
+    '1100011',
+    '1100011',
+    '1100011',
+    '1111111',
+    '0111110'
+  ],
+  7: [
+    '11111111',
+    '11111111',
+    '00000110',
+    '00001100',
+    '00011000',
+    '00110000',
+    '00110000',
+    '00110000',
+    '00110000',
+    '00110000'
+  ],
+  8: [
+    '0111110',
+    '1111111',
+    '1100011',
+    '0111110',
+    '0111110',
+    '1100011',
+    '1100011',
+    '1111111',
+    '0111110'
+  ],
+  9: [
+    '0111110',
+    '1111111',
+    '1100011',
+    '1100011',
+    '0111111',
+    '0000011',
+    '0000011',
+    '1111111',
+    '0111110'
+  ],
+  10: [
+    '0110011110',
+    '1110110011',
+    '0110110011',
+    '0110110011',
+    '0110110011',
+    '0110110011',
+    '1110110011',
+    '0110011110'
+  ]
+}
+
 // 各关卡配置表
+// 关卡配置表，调整宽高以适配各数字形状
 const LEVEL_CONFIGS = [
-  { level: 1, width: 6, height: 7, typesCount: 4, targetScore: 1000, moves: 15 },
-  { level: 2, width: 6, height: 7, typesCount: 5, targetScore: 2500, moves: 20 },
-  { level: 3, width: 7, height: 8, typesCount: 5, targetScore: 4000, moves: 22 },
-  { level: 4, width: 7, height: 8, typesCount: 6, targetScore: 6000, moves: 25 },
-  { level: 5, width: 8, height: 9, typesCount: 6, targetScore: 8000, moves: 28 },
-  { level: 6, width: 8, height: 9, typesCount: 6, targetScore: 12000, moves: 30 },
+  { level: 1, width: 6, height: 8, typesCount: 4, targetScore: 1000, moves: 15 },
+  { level: 2, width: 7, height: 9, typesCount: 5, targetScore: 2500, moves: 20 },
+  { level: 3, width: 7, height: 9, typesCount: 5, targetScore: 4000, moves: 22 },
+  { level: 4, width: 8, height: 9, typesCount: 6, targetScore: 6000, moves: 25 },
+  { level: 5, width: 7, height: 9, typesCount: 6, targetScore: 8000, moves: 28 },
+  { level: 6, width: 7, height: 9, typesCount: 6, targetScore: 12000, moves: 30 },
   { level: 7, width: 8, height: 9, typesCount: 6, targetScore: 16000, moves: 32 },
-  { level: 8, width: 8, height: 9, typesCount: 6, targetScore: 22000, moves: 35 },
-  { level: 9, width: 8, height: 9, typesCount: 6, targetScore: 30000, moves: 38 },
-  { level: 10, width: 8, height: 9, typesCount: 6, targetScore: 50000, moves: 40 }
+  { level: 8, width: 7, height: 9, typesCount: 6, targetScore: 22000, moves: 35 },
+  { level: 9, width: 7, height: 9, typesCount: 6, targetScore: 30000, moves: 38 },
+  { level: 10, width: 10, height: 8, typesCount: 6, targetScore: 50000, moves: 40 }
 ]
 
 export default class Main {
@@ -112,7 +227,19 @@ export default class Main {
 
   // 处理失败逻辑
   handleGameOver() {
+    // 如果游戏未结束则直接返回
     if (!databus.gameOver) return
+    // 当步数用尽导致 gameOver 时，先进入接关提示状态，不立即重置
+    if (!databus.gameOverPrompt && databus.movesLeft <= 0) {
+      databus.gameOverPrompt = true
+      // 清除任何通关/失败文本，后续由接关界面渲染
+      databus.levelText = null
+      return
+    }
+    // 如果当前正处于接关提示状态，则等待玩家选择，不执行自动重置
+    if (databus.gameOverPrompt) return
+
+    // 其他情况下（比如敌人死亡导致 gameOver），按照原逻辑处理失败弹窗和重置
     if (!databus.levelText) {
       databus.levelText = { text: '游戏结束', timer: 120, opacity: 1 }
     }
@@ -145,6 +272,10 @@ export default class Main {
     databus.enemyHp = 0
     databus.movesLeft = config.moves
 
+    // 根据关卡设置棋盘布局（数字形状）。
+    // 如果不存在相应布局，则默认全部有效。
+    databus.layout = LEVEL_LAYOUTS[level] || null
+
     databus.boardScale = 1
     databus.boardScaleTimer = 0
     databus.devilColorIndex = 0
@@ -176,6 +307,15 @@ export default class Main {
   fillBoard() {
     for (let x = 0; x < databus.width; x++) {
       for (let y = 0; y < databus.height; y++) {
+        // 若存在布局信息，则仅在该位置有效时生成宝石。
+        let valid = true
+        if (databus.layout && databus.layout[y]) {
+          const rowStr = databus.layout[y]
+          if (x < rowStr.length) {
+            valid = rowStr[x] === '1'
+          }
+        }
+        if (!valid) continue
         this.createGem(x, y)
       }
     }
@@ -215,9 +355,62 @@ export default class Main {
 
   // 按下：记录起点和起始宝石
   touchStartHandler(e) {
+    // 如果正在消除中则忽略点击
     if (databus.isProcessing) return
 
-    // 通关/失败状态
+    // 如果处于接关提示界面，则检查按钮点击
+    if (databus.gameOverPrompt) {
+      const clickX = e.touches[0].clientX
+      const clickY = e.touches[0].clientY
+      // 接关按钮
+      if (databus.continueButtonBounds) {
+        const b = databus.continueButtonBounds
+        if (
+          clickX >= b.x && clickX <= b.x + b.width &&
+          clickY >= b.y && clickY <= b.y + b.height
+        ) {
+          // 只有当钻石足够时才能接关
+          if (databus.diamonds >= 100) {
+            databus.diamonds -= 100
+            databus.movesLeft += 10
+            databus.gameOverPrompt = false
+            databus.gameOver = false
+            databus.isProcessing = false
+            databus.selectedGem = null
+            // 清除按钮区域
+            databus.continueButtonBounds = null
+            databus.giveUpButtonBounds = null
+          }
+          return
+        }
+      }
+      // 放弃按钮
+      if (databus.giveUpButtonBounds) {
+        const b2 = databus.giveUpButtonBounds
+        if (
+          clickX >= b2.x && clickX <= b2.x + b2.width &&
+          clickY >= b2.y && clickY <= b2.y + b2.height
+        ) {
+          // 重置游戏到第一关
+          databus.reset()
+          databus.level = 1
+          databus.gameOverPrompt = false
+          databus.gameOver = false
+          databus.isEnemyDead = false
+          databus.levelText = null
+          databus.continueButtonBounds = null
+          databus.giveUpButtonBounds = null
+          this.applyLevelConfig(databus.level)
+          this.initBoardLayout()
+          this.fillBoard()
+          return
+        }
+      }
+      // 其他区域点击不响应
+      return
+    }
+
+    // 通关或失败结束界面
     if (databus.gameOver || databus.gameWin) {
       if (databus.gameWin && databus.nextButtonBounds) {
         const btn = databus.nextButtonBounds
@@ -729,34 +922,50 @@ export default class Main {
     let maxTime = 0
     const FALL_DURATION = 220
 
-    // 1. 现有宝石下落
+    // 根据布局下落：每列仅在有效格子上聚合，并在其上方生成新宝石
     for (let x = 0; x < databus.width; x++) {
-      let writeY = databus.height - 1
-      for (let y = databus.height - 1; y >= 0; y--) {
-        const gem = this.getGemAt(x, y)
-        if (gem) {
-          if (gem.y !== writeY) {
-            gem.y = writeY
-            this.addTween(
-              gem,
-              { realY: databus.startY + writeY * databus.gemSize },
-              FALL_DURATION
-            )
-            maxTime = Math.max(maxTime, FALL_DURATION)
+      // 1. 收集当前列的有效 y 坐标（自上而下）
+      const validYs = []
+      for (let y = 0; y < databus.height; y++) {
+        let valid = true
+        if (databus.layout && databus.layout[y]) {
+          const rowStr = databus.layout[y]
+          if (x < rowStr.length) {
+            valid = rowStr[x] === '1'
           }
-          writeY--
         }
+        if (valid) validYs.push(y)
       }
-      // 2. 填充新宝石
-      while (writeY >= 0) {
+      // 按 y 升序收集该列中的宝石
+      const gemsInCol = databus.board
+        .filter(g => g.x === x)
+        .sort((a, b) => a.y - b.y)
+      // 从底部开始填充
+      let writeIdx = validYs.length - 1
+      for (let i = gemsInCol.length - 1; i >= 0; i--) {
+        const gem = gemsInCol[i]
+        const destY = validYs[writeIdx]
+        if (gem.y !== destY) {
+          gem.y = destY
+          this.addTween(
+            gem,
+            { realY: databus.startY + destY * databus.gemSize },
+            FALL_DURATION
+          )
+          maxTime = Math.max(maxTime, FALL_DURATION)
+        }
+        writeIdx--
+      }
+      // 2. 在剩余的有效位置生成新宝石
+      while (writeIdx >= 0) {
+        const destY = validYs[writeIdx]
         const type = Math.floor(Math.random() * databus.typesCount)
         let special = GemSpecialType.NONE
         if (Math.random() < 0.05) special = GemSpecialType.BOOMBOX
-
         const gem = {
           id: Math.random().toString(),
           x,
-          y: writeY,
+          y: destY,
           realX: databus.startX + x * databus.gemSize,
           realY: databus.startY - databus.gemSize,
           type,
@@ -768,14 +977,13 @@ export default class Main {
         databus.board.push(gem)
         this.addTween(
           gem,
-          { realY: databus.startY + writeY * databus.gemSize },
+          { realY: databus.startY + destY * databus.gemSize },
           FALL_DURATION
         )
         maxTime = Math.max(maxTime, FALL_DURATION)
-        writeY--
+        writeIdx--
       }
     }
-
     setTimeout(() => {
       this.insertPendingSpecials()
       this.processElimination()
@@ -819,6 +1027,65 @@ export default class Main {
 
     this.renderEffects()
     this.renderUI()
+
+    // 接关提示弹窗（步数耗尽）
+    if (databus.gameOverPrompt) {
+      ctx.save()
+      // 半透明背景
+      ctx.globalAlpha = 0.8
+      ctx.fillStyle = 'rgba(0,0,0,0.8)'
+      ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+      ctx.globalAlpha = 1
+      // 提示框
+      const popupW = SCREEN_WIDTH * 0.8
+      const popupH = SCREEN_HEIGHT * 0.4
+      const px = (SCREEN_WIDTH - popupW) / 2
+      const py = (SCREEN_HEIGHT - popupH) / 2
+      ctx.fillStyle = '#1e293b'
+      this.roundRect(ctx, px, py, popupW, popupH, 20)
+      ctx.fill()
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+      ctx.lineWidth = 2
+      ctx.stroke()
+      // 标题
+      ctx.fillStyle = '#ef4444'
+      ctx.font = 'bold 38px system-ui'
+      ctx.textAlign = 'center'
+      ctx.fillText('步数耗尽!', SCREEN_WIDTH / 2, py + popupH * 0.25)
+      // 内容
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 24px system-ui'
+      ctx.fillText('是否花费100钻石继续？', SCREEN_WIDTH / 2, py + popupH * 0.45)
+      ctx.fillText('当前钻石: ' + databus.diamonds, SCREEN_WIDTH / 2, py + popupH * 0.55)
+      // 按钮布局
+      const btnW = 160
+      const btnH = 48
+      const gap = 40
+      const totalW = btnW * 2 + gap
+      const btnStartX = (SCREEN_WIDTH - totalW) / 2
+      const btnY = py + popupH * 0.7
+      // 接关按钮
+      const continueX = btnStartX
+      ctx.fillStyle = databus.diamonds >= 100 ? '#059669' : '#374151'
+      this.roundRect(ctx, continueX, btnY, btnW, btnH, 10)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 20px system-ui'
+      ctx.fillText('接关', continueX + btnW / 2, btnY + btnH * 0.6)
+      // 保存接关按钮边界
+      databus.continueButtonBounds = { x: continueX, y: btnY, width: btnW, height: btnH }
+      // 放弃按钮
+      const giveUpX = continueX + btnW + gap
+      ctx.fillStyle = '#4b5563'
+      this.roundRect(ctx, giveUpX, btnY, btnW, btnH, 10)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 20px system-ui'
+      ctx.fillText('放弃', giveUpX + btnW / 2, btnY + btnH * 0.6)
+      // 保存放弃按钮边界
+      databus.giveUpButtonBounds = { x: giveUpX, y: btnY, width: btnW, height: btnH }
+      ctx.restore()
+    }
 
     // 通关/失败弹窗
     if (databus.levelText) {
@@ -1927,5 +2194,18 @@ export default class Main {
     ctx.fillStyle = databus.movesLeft < 5 ? '#ef4444' : '#22d3ee'
     ctx.textAlign = 'right'
     ctx.fillText(databus.movesLeft, SCREEN_WIDTH - 20, uiY)
+
+    // 新增：钻石显示，显示在步数上方
+    const diamondY = uiY - 35
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'
+    ctx.beginPath()
+    this.roundRect(ctx, SCREEN_WIDTH - 120, diamondY - 15, 110, 30, 15)
+    ctx.fill()
+    ctx.fillStyle = '#94a3b8'
+    ctx.textAlign = 'left'
+    ctx.fillText('钻石', SCREEN_WIDTH - 110, diamondY)
+    ctx.fillStyle = '#facc15'
+    ctx.textAlign = 'right'
+    ctx.fillText(databus.diamonds, SCREEN_WIDTH - 20, diamondY)
   }
 }

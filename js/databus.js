@@ -78,6 +78,19 @@ export default class DataBus {
     // 通关或失败文本计时器
     this.levelText = null
 
+    // --- 新增状态: 接关与钻石 ---
+    // 当前持有的钻石数量。首次初始化时默认为 500，在 reset 时不会被重置，以便跨关卡累计。
+    if (typeof this.diamonds === 'undefined') {
+      this.diamonds = 500
+    }
+    // 标记是否处于接关提示界面，true 表示正在询问是否继续游戏
+    this.gameOverPrompt = false
+    // 接关提示框的按钮区域，用于点击检测
+    this.continueButtonBounds = null
+    this.giveUpButtonBounds = null
+    // 接关提示文本
+    this.promptMessage = null
+
     // --- 动态节奏相关属性 ---
     // 棋盘缩放值，用于节奏鼓点时轻微放大棋盘
     this.boardScale = 1
