@@ -1,5 +1,6 @@
 import DataBus, { GemType, GemSpecialType } from './databus'
 import MusicManager from './music'
+import Assets from './assets'
 
 const canvas = wx.createCanvas()
 const ctx = canvas.getContext('2d')
@@ -153,6 +154,21 @@ const LEVEL_CONFIGS = [
 
 export default class Main {
   constructor() {
+    // 资源管理（宝石/怪物贴图）
+    this.assets = new Assets()
+    this.assetsReady = false
+    this.assetsLoadingError = null
+    this.assets
+      .loadAll()
+      .then(() => {
+        this.assetsReady = true
+      })
+      .catch(err => {
+        // 资源加载失败时仍可继续用“代码绘制”作为兜底
+        this.assetsLoadingError = err
+        this.assetsReady = false
+      })
+
     this.restart()
 
     // 触摸交互：按下 + 抬起
@@ -1277,9 +1293,19 @@ export default class Main {
 
       ctx.restore()
     } else {
-      // ---- 普通宝石：简单图标 ----
-      ctx.fillStyle = '#0b1120'
-      this.drawIcon(ctx, gem.type, cx, cy, w * 0.6)
+      // ---- 普通宝石：优先使用贴图（images/gems/*），未加载则回退到简单图标 ----
+      const gemImg = this.assets ? this.assets.getGem(gem.type) : null
+      if (gemImg) {
+        // 贴图建议为透明底的正方形 PNG
+        ctx.save()
+        // 某些设备上关闭/开启插值会有差异，这里开启平滑以减少锯齿
+        ctx.imageSmoothingEnabled = true
+        ctx.drawImage(gemImg, x, y, w, h)
+        ctx.restore()
+      } else {
+        ctx.fillStyle = '#0b1120'
+        this.drawIcon(ctx, gem.type, cx, cy, w * 0.6)
+      }
     }
 
     // 3. 锁
@@ -2068,6 +2094,44 @@ export default class Main {
     const scale = bloat * 1.2
     const tiltAmp = 0.12 + hpRatio * 0.18
     const tilt = databus.devilTiltState * tiltAmp
+
+    // —— 优先使用怪物贴图（images/monsters/devil.png）——
+    // 说明：
+    // 1) 贴图存在时：用贴图渲染，并保留原来的“倾斜/膨胀/闪白/发光”效果
+    // 2) 贴图不存在或加载失败：自动回退到原来的矢量绘制（下面的旧实现）
+    const monsterImg = this.assets ? this.assets.getMonster('devil') : null
+    if (monsterImg) {
+      const baseSize = 100 // 与旧矢量实现的 100x100 设计一致，方便你按这个尺寸画
+
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate(tilt)
+      ctx.scale(scale, scale)
+
+      // 发光
+      ctx.shadowBlur = 12
+      ctx.shadowColor = databus.devilColor + '88'
+
+      // 贴图
+      ctx.imageSmoothingEnabled = true
+      ctx.drawImage(monsterImg, -baseSize / 2, -baseSize / 2, baseSize, baseSize)
+
+      // 颜色氛围（轻微染色）/ 受击闪白
+      ctx.save()
+      ctx.globalCompositeOperation = 'source-atop'
+      if (databus.enemyFlashTimer > 0) {
+        ctx.globalAlpha = 0.85
+        ctx.fillStyle = '#ffffff'
+      } else {
+        ctx.globalAlpha = 0.22
+        ctx.fillStyle = databus.devilColor
+      }
+      ctx.fillRect(-baseSize / 2, -baseSize / 2, baseSize, baseSize)
+      ctx.restore()
+
+      ctx.restore()
+      return
+    }
 
     ctx.save()
     ctx.translate(cx, cy)
