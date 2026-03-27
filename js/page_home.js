@@ -1,7 +1,7 @@
 // js/page_home.js — 首页逻辑（商店入口版）
 // ------------------------------------------------------------
 
-import { drawRoundedRect, drawStyledText } from './utils/canvas_utils.js';
+import { drawRoundedRect, drawStyledText, getBounceScale, drawWithCenterScale } from './utils/canvas_utils.js';
 import { shareMyStats } from './utils/share_utils.js';
 import {
   drawAllEffects, updateAllEffects, createFireParticles,
@@ -27,8 +27,10 @@ let clearSaveBtnArea = null;    // ⭐ 清空存档按钮
 
 let homeLoopId = null;
 let fireFrameCounter = 0;
-let clickedButton = null;
-let clickAnimationFrame = 0;
+let pressedBtnKey = null;
+let releasedBtnKey = null;
+let releaseTime = 0;
+
 let pageExiting = false;
 
 let bgmAudioContext = null;
@@ -146,9 +148,7 @@ function playClickSound() {
   }
 }
 
-const scaleBtn = (key) => clickedButton === key
-  ? 1.0 + 0.1 * Math.sin((clickAnimationFrame / 10) * Math.PI)
-  : 1.0;
+const getBtnScale = (key) => getBounceScale(pressedBtnKey === key, releasedBtnKey === key ? releaseTime : 0, Date.now());
 
 // --------------------------------------------------
 // 主绘制函数
@@ -159,29 +159,31 @@ function drawHomeUI() {
   // --------------------------------------------------
   // 处理按钮点击后的缩放动画 & 页面跳转
   // --------------------------------------------------
-  if (clickedButton) {
-    clickAnimationFrame++;
-
-    // 动画 10 帧后执行真正跳页
-    if (clickAnimationFrame > 10) {
+  
+  if (releasedBtnKey && (Date.now() - releaseTime > 250)) { // Q弹跳页
       pageExiting = true;
       cancelAnimationFrame(homeLoopId);
       homeLoopId = null;
       removeFireGlowEffect();
 
-      const cb = clickedButton;       // 记录再清空，防止递归
-      clickedButton = null;
-      clickAnimationFrame = 0;
+      const cb = releasedBtnKey;
+      releasedBtnKey = null;
 
       if (cb === 'share') {
-        pageExiting = false;          // 分享完还留在本页
+        pageExiting = false;
         shareMyStats();
+      } else if (cb === 'clearSave') {
+        pageExiting = false;
+        wx.showModal({
+          title: '清空存档', content: '确定要清空吗？该操作不可恢复。',
+          success(res) { if (res && res.confirm) { try { wx.clearStorageSync(); } catch (_) {} wx.showToast({ title: '已清空', icon: 'none' }); } }
+        });
       } else {
-        switchPageFn(cb);             // 进入目标页面（'ranking' / 'shop' 等）
+        switchPageFn(cb);
       }
-      return;                         // 本帧后续绘制不用再跑
-    }
+      return;
   }
+
 
   // --------------------------------------------------
   // 背景
@@ -226,38 +228,34 @@ function drawHomeUI() {
 
   // 森林探索按钮（原主关卡）
   {
-    const scale = scaleBtn('heroSelect');
-    const w = mainBtnW * scale;
-    const h = mainBtnH * scale;
-    const x = (canvasRef.width - w) / 2;
-    const y = yEnter - (h - mainBtnH) / 2;
-
-    ctxRef.fillStyle = '#b3134a';
-    drawRoundedRect(ctxRef, x, y, w, h, 20);
-    ctxRef.fill();
-    drawStyledText(ctxRef, '魅影旅店', canvasRef.width / 2, y + h / 2, {
-      font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
+    const scale = getBtnScale('heroSelect');
+    
+    drawWithCenterScale(ctxRef, xMain, yEnter, mainBtnW, mainBtnH, scale, () => {
+      ctxRef.fillStyle = '#b3134a';
+      drawRoundedRect(ctxRef, xMain, yEnter, mainBtnW, mainBtnH, 20);
+      ctxRef.fill();
+      drawStyledText(ctxRef, '魅影旅店', canvasRef.width / 2, yEnter + mainBtnH / 2, {
+        font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
+      });
     });
   }
 
   // Roguelike 区域按钮（魔界森林），根据 Boss 是否击败解锁
   {
     const unlocked = hasDefeatedBoss2();
-    const scale = scaleBtn('roguelike');
-    const w = mainBtnW * scale;
-    const h = mainBtnH * scale;
-    const x = (canvasRef.width - w) / 2;
-    const y = yRogue - (h - mainBtnH) / 2;
+    const scale = getBtnScale('roguelike');
 
-    ctxRef.save();
-    ctxRef.globalAlpha = unlocked ? 1.0 : 0.3;
-    ctxRef.fillStyle = '#4B3B74';
-    drawRoundedRect(ctxRef, x, y, w, h, 20);
-    ctxRef.fill();
-    drawStyledText(ctxRef, '魔界森林', canvasRef.width / 2, y + h / 2, {
-      font: 'bold 22px IndieFlower', fill: '#CCEEFF', stroke: '#000'
+    drawWithCenterScale(ctxRef, xMain, yRogue, mainBtnW, mainBtnH, scale, () => {
+      ctxRef.save();
+      ctxRef.globalAlpha = unlocked ? 1.0 : 0.3;
+      ctxRef.fillStyle = '#4B3B74';
+      drawRoundedRect(ctxRef, xMain, yRogue, mainBtnW, mainBtnH, 20);
+      ctxRef.fill();
+      drawStyledText(ctxRef, '魔界森林', canvasRef.width / 2, yRogue + mainBtnH / 2, {
+        font: 'bold 22px IndieFlower', fill: '#CCEEFF', stroke: '#000'
+      });
+      ctxRef.restore();
     });
-    ctxRef.restore();
 
     roguelikeBtnArea = unlocked ? { x: xMain, y: yRogue, width: mainBtnW, height: mainBtnH } : null;
   }
@@ -274,16 +272,15 @@ function drawHomeUI() {
   const btnY      = canvasRef.height - 80;
 
   const drawSmall = (label, x, key, color, textColor) => {
-    const scale = scaleBtn(key);
-    const w = smallBtnW * scale;
-    const h = smallBtnH * scale;
-    const dx = x - (w - smallBtnW) / 2;
-    const dy = btnY - (h - smallBtnH) / 2;
-    ctxRef.fillStyle = color;
-    drawRoundedRect(ctxRef, dx, dy, w, h, 12);
-    ctxRef.fill();
-    drawStyledText(ctxRef, label, dx + w / 2, dy + h / 2, {
-      font: 'bold 16px IndieFlower', fill: textColor, stroke: '#000'
+    const scale = getBtnScale(key);
+    
+    drawWithCenterScale(ctxRef, x, btnY, smallBtnW, smallBtnH, scale, () => {
+      ctxRef.fillStyle = color;
+      drawRoundedRect(ctxRef, x, btnY, smallBtnW, smallBtnH, 12);
+      ctxRef.fill();
+      drawStyledText(ctxRef, label, x + smallBtnW / 2, btnY + smallBtnH / 2, {
+        font: 'bold 16px IndieFlower', fill: textColor, stroke: '#000'
+      });
     });
   };
 
@@ -334,104 +331,38 @@ function drawHomeUI() {
 // --------------------------------------------------
 // 触摸处理
 // --------------------------------------------------
-function onTouch(e) {
+function touchstart(e) {
   if (pageExiting) return;
-
   const t = e.changedTouches[0];
   const xTouch = t.clientX;
   const yTouch = t.clientY;
+  const inArea = (area) => area && xTouch >= area.x && xTouch <= area.x + area.width && yTouch >= area.y && yTouch <= area.y + area.height;
+  
+  if (inArea({ x: (canvasRef.width - 160)/2, y: canvasRef.height - 240, width: 160, height: 50 })) { pressedBtnKey = 'heroSelect'; playClickSound(); }
+  else if (inArea({ x: (canvasRef.width - 160)/2, y: canvasRef.height - 240 + 80, width: 160, height: 50 }) && hasDefeatedBoss2()) { pressedBtnKey = 'roguelike'; playClickSound(); }
+  else if (inArea(rankingBtnArea)) { pressedBtnKey = 'ranking'; playClickSound(); }
+  else if (inArea(shareBtnArea)) { pressedBtnKey = 'share'; playClickSound(); }
+  else if (inArea(heroIntroBtnArea)) { pressedBtnKey = 'heroIntro'; playClickSound(); }
+  else if (inArea(backpackBtnArea)) { pressedBtnKey = 'shop'; playClickSound(); }
+  else if (inArea(clearSaveBtnArea)) { pressedBtnKey = 'clearSave'; playClickSound(); }
+}
 
-  const inArea = (area) => xTouch >= area.x && xTouch <= area.x + area.width &&
-                            yTouch >= area.y && yTouch <= area.y + area.height;
+function onTouch(e) {
+  if(pressedBtnKey) {
+    releasedBtnKey = pressedBtnKey;
+    releaseTime = Date.now();
+    pressedBtnKey = null;
+  }
+  if (pageExiting) return;
 
-  // 音乐按钮
+  const t = e.changedTouches[0];
+  const inArea = (area) => area && t.clientX >= area.x && t.clientX <= area.x + area.width && t.clientY >= area.y && t.clientY <= area.y + area.height;
+
   if (musicToggleBtnArea && inArea(musicToggleBtnArea)) {
     setMuted(!isMuted);
-    return;
-  }
-
-  // 主按钮：进入主关卡 / Roguelike
-  {
-    const btnWidth = 160;
-    const btnHeight = 50;
-    const xMain = (canvasRef.width - btnWidth) / 2;
-    const yEnter = canvasRef.height - 240;
-    const yRogue = yEnter + 80;
-
-    // 第一个大按钮：进入英雄选择（魅影旅店）
-    if (xTouch >= xMain && xTouch <= xMain + btnWidth &&
-        yTouch >= yEnter && yTouch <= yEnter + btnHeight) {
-      playClickSound();
-      clickedButton = 'heroSelect';
-      clickAnimationFrame = 0;
-      return;
-    }
-
-    // 第二个大按钮：进入 Roguelike 区域（魔界森林）
-    if (xTouch >= xMain && xTouch <= xMain + btnWidth &&
-        yTouch >= yRogue && yTouch <= yRogue + btnHeight) {
-      if (hasDefeatedBoss2()) {
-        playClickSound();
-        clickedButton = 'roguelike';
-        clickAnimationFrame = 0;
-      } else {
-        wx.showToast?.({ title: '您还未探索到该地区', icon: 'none' });
-      }
-      return;
-    }
-  }
-
-  // 小按钮区
-  if (rankingBtnArea && inArea(rankingBtnArea)) {
-    playClickSound();
-    clickedButton = 'ranking';
-    clickAnimationFrame = 0;
-    return;
-  }
-  if (shareBtnArea && inArea(shareBtnArea)) {
-    playClickSound();
-    clickedButton = 'share';
-    clickAnimationFrame = 0;
-    return;
-  }
-  if (heroIntroBtnArea && inArea(heroIntroBtnArea)) {
-    playClickSound();
-    clickedButton = 'heroIntro';
-    clickAnimationFrame = 0;
-    return;
-  }
-  if (backpackBtnArea && inArea(backpackBtnArea)) {
-    playClickSound();
-    // ★ 改动：点击这个按钮时跳到 'shop'（而不是 'backpack'）
-    clickedButton = 'shop';
-    clickAnimationFrame = 0;
-    return;
-  }
-
-  // ⭐ 清空存档按钮
-  if (clearSaveBtnArea && inArea(clearSaveBtnArea)) {
-    playClickSound();
-    wx.showModal({
-      title: '清空存档',
-      content: '确定要清空存档吗？该操作不可恢复。',
-      confirmText: '清空',
-      cancelText: '取消',
-      success(res) {
-        if (res && res.confirm) {
-          try {
-            wx.clearStorageSync();
-          } catch (_) {}
-          wx.showToast({ title: '存档已清空', icon: 'none' });
-        }
-      }
-    });
-    return;
   }
 }
 
-// --------------------------------------------------
-// 主循环
-// --------------------------------------------------
 function startHomeLoop() {
   createPersistentFireGlow(canvasRef);
   const loop = () => {
@@ -453,6 +384,7 @@ export default {
   update: updateHomePage,
   draw: drawHomeUI,
   destroy: destroyHomePage,
+  touchstart,
   onTouchend,
   touchend: onTouchend
 };

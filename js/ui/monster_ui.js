@@ -10,6 +10,9 @@ const HeroData = require('../data/hero_data.js');
 
 
 const monsterImageCache = {};
+let smoothMonsterScaleX = 1;
+let smoothMonsterScaleY = 1;
+let lastMonsterScaleId = null;
 
 function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
   let attempt = 0;
@@ -32,6 +35,7 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
   return rect;
 }
 
+
 export function drawMonsterSprite(ctx, canvas) {
   const monster = getMonster();
   if (!monster || !canvas) return;
@@ -47,12 +51,11 @@ export function drawMonsterSprite(ctx, canvas) {
   const bgKey = BG_BY_MAP[mapKey] || 'scene_bg01';
   const bgImage = globalThis.imageCache[bgKey] || globalThis.imageCache['scene_bg01'];
   
-
   const BG_W = 460;
   const BG_H = 380;
+  let gridTop = globalThis.__gridStartY || (canvas.height * 0.8);
 
   if (bgImage && bgImage.complete && bgImage.width) {
-    let gridTop = globalThis.__gridStartY || (canvas.height * 0.8);
     let bgX = (canvas.width - BG_W) / 2;
     let bgY = Math.max(32, gridTop - 380);
     ctx.drawImage(bgImage, bgX, bgY, BG_W, BG_H);
@@ -60,25 +63,21 @@ export function drawMonsterSprite(ctx, canvas) {
 
   if (!monsterImageCache[monster.id]) {
     const img = wx.createImage();
-    const sp = monster.sprite || 'icons/hero1.png'; // 兜底用任意存在的图标
-    // 统一指向 assets/icons 或已带相对前缀的情况
+    const sp = monster.sprite || 'icons/hero1.png';
     const resolved =
-      sp.startsWith('../') ? `assets/${sp.slice(3)}` :
-      sp.startsWith('icons/') ? `assets/${sp}` :
-      `assets/icons/${sp}`;
+      sp.startsWith('../') ? 'assets/' + sp.slice(3) :
+      sp.startsWith('icons/') ? 'assets/' + sp :
+      'assets/icons/' + sp;
     img.src = resolved;
     monsterImageCache[monster.id] = img;
   }
   
-
   const img = monsterImageCache[monster.id];
-  const BASE_SIZE = monster.spriteSize || 120;         // 所有怪物默认 120
-  const scale = monster.spriteScale || 1.0;            // 所有怪物使用缩放
+  const BASE_SIZE = monster.spriteSize || 120;
   const SPR_W = BASE_SIZE;
   const SPR_H = BASE_SIZE;
   let x = (canvas.width - SPR_W) / 2;
-  let gridTop = globalThis.__gridStartY || (canvas.height * 0.7);
-  let y = Math.max(32, gridTop - 320);
+  let y = Math.max(32 + 50, gridTop - 380 + 100);
 
   const monsterRect = avoidOverlap(
     { x, y, width: SPR_W, height: SPR_H + 50 },
@@ -89,25 +88,39 @@ export function drawMonsterSprite(ctx, canvas) {
   layoutRects.push(monsterRect);
 
   const imgReady = img && img.width && img.complete;
+  const hitFlashTime = Math.max(monsterHitFlashTime || 0, globalThis.monsterHitFlashTime || 0);
+  const flash = Date.now() - hitFlashTime < 180;
+
   if (imgReady) {
-    const flash = Date.now() - monsterHitFlashTime < 200;
-    const scale =
-    (typeof globalThis.monsterScale === 'number')
-      ? globalThis.monsterScale
-      : (monster.spriteScale ?? 1.0);
+    const baseScale = monster.spriteScale ?? 1.0;
+    const targetScaleX = (globalThis.monsterScaleX ?? 1.0) * baseScale;
+    const targetScaleY = (globalThis.monsterScaleY ?? 1.0) * baseScale;
+    if (lastMonsterScaleId !== monster.id) {
+      smoothMonsterScaleX = targetScaleX;
+      smoothMonsterScaleY = targetScaleY;
+      lastMonsterScaleId = monster.id;
+    }
+    smoothMonsterScaleX += (targetScaleX - smoothMonsterScaleX) * 0.35;
+    smoothMonsterScaleY += (targetScaleY - smoothMonsterScaleY) * 0.35;
   
     const cx = x + SPR_W / 2;
     const cy = y + SPR_H / 2;
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(scale, scale); // ✅ 原来这里是 globalThis.monsterScale，现在用怪物自身的 spriteScale
+    ctx.scale(smoothMonsterScaleX, smoothMonsterScaleY);
     ctx.translate(-SPR_W / 2, -SPR_H / 2);
-    ctx.filter = flash ? 'brightness(2)' : 'none';
     ctx.drawImage(img, 0, 0, SPR_W, SPR_H);
+    if (flash) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, SPR_W, SPR_H);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.restore();
   }
 
-  // Save the monster sprite center position for other systems (e.g., loot chest origin).
   try {
     globalThis.monsterSpritePos = {
       x: x + SPR_W / 2,
@@ -116,11 +129,8 @@ export function drawMonsterSprite(ctx, canvas) {
       height: SPR_H
     };
   } catch (e) {
-    // Ensure property exists to avoid undefined access if an error occurs.
     globalThis.monsterSpritePos = globalThis.monsterSpritePos || null;
   }
-
-  // 取消绘制品质边框，稀有度通过名称颜色区分
 
   const BAR_W = 280;
   const BAR_H = 22;
@@ -129,32 +139,24 @@ export function drawMonsterSprite(ctx, canvas) {
   const barY = y + SPR_H + BAR_OFFSET_Y;
 
   globalThis.monsterHpDraw = globalThis.monsterHpDraw ?? monster.hp;
-  const speed = 0.2;
-  globalThis.monsterHpDraw += (monster.hp - globalThis.monsterHpDraw) * speed;
+  globalThis.monsterHpDraw += (monster.hp - globalThis.monsterHpDraw) * 0.2;
   const hpDraw = Math.round(globalThis.monsterHpDraw);
 
-  /* ---------- 新增防御逻辑 ---------- */
   const rawRatio = hpDraw / monster.maxHp;
-  const hpRatio  = Number.isFinite(rawRatio)
-                 ? Math.max(0, Math.min(1, rawRatio))
-                 : 0;        // 出现 NaN / Infinity 时退回 0
-  /* ---------------------------------- */
+  const hpRatio  = Number.isFinite(rawRatio) ? Math.max(0, Math.min(1, rawRatio)) : 0;
 
   ctx.fillStyle = '#1e1121';
   drawRoundedRect(ctx, barX, barY, BAR_W, BAR_H, 8, true, false);
 
   const grad = ctx.createLinearGradient(barX, barY, barX + BAR_W * hpRatio, barY);
-/* ② 左→右：桃色(#E3488E) 过渡到亮紫(#C96BFF) */
-grad.addColorStop(0, '#f2093b');   // 鲜亮桃粉
-grad.addColorStop(1, '#f2091f');   // 饱和紫罗兰
+  grad.addColorStop(0, '#f2093b');
+  grad.addColorStop(1, '#f2091f');
   ctx.fillStyle = grad;
   drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
-  ctx.strokeStyle = '#0,0,0,0.4)';  // 或使用 rgba(0,0,0,0.4) 更柔和
-ctx.lineWidth = 1.2;
-drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1.2;
+  drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
 
-
-  const flash = Date.now() - monsterHitFlashTime < 200;
   if (flash) {
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
@@ -165,23 +167,19 @@ drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
     const t = Date.now() / 1000;
     const pulse = Math.sin(t * 6) * 0.5 + 0.5;
     const alpha = 0.5 + 0.3 * pulse;
-
-    ctx.strokeStyle = `rgba(180, 0, 0, ${alpha.toFixed(2)})`;
+    ctx.strokeStyle = 'rgba(180, 0, 0, ' + alpha.toFixed(2) + ')';
     ctx.lineWidth = 3;
-    ctx.shadowColor = `rgba(255, 0, 0, ${alpha.toFixed(2)})`;
+    ctx.shadowColor = 'rgba(255, 0, 0, ' + alpha.toFixed(2) + ')';
     ctx.shadowBlur = 10 + 6 * pulse;
-
     drawRoundedRect(ctx, barX - 2, barY - 2, BAR_W + 4, BAR_H + 4, 10, false, true);
-
     ctx.shadowBlur = 0;
   }
 
-  const isCritical = hpRatio < 0.25;
-  if (isCritical) {
+  if (hpRatio < 0.25) {
     const t = Date.now() / 1000;
     const pulse = Math.sin(t * 10) * 0.5 + 0.5;
     const alpha = 0.4 + 0.4 * pulse;
-    ctx.strokeStyle = `rgba(255, 60, 113, ${alpha.toFixed(2)})`;
+    ctx.strokeStyle = 'rgba(255, 60, 113, ' + alpha.toFixed(2) + ')';
     ctx.lineWidth = 3;
     drawRoundedRect(ctx, barX - 3, barY - 3, BAR_W + 6, BAR_H + 6, 10, false, true);
   }
@@ -189,45 +187,34 @@ drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
   ctx.fillStyle = '#ffe7ef';
   ctx.font = 'bold 14px IndieFlower, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 12);
+  ctx.fillText(hpDraw + ' / ' + monster.maxHp, canvas.width / 2, barY + 12);
 
-  // 绘制敌人的攻击倒计时条：每当玩家行动一次增长一段，满格时敌人发动一次攻击
   try {
     const attackMax  = globalThis.enemyAttackThreshold || 5;
     const attackProg = globalThis.enemyAttackProgress || 0;
     const ratio      = Math.max(0, Math.min(attackProg / attackMax, 1));
     const atkBarH    = 8;
-    const atkBarY    = barY + BAR_H + 6; // 紧贴 HP 条下方
-    // 背景
+    const atkBarY    = barY + BAR_H + 6;
     ctx.fillStyle   = '#331B33';
     drawRoundedRect(ctx, barX, atkBarY, BAR_W, atkBarH, 4, true, false);
-    // 前景进度
     ctx.fillStyle   = '#FFAA33';
     drawRoundedRect(ctx, barX, atkBarY, BAR_W * ratio, atkBarH, 4, true, false);
-    // 外框
     ctx.strokeStyle = '#664466';
     ctx.lineWidth   = 1;
     drawRoundedRect(ctx, barX, atkBarY, BAR_W, atkBarH, 4, false, true);
-  } catch (e) {
-    // 忽略绘制错误
-  }
+  } catch (e) {}
 
   const nameY = y - 35;
   ctx.font = 'bold 18px IndieFlower, sans-serif';
   ctx.lineWidth = 2;
-  // 根据稀有度设置名称颜色，包含紫色、黄色和金色等高阶品质
   const rarityColors = {
-    white: '#FFFFFF',
-    green: '#00FF00',
-    blue:  '#00BFFF',
-    purple: '#C71585',
-    yellow: '#FFC107',
-    gold:  '#FFD700'
+    white: '#FFFFFF', green: '#00FF00', blue: '#00BFFF',
+    purple: '#C71585', yellow: '#FFC107', gold: '#FFD700'
   };
-  // 如果怪物对象携带 rarityColor 属性，则优先使用；否则从表中获取
   const nameColor = monster.rarityColor || rarityColors[monster.rarityTier] || '#FFFFFF';
   ctx.strokeStyle = '#000';
-  ctx.strokeText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
+  ctx.strokeText('Lv.' + monster.level + '  ' + monster.name, canvas.width / 2, nameY);
   ctx.fillStyle = nameColor;
-  ctx.fillText(`Lv.${monster.level}  ${monster.name}`, canvas.width / 2, nameY);
+  ctx.fillText('Lv.' + monster.level + '  ' + monster.name, canvas.width / 2, nameY);
 }
+

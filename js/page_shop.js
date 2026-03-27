@@ -1,5 +1,5 @@
 // js/page_shop.js —— 商店页面（底部工具条 + 数量选择）
-import { drawRoundedRect } from './utils/canvas_utils.js';
+import { drawRoundedRect, getBounceScale, drawWithCenterScale } from './utils/canvas_utils.js';
 import PropData from './data/prop_data.js';
 import { drawPropIcon } from './ui/prop_ui.js';
 import { getShopCatalog, getShopItemById } from './data/shop_data.js';
@@ -53,8 +53,14 @@ let tabSellArea = null;
 let listArea = null;
 let currentTab = 'buy'; // 'buy' | 'sell'
 let clickRect = null;
+let pressedBtnKey = null;
+let releasedBtnKey = null;
+let releaseTime = 0;
 
 /* ---------------- 生命周期 ---------------- */
+
+const getBtnScale = (key) => getBounceScale(pressedBtnKey === key, releasedBtnKey === key ? releaseTime : 0, Date.now());
+
 function init(ctx, switchPage, canvas) {
   ctxRef = ctx; switchPageFn = switchPage; canvasRef = canvas;
 
@@ -92,31 +98,40 @@ function drawHeader() {
   ctxRef.fillRect(0, h - barH, w, barH);
 
   // 返回
-  ctxRef.fillStyle = '#00bfa5';
-  ctxRef.strokeStyle = '#004d40';
-  drawRoundedRect(ctxRef, backBtnArea.x, backBtnArea.y, backBtnArea.width, backBtnArea.height, 10);
-  ctxRef.fill(); ctxRef.stroke();
-  ctxRef.fillStyle = '#00251a';
-  ctxRef.font = 'bold 18px sans-serif';
-  ctxRef.textAlign = 'center'; ctxRef.textBaseline = 'middle';
-  ctxRef.fillText('返回', backBtnArea.x + backBtnArea.width/2, backBtnArea.y + backBtnArea.height/2);
+  const backScale = getBtnScale('back');
+  drawWithCenterScale(ctxRef, backBtnArea.x, backBtnArea.y, backBtnArea.width, backBtnArea.height, backScale, () => {
+    ctxRef.fillStyle = '#00bfa5';
+    ctxRef.strokeStyle = '#004d40';
+    drawRoundedRect(ctxRef, backBtnArea.x, backBtnArea.y, backBtnArea.width, backBtnArea.height, 10);
+    ctxRef.fill(); ctxRef.stroke();
+    ctxRef.fillStyle = '#00251a';
+    ctxRef.font = 'bold 18px sans-serif';
+    ctxRef.textAlign = 'center'; ctxRef.textBaseline = 'middle';
+    ctxRef.fillText('返回', backBtnArea.x + backBtnArea.width/2, backBtnArea.y + backBtnArea.height/2);
+  });
 
   // 购买 / 出售
   const tabStyle = (on)=>({fill:on?'#ffd166':'#34343a', stroke:on?'#8a6b00':'#222'});
 
   const tb = tabStyle(currentTab==='buy');
-  ctxRef.fillStyle = tb.fill; ctxRef.strokeStyle = tb.stroke;
-  drawRoundedRect(ctxRef, tabBuyArea.x, tabBuyArea.y, tabBuyArea.width, tabBuyArea.height, 10);
-  ctxRef.fill(); ctxRef.stroke();
-  ctxRef.fillStyle = currentTab==='buy' ? '#3a2f00' : '#ccc';
-  ctxRef.fillText('购买', tabBuyArea.x + tabBuyArea.width/2, tabBuyArea.y + tabBuyArea.height/2);
+  const buyScale = getBtnScale('buy_tab');
+  drawWithCenterScale(ctxRef, tabBuyArea.x, tabBuyArea.y, tabBuyArea.width, tabBuyArea.height, buyScale, () => {
+    ctxRef.fillStyle = tb.fill; ctxRef.strokeStyle = tb.stroke;
+    drawRoundedRect(ctxRef, tabBuyArea.x, tabBuyArea.y, tabBuyArea.width, tabBuyArea.height, 10);
+    ctxRef.fill(); ctxRef.stroke();
+    ctxRef.fillStyle = currentTab==='buy' ? '#3a2f00' : '#ccc';
+    ctxRef.fillText('购买', tabBuyArea.x + tabBuyArea.width/2, tabBuyArea.y + tabBuyArea.height/2);
+  });
 
   const ts = tabStyle(currentTab==='sell');
-  ctxRef.fillStyle = ts.fill; ctxRef.strokeStyle = ts.stroke;
-  drawRoundedRect(ctxRef, tabSellArea.x, tabSellArea.y, tabSellArea.width, tabSellArea.height, 10);
-  ctxRef.fill(); ctxRef.stroke();
-  ctxRef.fillStyle = currentTab==='sell' ? '#3a2f00' : '#ccc';
-  ctxRef.fillText('出售', tabSellArea.x + tabSellArea.width/2, tabSellArea.y + tabSellArea.height/2);
+  const sellScale = getBtnScale('sell_tab');
+  drawWithCenterScale(ctxRef, tabSellArea.x, tabSellArea.y, tabSellArea.width, tabSellArea.height, sellScale, () => {
+    ctxRef.fillStyle = ts.fill; ctxRef.strokeStyle = ts.stroke;
+    drawRoundedRect(ctxRef, tabSellArea.x, tabSellArea.y, tabSellArea.width, tabSellArea.height, 10);
+    ctxRef.fill(); ctxRef.stroke();
+    ctxRef.fillStyle = currentTab==='sell' ? '#3a2f00' : '#ccc';
+    ctxRef.fillText('出售', tabSellArea.x + tabSellArea.width/2, tabSellArea.y + tabSellArea.height/2);
+  });
 
   // 右下角金币总数
   const coins = getTotalCoins?.() ?? 0;
@@ -218,7 +233,33 @@ function contains(a, tx, ty) {
   return a && tx >= a.x && tx <= a.x + a.width && ty >= a.y && ty <= a.y + a.height;
 }
 
+
+function touchstart(e) {
+  const touch = e.changedTouches?.[0] || e.touches?.[0];
+  if (!touch) return;
+  const tx = touch.clientX, ty = touch.clientY;
+  if (contains(backBtnArea, tx, ty)) { pressedBtnKey = 'back'; }
+  else if (contains(tabBuyArea, tx, ty)) { pressedBtnKey = 'buy_tab'; }
+  else if (contains(tabSellArea, tx, ty)) { pressedBtnKey = 'sell_tab'; }
+}
+
 function onTouchend(e) {
+  if (pressedBtnKey) {
+    releasedBtnKey = pressedBtnKey;
+    releaseTime = Date.now();
+    const currentKey = pressedBtnKey;
+    pressedBtnKey = null;
+
+    // 延迟执行逻辑，等 Q 弹动画
+    setTimeout(() => {
+      if (currentKey === 'back') switchPageFn('home');
+      else if (currentKey === 'buy_tab') currentTab = 'buy';
+      else if (currentKey === 'sell_tab') currentTab = 'sell';
+      releasedBtnKey = null;
+    }, 250);
+    return;
+  }
+
   const touch = e.changedTouches?.[0] || e.touches?.[0];
   if (!touch) return;
   const tx = touch.clientX, ty = touch.clientY;
@@ -303,6 +344,7 @@ export default {
   update,
   draw,
   destroy,
+  touchstart,
   onTouchend,
   touchend: onTouchend
 };

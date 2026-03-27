@@ -2061,7 +2061,7 @@ if (attackDisplayDamage < attackGaugeDamage) {
 let fontScale = 1;
 const popDur = 400;
 if (Date.now() - damagePopTime < popDur) {
-  const p = 1 - (Date.now() - damagePopTime) / popDur;
+  const p = (Date.now() - damagePopTime) / popDur;
   fontScale = 1 + 0.8 * Math.sin(p * Math.PI); // 更弹性
 }
 
@@ -2075,7 +2075,6 @@ if (attackDisplayDamage > 10000) {
   gradient.addColorStop(0, '#FFFF00');
   gradient.addColorStop(1, '#FF0000');
   strokeWidth = 5;
-  createShake?.(500, 6); // ✅ 触发震屏特效（从 effects_engine.js 来）
 } else if (attackDisplayDamage > 2000) {
   baseFont = 40;
   gradient = ctxRef.createLinearGradient(0, 0, 0, 40);
@@ -3855,11 +3854,18 @@ setTimeout(() => {
     createProjectile(startX, startY, endX, endY, 500, () => {
   
       // 飞弹到达 ⇒ 怪物掉血 & 受击闪
+      
       dealDamage(pendingDamage, { allowKill: true });
       playSound('monster_hit');
-      createMonsterBounce();
-      createExplosion(endX, endY);
+      
+      // 增强受击表现
+      const isCritical = pendingDamage > 2000;
+      createMonsterBounce(isCritical ? 420 : 300);
+      createExplosion(endX, endY, isCritical ? '#FFD700' : '#FFFFFF', isCritical ? 8 : 5);
+      createShake(isCritical ? 240 : 140, isCritical ? 6.5 : 3.2);
+      
       monsterHitFlashTime = Date.now();
+
   
       // 飘字（保留你的表现）
       const color = pendingDamage > 10000 ? '#FFFF00'
@@ -3943,11 +3949,11 @@ function monsterRetaliate() {
   showDamageText(dmg, floatX, floatY);
   takeDamage(dmg);
   playSound('player_hurt');
-  createShake?.(300, 4);
+  createShake?.(260, 4.5);
   createMonsterAttackFlash();
-  createMonsterBounce();
+  createMonsterBounce(260);
 
-  createExplosion(hp.x + hp.width / 2, hp.y + hp.height / 2, '#FF4444');
+  createExplosion(hp.x + hp.width / 2, hp.y + hp.height / 2, '#FF4444', 5);
   drawPlayerHp(ctxRef, canvasRef, hp.x, hp.y);
 
   if (isPlayerDead()) {
