@@ -50,22 +50,34 @@ export function getMonster() {
       monster.hp = Math.max(0, nextHP);
     }
   
-    /* ---------- B. 生成宝箱 ---------- */
+    /* ---------- B. 按单次伤害生成宝箱 ---------- */
     if (amount > 0 && globalThis.canvasRef && globalThis.imageCache?.lootChests?.length) { // 📦Loot
       try {
         const canvas = globalThis.canvasRef;
+        const dropCount = amount >= 5000
+          ? 2 + (Math.random() < 0.4 ? 1 : 0)
+          : amount >= 1500
+            ? 1 + (Math.random() < 0.45 ? 1 : 0)
+            : amount >= 300
+              ? (Math.random() < 0.75 ? 1 : 0)
+              : (Math.random() < 0.3 ? 1 : 0);
+
+        const rollChestTier = () => {
+          const roll = Math.random();
+          if (amount >= 5000) return roll < 0.45 ? 2 : roll < 0.8 ? 1 : 0;
+          if (amount >= 1500) return roll < 0.2 ? 2 : roll < 0.65 ? 1 : 0;
+          return roll < 0.15 ? 1 : 0;
+        };
   
-        /* 起点：怪物中心附近 ±18px */
-        const sx = canvas.width / 2 + (Math.random() - 0.5) * 36;
-        const sy = globalThis.__gridStartY - 200 + (Math.random() - 0.5) * 36;
-  
-        /* 终点：整条头像栏随机 */
-        const heroBarW = 5 * 48 + 4 * 12;                    // 5 头像 + 4 间隔
-        const ex = (canvas.width - heroBarW) / 2 + Math.random() * heroBarW;
-        
-        const ey = globalThis.__gridStartY - 80 + 48 + -160      // ▼ 基准改到头像下
-                  + (Math.random() - 0.5) * 20;                //   再 ±10px 抖动
-        createLootChest(sx, sy, ex, ey, 650);                      // 0.65 s 抛物
+        for (let i = 0; i < dropCount; i++) {
+          /* 起点：怪物中心附近 ±18px */
+          const sx = canvas.width / 2 + (Math.random() - 0.5) * 36;
+          const sy = globalThis.__gridStartY - 280 + (Math.random() - 0.5) * 36;
+          // 落点位于伤害槽下方、英雄头像上方的宝箱栏，避开血条和头像。
+          const ex = canvas.width / 2 + (Math.random() - 0.5) * 70;
+          const ey = globalThis.__gridStartY - 155 + (Math.random() - 0.5) * 10;
+          createLootChest(sx, sy, ex, ey, 650, rollChestTier());
+        }
       } catch (err) {
         console.warn('[LootChest] 生成失败', err);
       }

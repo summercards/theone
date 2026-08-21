@@ -16,7 +16,7 @@ import { logBattle } from '../utils/battle_log.js';
  * 所有在场英雄蓄力槽 +10% × 方块数量
  */
 export function onEliminateSupportBlock(count) {
-  const gain = count * 10;
+  const gain = Math.round(count * 10 * (globalThis.runModifiers?.chargeMultiplier || 1));
   const charges = getCharges();
   const heroes = getSelectedHeroes();
 

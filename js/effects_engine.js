@@ -18,25 +18,27 @@ export function updateAllEffects() {
 }
 /* === 📦LootChest: 创建抛物线宝箱 ======================= */
 /* === 📦LootChest: 创建抛物线宝箱（带随机范围） ======================= */
-export function createLootChest(x0, y0, x1, y1, duration = 600) {
+export function createLootChest(x0, y0, x1, y1, duration = 600, forcedTier = null) {
 
     /* ---------- 可微调的随机参数 ---------- */
     const START_JITTER = 15;          // 起点 ±18px 的小方形内随机
     const DEST_HORIZONTAL_RANGE = 120;// 终点横向 ±150px（≈5 个头像总宽）
     const DEST_VERTICAL_RANGE   = 1; // 终点纵向 ±20px
-  
+
     /* ---------- ① 起点随机 ---------- */
     x0 += (Math.random() - 0.5) * START_JITTER * 2;
     y0 += (Math.random() - 0.5) * START_JITTER * 2;
-  
+
     /* ---------- ② 终点随机 ---------- */
     x1 += (Math.random() - 0.5) * DEST_HORIZONTAL_RANGE * 2;
     y1 += (Math.random() - 0.5) * DEST_VERTICAL_RANGE * 2;
-  
+
     /* ---------- ③ 入列 ---------- */
     const variants = globalThis.imageCache.lootChests;
-    const idx = Math.floor(Math.random() * variants.length);   // 0 ~ 2
-  
+    const idx = Number.isInteger(forcedTier)
+      ? Math.max(0, Math.min(variants.length - 1, forcedTier))
+      : Math.floor(Math.random() * variants.length);   // 0 ~ 2
+
     // === 记录统计 =========================
 const key = `宝箱${idx + 1}`;               // 友好的类型名，可换成自己喜欢的
 globalThis.currentChestStats = globalThis.currentChestStats || {};
@@ -60,7 +62,7 @@ export function clearLootChests () {
       if (effects[i].type === 'loot_chest') effects.splice(i, 1);
     }
   }
-  
+
 export function drawAllEffects(ctx, canvas) {
   const now = Date.now();
   const remove = [];
@@ -107,13 +109,13 @@ export function drawAllEffects(ctx, canvas) {
     else if (e.type === "basketball") {
       const t = now - e.startTime;
       const p = Math.min(t / e.duration, 1);
-    
+
       const cx = e.canvasWidth / 2;
       const cy = e.canvasHeight / 2;
-    
+
       const travelX = 160;
       const peakY = 80;
-    
+
       // 轨迹计算
       let x, y;
       if (p < 0.5) {
@@ -127,18 +129,18 @@ export function drawAllEffects(ctx, canvas) {
         x = cx + travelX * (1 - t2);
         y = cy + (targetY - cy) * t2 - Math.sin(t2 * Math.PI) * 20;
       }
-    
+
       // 🔁 动态放大半径
       const baseRadius = 22;
       const radius = baseRadius + 10 * Math.sin(p * Math.PI); // 最大变大到 32
-    
+
       // 🔁 旋转角度
       const angle = p * Math.PI * 4;
-    
+
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(angle);
-    
+
       const basketballImg = globalThis.imageCache?.['basketball'];
 
       if (
@@ -155,21 +157,21 @@ export function drawAllEffects(ctx, canvas) {
         ctx.arc(0, 0, radius, 0, Math.PI * 2);
         ctx.fill();
       }
-    
+
       ctx.restore();
-    
+
       // 命中判定：播放爆炸 & 闪白 & 弹跳
       if (p >= 1) {
         // ✅ 只保留视觉反馈，不处理伤害
         createExplosion(x, y); // 动画爆点
         createMonsterBounce(); // 怪物弹跳
         globalThis.monsterHitFlashTime = Date.now(); // 闪白反馈
-      
+
         remove.push(i); // 移除动画
       }
     }
-    
-    
+
+
     else if (e.type === 'monster_bounce') {
       const t = now - e.startTime;
       const baseScale = (getMonster()?.spriteScale ?? 1.0); // ✅ 获取怪物原始缩放
@@ -182,23 +184,23 @@ export function drawAllEffects(ctx, canvas) {
       const bounce = 1 + 0.2 * Math.sin(p * Math.PI); // 弹性缩放因子
       globalThis.monsterScale = bounce * baseScale;  // ✅ 动态缩放基于原始倍数
     }
-    
+
 
 /* ==== 旧的 6px 黄色点 → 新的火球 ==== */
 /* ==== 火球（大小随 power 变化） ==== */
 else if (e.type === 'proj') {
     const now = Date.now();
     const p   = Math.min(1, (now - e.startTime) / e.duration);
-  
+
     // 轨迹插值
     const x = e.x0 + (e.x1 - e.x0) * p;
     const y = e.y0 + (e.y1 - e.y0) * p;
-  
+
     /* === 1) 根据伤害计算半径 === */
     const power = e.power || 1;                     // 没传时回落到 1
     const radius    = 10 + Math.min(20, Math.sqrt(power) * 0.5); // 10-30 px
     const tailProb  = 0.4 + Math.min(0.4, power / 5000);         // 0.4-0.8
-  
+
     /* === 2) 火球本体 === */
     ctx.save();
     ctx.shadowColor = 'rgba(255,120,0,0.9)';
@@ -213,7 +215,7 @@ else if (e.type === 'proj') {
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-  
+
     /* === 3) 粒子拖尾 === */
     if (Math.random() < tailProb) {
       effects.push({
@@ -227,12 +229,12 @@ else if (e.type === 'proj') {
         life:20
       });
     }
-  
+
     /* === 4) 终点判定 === */
     if (p === 1) { e.onArrive?.(); remove.push(i); }
   }
-  
-  
+
+
 
     else if (e.type === 'float') {
       const t = now - e.startTime;
@@ -262,46 +264,46 @@ else if (e.type === 'proj') {
 
       ctx.restore();
     }
-  
+
     else if (e.type === 'block_pulse') {
       const now = Date.now();
       const totalT = now - e.startTime;
       if (totalT > e.duration) return remove.push(i);
-    
+
       ctx.save();
-    
+
       e.particles.forEach(p => {
         const t = now - p.startTime;
         const life = p.life;
         if (t < 0 || t > life) return; // 尚未开始 或 已结束
-    
+
         const progress = t / life; // 0~1
         const scale = 1 + 0.3 * Math.sin(progress * Math.PI); // 呼吸式缩放
-    
+
         // alpha 渐隐可加可不加
         ctx.save();
         ctx.globalAlpha = 1.0; // 或: 1 - progress
-    
+
         ctx.translate(e.x + p.offsetX, e.y + p.offsetY);
         ctx.scale(scale, scale);
         ctx.translate(-p.size / 2, -p.size / 2);
-    
+
         ctx.fillStyle = e.color || '#FFD700';
         ctx.fillRect(0, 0, p.size, p.size);
-    
+
         ctx.restore();
       });
-    
+
       ctx.restore();
     }
-    
-    
+
+
     else if (e.type === 'floatUp') {
       const t = now - e.startTime;
       if (t > e.duration) return remove.push(i);
-    
+
       const rise = (t / e.duration) * 20; // ⬆️ 总共上升 30 像素
-      
+
       const PARTICLE_PRESETS = { energySpark: {
         sprite: null,          // 用纯色圆
         colorStart: 'rgba(173, 255, 255, 0.9)', // 青蓝高光
@@ -313,56 +315,56 @@ else if (e.type === 'proj') {
      }
       ctx.save();
       ctx.globalAlpha = 1.0; // ❗始终不透明
-    
+
       ctx.font = `bold ${e.size}px Impact, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = e.color;
-    
+
       ctx.strokeText(e.text, e.x, e.y - rise);
       ctx.fillText(e.text, e.x, e.y - rise);
       ctx.restore();
     }
-    
+
 
     else if (e.type === 'square_particle') {
       const t = now - e.startTime;
       if (t > e.duration) return;
-    
+
       const progress = t / e.duration;
       const size = e.size * (1 - progress);         // 粒子逐渐变小
       const alpha = 1 - progress;                   // 逐渐透明
-    
+
       const px = e.x + e.vx * t;
       const py = e.y + e.vy * t;
-    
+
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.fillStyle = e.color;
       ctx.fillRect(px - size / 2, py - size / 2, size, size);
       ctx.restore();
     }
-    
+
     else if (e.type === 'fire_glow') {
         const centerX = canvas.width / 2;
         const glowY = canvas.height - 50;
         const maxRadius = canvas.width * 0.4;
-      
+
         // 呼吸透明度：慢慢地明暗变化
         const time = (Date.now() - e.startTime) / 1000; // 秒
         const alpha = 0.2 + 0.1 * Math.sin(time * 2 * Math.PI / 4); // 周期约4秒
-      
+
         const gradient = ctx.createRadialGradient(centerX, glowY, 0, centerX, glowY, maxRadius);
         gradient.addColorStop(0, `rgba(255, 140, 0, ${alpha})`);
         gradient.addColorStop(1, `rgba(255, 140, 0, 0)`);
-      
+
         ctx.save();
         ctx.fillStyle = gradient;
         ctx.fillRect(centerX - maxRadius, glowY - maxRadius, maxRadius * 2, maxRadius * 2);
         ctx.restore();
       }
-      
-      
+
+
     else if (e.type === 'pop') {
       const elapsed = now - e.startTime;
       const p = Math.min(1, elapsed / e.duration);
@@ -405,11 +407,11 @@ else if (e.type === 'proj') {
     else if (e.type === 'charge_release') {
         const t = now - e.startTime;
         const p = Math.min(1, t / e.duration);
-      
+
         const alpha = 1 - p;
         const glowW = e.width * (1 + p); // 扩散效果
         const glowH = e.height * (1 + p * 0.5);
-      
+
         ctx.save();
         ctx.globalAlpha = alpha;
         const grad = ctx.createRadialGradient(
@@ -418,11 +420,11 @@ else if (e.type === 'proj') {
         );
         grad.addColorStop(0, 'rgba(200,255,255,0.6)');
         grad.addColorStop(1, 'rgba(0,160,255,0)');
-      
+
         ctx.fillStyle = grad;
         ctx.fillRect(e.x - (glowW - e.width) / 2, e.y - (glowH - e.height) / 2, glowW, glowH);
         ctx.restore();
-      
+
         if (p >= 1) remove.push(i);
       }
 
@@ -431,46 +433,46 @@ else if (e.type === 'proj') {
         const t = now - e.startTime;
         const life = e.duration || 1200;
         if (t > life) return remove.push(i);
-      
+
         ctx.save();
-      
+
         const appearDur = 200;
         const scale = t < appearDur ? 0.6 + 0.4 * (t / appearDur) : 1;
-      
+
         const fontSize = 15;
         const padding = 10;
-      
+
         ctx.font = `bold ${fontSize}px IndieFlower, sans-serif`; // ✅ 更轻盈风格字体
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-      
+
         const iconSize = 48;
         const spacing = 12;
         const totalWidth = 5 * iconSize + 4 * spacing;
         const startX = (canvas.width - totalWidth) / 2;
         const x = startX + e.slotIndex * (iconSize + spacing) + iconSize / 2;
         const y = globalThis.__gridStartY - 80;
-      
+
         const text = e.text || '';
         const metrics = ctx.measureText(text);
         const boxWidth = metrics.width + padding * 2;
         const boxHeight = fontSize + padding * 2;
-      
+
         const arrowW = 12;
         const arrowH = 8;
         const radius = 8;
-      
+
         const boxTop = -boxHeight;
         const boxBottom = 0;
-      
+
         ctx.translate(x, y);
         ctx.scale(scale, scale);
-      
+
         // ✅ 渐变填充（白 → #fffbe8）
         const grad = ctx.createLinearGradient(0, boxTop, 0, boxBottom);
         grad.addColorStop(0, '#FFFFFF');
         grad.addColorStop(1, '#FFFBE8');
-      
+
         ctx.beginPath();
         ctx.moveTo(-boxWidth / 2 + radius, boxTop);
         ctx.lineTo(boxWidth / 2 - radius, boxTop);
@@ -485,7 +487,7 @@ else if (e.type === 'proj') {
         ctx.lineTo(-boxWidth / 2, boxTop + radius);
         ctx.quadraticCurveTo(-boxWidth / 2, boxTop, -boxWidth / 2 + radius, boxTop);
         ctx.closePath();
-      
+
         ctx.fillStyle = grad;
         ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)'; // ✅ 柔和描边
         ctx.lineWidth = 1.5;
@@ -493,21 +495,21 @@ else if (e.type === 'proj') {
         ctx.shadowBlur = 4;
         ctx.fill();
         ctx.stroke();
-      
+
         // ✅ 文本样式美化
         ctx.shadowColor = 'transparent';
         ctx.fillStyle = '#222';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
         ctx.shadowBlur = 2;
         ctx.fillText(text, 0, boxTop + boxHeight / 2);
-      
+
         ctx.restore();
       }
-      
+
       else if (e.type === 'staticText') {
         const t = now - e.startTime;
         if (t > e.duration) return remove.push(i);
-      
+
         ctx.save();
         ctx.globalAlpha = 1.0; // ❗ 不透明
         ctx.font = `bold ${e.size}px Impact, sans-serif`;
@@ -517,15 +519,15 @@ else if (e.type === 'proj') {
         ctx.fillText(e.text, e.x, e.y);
         ctx.restore();
       }
-      
+
       else if (e.type === 'monster_attack_flash') {
         const t = now - e.startTime;
         const dur = e.duration;
         if (t > dur) return remove.push(i);
-      
+
         const alpha = 0.3 + 0.2 * Math.sin((t / dur) * Math.PI * 2);
         const hpBar = globalThis.hpBarPos || { x: 24, y: 24, width: 280, height: 20 };
-      
+
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = 'rgba(255,0,0,0.4)';
@@ -535,57 +537,57 @@ else if (e.type === 'proj') {
       else if (e.type === 'loot_chest') {            // 📦LootChest
         const img = globalThis.imageCache.lootChests?.[e.idx];
         if (!img || !img.complete) return;           // 图片还没加载好
-      
+
         if (e.landed) {                              // ★落地后：直接画静止
           ctx.drawImage(img, e.x1 - 24, e.y1 - 24, 48, 48);
           return;                                    // 别进删除逻辑
         }
-      
+
         // ★飞行中：抛物线插值
         const t = now - e.startTime;
         const p = Math.min(1, t / e.duration);
-      
+
         const cx = (e.x0 + e.x1) / 2;                // 二次贝塞尔控制点
         const peakY = Math.min(e.y0, e.y1) - 120;    // 抬高 120 像素
         const x = (1 - p) * (1 - p) * e.x0 + 2 * (1 - p) * p * cx + p * p * e.x1;
         const y = (1 - p) * (1 - p) * e.y0 + 2 * (1 - p) * p * peakY + p * p * e.y1;
-      
+
         ctx.drawImage(img, x - 24, y - 24, 48, 48);
-      
+
         if (p >= 1) e.landed = true;                 // ★到站：改状态，不删
         return;                                      // 跳过统一 remove
       }
-      
+
       else if (e.type === 'charge_glow') {
         const t = now - e.startTime;
         const p = Math.min(1, t / e.duration);
         const alpha = 1 - p;
-      
+
         ctx.save();
         ctx.globalAlpha = alpha;
-      
+
         // 蓝色描边发光
         ctx.strokeStyle = `rgba(0, 200, 255, ${0.8 * alpha})`;
         ctx.lineWidth = 4;
         ctx.shadowColor = `rgba(0, 200, 255, ${0.6 * alpha})`;
         ctx.shadowBlur = 10;
-      
+
         drawRoundedRect(ctx, e.x - 1, e.y - 1, e.width + 2, e.height + 2, 4, false, true);
         ctx.restore();
-      
+
         if (p >= 1) remove.push(i);
       }
 
-      
+
 
     else if (e.type === 'energy_particle') {
         const t = now - e.startTime;
         if (t < 0) return;
         const p = Math.min(1, t / e.duration);
-      
+
         const x = e.x0 + (e.x1 - e.x0) * p;
         const y = e.y0 + (e.y1 - e.y0) * p;
-      
+
 // 粒子缩放（在最后 20% 缩小，但不小于 60%）
 const shrinkThreshold = 0.8;
 const baseRadius = e.radius;
@@ -596,7 +598,7 @@ const scale = (p < shrinkThreshold)
   : 1 - (1 - minScale) * ((p - shrinkThreshold) / (1 - shrinkThreshold));
 
 const radius = baseRadius * scale;
-      
+
         // 粒子颜色变化（末尾渐变为蓝色）
         let fillColor = e.color;
         //if (p > shrinkThreshold) {
@@ -604,7 +606,7 @@ const radius = baseRadius * scale;
           // 简单线性混合原始色与蓝色
          // fillColor = blendColors(e.color, '#00AAFF', blend);
         //}
-      
+
         ctx.save();
         ctx.globalAlpha = 1.0; // 始终不透明
         ctx.fillStyle = fillColor;
@@ -612,10 +614,10 @@ const radius = baseRadius * scale;
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-      
+
         if (p >= 1) remove.push(i);
       }
-      
+
   });
 
   for (let r = remove.length - 1; r >= 0; r--) effects.splice(remove[r], 1);
@@ -652,17 +654,17 @@ color
 }
 }
 
-  
+
   export function createFloatingText(text, x, y, color = '#FF4444', size = 36, duration = 1000) {
-    effects.push({ 
-      type: 'float', 
-      text, 
-      x, 
-      y, 
-      color, 
-      size, 
-      duration, 
-      startTime: Date.now() 
+    effects.push({
+      type: 'float',
+      text,
+      x,
+      y,
+      color,
+      size,
+      duration,
+      startTime: Date.now()
     });
   }
 
@@ -745,7 +747,7 @@ function blendColors(color1, color2, t) {
     const b = Math.round(c1.b + (c2.b - c1.b) * t);
     return `rgb(${r},${g},${b})`;
   }
-  
+
   function hexToRgb(hex) {
     const parsed = hex.replace('#', '');
     return {
@@ -794,7 +796,7 @@ function blendColors(color1, color2, t) {
 
   export function createBlockPulseEffect(x, y, size = 48, duration = 400, color = '#FFD700') {
     const particleCount = 2 + Math.floor(Math.random() * 2); // 2~3 个粒子
-  
+
     const particles = [];
     for (let i = 0; i < particleCount; i++) {
       particles.push({
@@ -805,7 +807,7 @@ function blendColors(color1, color2, t) {
         life: 300 + Math.random() * 150             // 每个粒子生命周期
       });
     }
-  
+
     effects.push({
       type: 'block_pulse',
       x,
@@ -816,12 +818,12 @@ function blendColors(color1, color2, t) {
       duration,
       particles,   // 💡 加上粒子数组
     });
-  
+
     // 然后额外添加多粒子效果（小方块）
     for (let i = 0; i < 10 + Math.floor(Math.random() * 4); i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 1 + Math.random() * 1.5;
-  
+
       effects.push({
         type: 'square_particle',
         x: x,
@@ -835,33 +837,33 @@ function blendColors(color1, color2, t) {
       });
     }
   }
-  
-  
+
+
   export function createFireParticles(canvas, count = 1) {
     for (let i = 0; i < count; i++) {
       const startX = Math.random() * canvas.width;
       const startY = canvas.height - Math.random() * 40;
-  
+
       // 判断是否为“大粒子”
       const isBig = Math.random() < 0.35;
-  
+
       effects.push({
         type: 'particle',
         x: startX,
         y: startY,
         vx: (Math.random() - 0.5) * 0.15, // 水平轻微抖动
-  
+
         vy: Math.random() < 0.3
           ? -0.1 - Math.random() * 0.1    // 30% 慢速：-0.1 ~ -0.2
           : -0.3 - Math.random() * 0.3,   // 70% 快速：-0.3 ~ -0.6
-  
+
         radius: isBig
           ? 3.0 + Math.random() * 1.0     // 15% 大粒子：2.0 ~ 3.0
           : 2.0 + Math.random() * 0.5,    // 85% 普通粒子：1.0 ~ 1.5
-  
+
         color: '#FF9933',
         alpha: 1,
-  
+
         life: Math.random() < 0.3
           ? 220 + Math.floor(Math.random() * 10)   // 30% 短命：20-29
           : 260 + Math.floor(Math.random() * 30)   // 70% 长命：60-89
@@ -872,20 +874,20 @@ function blendColors(color1, color2, t) {
     const centerX = canvas.width / 2;
     const centerY = canvas.height - 40;
     const radius = canvas.width * 0.4;
-  
+
     // 使用低频率的 sin 波生成 alpha，制造“呼吸”感
     const glowAlpha = 0.25 + 0.1 * Math.sin(frame * 0.02); // 平滑变化在 0.15 ~ 0.35 之间
-  
+
     const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
     gradient.addColorStop(0, `rgba(255, 140, 0, ${glowAlpha.toFixed(3)})`);
     gradient.addColorStop(1, `rgba(255, 140, 0, 0)`);
-  
+
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
     ctx.fill();
   }
-  
+
   export function createPersistentFireGlow(canvas) {
     // 只添加一次
     const exists = effects.some(e => e.type === 'fire_glow');
@@ -897,7 +899,7 @@ function blendColors(color1, color2, t) {
       });
     }
   }
-  
+
 
   export function createFireGlow(canvas, count = 1) {
     // 可以加参数控制频率或强度，但这里只调用一次即可
@@ -981,10 +983,10 @@ export function createHeroLevelUpEffect(slotIndex) {
     const topMargin = globalThis.__gridStartY - 80;
     const x = startX + slotIndex * (size + spacing) + size / 2;
     const y = topMargin;
-  
+
     // 漂浮“升级”字样
     createFloatingTextUp('升级！', x, y, '#FFD700', 26, 1000);
-  
+
     // 粒子上升特效
     for (let i = 0; i < 12; i++) {
       effects.push({
@@ -1003,7 +1005,7 @@ export function createHeroLevelUpEffect(slotIndex) {
   export function createGoldParticles(x0, y0, count = 3) {
     const endX = 40 + Math.random() * 10;
     const endY = 126 + Math.random() * 6;
-  
+
     const now = Date.now();
     for (let i = 0; i < count; i++) {
       const offsetDelay = i * 60;
@@ -1024,24 +1026,24 @@ export function createHeroLevelUpEffect(slotIndex) {
       duration
     });
   }
-  
+
   export function playFireballEffect(fromX, fromY, toX, toY, size = 48, duration = 500) {
     const startTime = Date.now();
-  
+
     const canvas = globalThis.canvasRef;
     const ctx = canvas?.getContext?.('2d');
     if (!ctx) return;
-  
+
     const img = new Image();
     img.src = 'assets/effects/fireball.png'; // ✅ 放火球图片在 assets/effects 目录下
-  
+
     function animate() {
       const now = Date.now();
       const t = Math.min(1, (now - startTime) / duration);
-  
+
       const x = fromX + (toX - fromX) * t;
       const y = fromY + (toY - fromY) * t;
-  
+
       globalThis.__effects_next_frame = () => {
         if (!img.complete) return;
         ctx.save();
@@ -1049,10 +1051,10 @@ export function createHeroLevelUpEffect(slotIndex) {
         ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
         ctx.restore();
       };
-  
+
       if (t < 1) requestAnimationFrame(animate);
     }
-  
+
     animate();
   }
-  
+

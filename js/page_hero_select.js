@@ -487,10 +487,9 @@ for (const { hero } of iconRects) {
     wx.setStorageSync('unlockedSlots', unlockedSlots);
     wx.setStorageSync('selectedHeroes', selectedHeroes);
   
-    setTimeout(() => {               // ✅ 稍等180ms后切页面，让动画有时间播放
-      getLastLevel((level) => {
-        switchPageFn('game', { level });
-      });
+    // 每次从酒馆出发都是一局全新的远征，不续接上一局关卡。
+    setTimeout(() => {
+      switchPageFn('game', { level: 1 });
     }, 180);
   
     return;
@@ -830,15 +829,8 @@ const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
                     align: 'center',
                     baseline: 'middle'
                 });
- // ✅ 获取当前关卡等级（用于按钮显示）
-let level = 1;
-try {
-  const stored = wx.getStorageSync('lastLevel');
-  level = parseInt(stored || '1');
-  if (!level || level < 1) level = 1;
-} catch (e) {
-  level = 1;
-}               
+// 每局均从第 1 关开始。
+const level = 1;
 
   // 确认按钮
 // ✅ 将确认按钮 Y 坐标与左侧“升级按钮”对齐
@@ -1155,4 +1147,3 @@ module.exports = {
   onTouchend,
   touchend: onTouchend
 };
-

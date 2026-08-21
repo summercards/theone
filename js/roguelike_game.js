@@ -2,6 +2,7 @@
 let heroPoolList = [];        // 本次胜利弹窗完整随机英雄列表
 let purchasedPropIds = new Set();   // 本局已购买的道具
 function resetSessionState () {
+    transitioningToNextLevel = false;
     /* —— 本局 UI / 弹窗相关 —— */
     playerActionCounter = 0;
     gaugeCount = 0;  // ✅ 新增：攻击槽次数清零
@@ -41,6 +42,7 @@ let showVictoryPopup = false;
 let earnedGold = 0;
 let levelJustCompleted = 0;
 let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
+let transitioningToNextLevel = false;
 // === 变更：把另外两个特效工具也引进来
 import { renderBlockA } from './block_effects/block_A.js';
 import { renderBlockB } from './block_effects/block_B.js';
@@ -162,6 +164,34 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
 export function addToAttackGauge(value) {
   attackGaugeDamage += value;
   damagePopTime = Date.now(); // 让数字弹跳动画正常
+}
+
+// 肉鸽同样采用单局连续战斗：不在每关弹出招募/购买结算。
+function advanceAfterMonsterDefeat(damage) {
+  if (transitioningToNextLevel) return;
+  transitioningToNextLevel = true;
+
+  const gold = Math.floor(getMonsterGold() * (globalThis.goldMultiplier || 1));
+  addCoins(gold);
+  earnedGold = gold;
+  rewardExpToHeroes(50);
+  updatePlayerStats({ stage: currentLevel, damage, gold: getSessionCoins() });
+  createFloatingText(`第 ${currentLevel} 关击破！`, canvasRef.width / 2, 180, '#FFD700', 28);
+
+  setTimeout(() => {
+    currentLevel = getNextLevel();
+    const monster = loadMonster(currentLevel);
+    globalThis.monsterHpDraw = monster.hp;
+    turnsLeft = monster.skill.cooldown;
+    attackGaugeDamage = 0;
+    attackDisplayDamage = 0;
+    playerActionCounter = 0;
+    selected = null;
+    initGrid();
+    createFloatingText(`第 ${currentLevel} 关`, canvasRef.width / 2, 180, '#FFFFFF', 30);
+    transitioningToNextLevel = false;
+    drawGame();
+  }, 700);
 }
 
 
@@ -1064,7 +1094,7 @@ if (DEBUG) {
 
 
 if (showGameOver) {
-  const boxW = 260, boxH = 160;
+  const boxW = 260, boxH = 210;
   const boxX = (canvasRef.width - boxW) / 2;
   const boxY = (canvasRef.height - boxH) / 2;
   
@@ -1077,14 +1107,17 @@ if (showGameOver) {
   ctxRef.fillStyle = '#FFF';
   ctxRef.font = '24px sans-serif';
   ctxRef.textAlign = 'center';
-  ctxRef.fillText('游戏失败', boxX + boxW / 2, boxY + 50);
+  ctxRef.fillText('本局结束', boxX + boxW / 2, boxY + 42);
+  ctxRef.font = '18px sans-serif';
+  ctxRef.fillText(`到达第 ${currentLevel} 关`, boxX + boxW / 2, boxY + 78);
+  ctxRef.fillText(`本局金币：${getSessionCoins()}`, boxX + boxW / 2, boxY + 106);
 
   // 按钮
   ctxRef.fillStyle = '#F33';
-  drawRoundedRect(ctxRef, boxX + 60, boxY + 100, 140, 40, 10, true, false);
+  drawRoundedRect(ctxRef, boxX + 60, boxY + 150, 140, 40, 10, true, false);
   ctxRef.fillStyle = '#FFF';
   ctxRef.font = '18px sans-serif';
-  ctxRef.fillText('回到主页', boxX + boxW / 2, boxY + 120);
+  ctxRef.fillText('结算并返回', boxX + boxW / 2, boxY + 170);
   
 }
 
@@ -1184,7 +1217,7 @@ function animateSwap(src, dst, callback, rollback = false) {
 }
 
 function onTouch(e) {
-  if (showGameOver || showVictoryPopup) return; // ✅ 游戏结束/胜利，不允许开始滑动
+  if (showGameOver || showVictoryPopup || transitioningToNextLevel) return;
 
   const touch = e.changedTouches[0];
   const xTouch = touch.clientX;
@@ -1506,6 +1539,7 @@ export function updateGamePage() {
 }
 
 function onTouchend(e) {
+  if (transitioningToNextLevel) return;
   const touch = e.changedTouches?.[0];
   if (!touch) return;
 
@@ -1657,11 +1691,11 @@ function onTouchend(e) {
 
   // ✅ 3. 失败弹窗点击“回到主页”
   if (showGameOver) {
-    const boxW = 260, boxH = 160;
+    const boxW = 260, boxH = 210;
     const boxX = (canvasRef.width - boxW) / 2;
     const boxY = (canvasRef.height - boxH) / 2;
     const btnX = boxX + 60;
-    const btnY = boxY + 100;
+    const btnY = boxY + 150;
     const btnW = 140;
     const btnH = 40;
     const inGameOverBtn = (
@@ -1974,6 +2008,10 @@ showDamageText(pendingDamage, endX, endY + 50);
     pendingDamage = 0;
 
     if (isMonsterDead()) {
+        advanceAfterMonsterDefeat(dmg);
+        return;
+
+        // Legacy victory-popup flow kept unreachable temporarily for reference.
         setTimeout(() => {
           earnedGold = getMonsterGold();
           const finalGold = Math.floor(earnedGold * (globalThis.goldMultiplier || 1));

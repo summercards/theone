@@ -380,6 +380,41 @@ monsters.push(createMonster({
 }));
 
 // ------------------------------------------------------------
+// 每 5 关一次 Boss：5/15/.../65 使用同章节关底 Boss 的弱化版。
+// 保留 10/20/.../70 的完整 Boss，形成“前哨 Boss → 章节 Boss”的节奏。
+// ------------------------------------------------------------
+function scaleDamage(value, factor) {
+  if (Array.isArray(value)) return value.map(n => Math.max(1, Math.round(n * factor)));
+  return Math.max(1, Math.round(value * factor));
+}
+
+for (const [midLevel, chapterBossLevel] of [[5, 10], [15, 20], [25, 30], [35, 40], [45, 50], [55, 60], [65, 70]]) {
+  const base = monsters.find(monster => monster.level === midLevel);
+  const boss = monsters.find(monster => monster.level === chapterBossLevel);
+  if (!base || !boss) continue;
+
+  const damage = scaleDamage(base.atk, 1.45);
+  Object.assign(base, {
+    name: `${boss.name}·前哨`,
+    maxHp: Math.round(base.maxHp * 3),
+    hp: undefined,
+    sprite: boss.sprite,
+    spriteSize: boss.spriteSize,
+    spriteScale: boss.spriteScale,
+    isBoss: true,
+    gold: Math.round(base.gold * 2.5),
+    atk: damage,
+    turns: Math.max(4, (base.turns || 3) + 1),
+    skill: {
+      name: `${boss.name} 前哨猛攻`,
+      desc: `每${Math.max(4, (base.turns || 3) + 1)}回合造成伤害`,
+      cooldown: Math.max(4, (base.turns || 3) + 1),
+      damage
+    }
+  });
+}
+
+// ------------------------------------------------------------
 // 71-77：Boss Rush（每个Boss增强版）
 // ------------------------------------------------------------
 for (let i = 0; i < 7; i++) {

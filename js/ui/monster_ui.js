@@ -74,6 +74,15 @@ export function drawMonsterSprite(ctx, canvas) {
   y = monsterRect.y;
   layoutRects.push(monsterRect);
 
+  // 入场只移动怪物贴图；血条与名称始终固定在战斗锚点。
+  let spriteY = y;
+  const entranceElapsed = Date.now() - (globalThis.monsterEntranceStart || 0);
+  if (entranceElapsed >= 0 && entranceElapsed < 600) {
+    const p = entranceElapsed / 600;
+    const easeOut = 1 - Math.pow(1 - p, 3);
+    spriteY -= (1 - easeOut) * (y + SPR_H + 20);
+  }
+
   const imgReady = img && img.width && img.complete;
   if (imgReady) {
     const flash = Date.now() - monsterHitFlashTime < 200;
@@ -83,7 +92,7 @@ export function drawMonsterSprite(ctx, canvas) {
       : (monster.spriteScale ?? 1.0);
   
     const cx = x + SPR_W / 2;
-    const cy = y + SPR_H / 2;
+    const cy = spriteY + SPR_H / 2;
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(scale, scale); // ✅ 原来这里是 globalThis.monsterScale，现在用怪物自身的 spriteScale

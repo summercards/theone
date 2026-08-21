@@ -47,6 +47,8 @@ let showVictoryPopup = false;
 let earnedGold = 0;
 let levelJustCompleted = 0;
 let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
+let transitioningToNextLevel = false;
+let bossChestState = null;
 let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
 
 let exitingGame = false;        // ☆ 新增：返回主页时置 true
@@ -162,6 +164,168 @@ function lockForVictory () {
   heroBurstRunning = false;   // 正在播放的连招也标记结束
 }
 
+/**
+ * 单局连续关卡：击杀后直接发放本关奖励并加载下一只怪物。
+ * 不恢复玩家生命或弹出中间结算，只有死亡才结束本局。
+ */
+function advanceAfterMonsterDefeat(damage) {
+  if (transitioningToNextLevel) return;
+  transitioningToNextLevel = true;
+
+  const defeatedMonster = getMonster();
+  const defeatedLevel = currentLevel;
+  if (defeatedMonster?.isBoss) markBossDefeated(defeatedLevel);
+
+  const gold = getMonsterGold();
+  addCoins(gold);
+  earnedGold = gold;
+  goldPopTime = Date.now();
+  displayedGold = getSessionCoins();
+
+  const exp = Math.floor(defeatedLevel * 5 + 10 + (defeatedMonster?.isBoss ? 50 : 0));
+  globalThis.expGainedThisRound = exp;
+  rewardExpToHeroes(exp);
+  grantMainlineHeroReward(defeatedLevel);
+
+  updatePlayerStats({
+    stage: defeatedLevel,
+    damage,
+    gold: getSessionCoins()
+  });
+
+  // 普通伤害掉落的宝箱跨关保留；只在 Boss 宝箱阶段结束后清空。
+  if (defeatedMonster?.isBoss) {
+    clearLootChests();
+    globalThis.currentChestStats = {};
+  }
+  createFloatingText(`第 ${defeatedLevel} 关击破！`, canvasRef.width / 2, 180, '#FFD700', 28);
+
+  if (defeatedMonster?.isBoss) {
+    startBossChestPhase(defeatedLevel);
+    return;
+  }
+
+  setTimeout(() => {
+    currentLevel = defeatedLevel + 1;
+    const config = LevelConfigs[currentLevel] || {};
+    globalThis.gridSize = config.gridSize || 6;
+    globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
+
+    const nextMonster = loadMonster(currentLevel);
+    globalThis.monsterHpDraw = nextMonster.hp;
+    globalThis.monsterEntranceStart = Date.now();
+    wx.setStorageSync('lastLevel', currentLevel.toString());
+    gaugeCount = 0;
+    attackGaugeDamage = 0;
+    attackDisplayDamage = 0;
+    pendingDamage = 0;
+    selected = null;
+    initGrid();
+    createFloatingText(`第 ${currentLevel} 关`, canvasRef.width / 2, 180, '#FFFFFF', 30);
+    drawGame();
+    setTimeout(() => { transitioningToNextLevel = false; }, 600);
+  }, 700);
+}
+
+const BOSS_CHEST_PRICES = [30, 70, 150];
+const RUN_EFFECTS = [
+  { name: '战意', desc: '攻击槽伤害 +25%', apply: () => { globalThis.runModifiers.attackMultiplier *= 1.25; } },
+  { name: '丰收', desc: '金币收益 +50%', apply: () => { globalThis.runModifiers.coinMultiplier *= 1.5; } },
+  { name: '灵泉', desc: '治疗效果 +50%', apply: () => { globalThis.runModifiers.healMultiplier *= 1.5; } },
+  { name: '共鸣', desc: '充能效率 +50%', apply: () => { globalThis.runModifiers.chargeMultiplier *= 1.5; } }
+];
+
+function startBossChestPhase(defeatedLevel) {
+  const drops = globalThis.chestDropsThisRound || [];
+  const chestTypes = drops.length ? drops : [Math.floor(Math.random() * 3)];
+  bossChestState = {
+    defeatedLevel,
+    chests: chestTypes.map(tier => ({ tier, price: BOSS_CHEST_PRICES[tier], opened: false })),
+    candidate: null,
+    selectedCandidate: false,
+    chestRects: [],
+    slotRects: [],
+    skipRect: null
+  };
+  globalThis.chestDropsThisRound = [];
+  transitioningToNextLevel = false;
+  drawGame();
+}
+
+function resolveBossChest(chest) {
+  chest.opened = true;
+  if (Math.random() < 0.65) {
+    const effect = RUN_EFFECTS[Math.floor(Math.random() * RUN_EFFECTS.length)];
+    effect.apply();
+    createFloatingText(`${effect.name}：${effect.desc}`, canvasRef.width / 2, 170, '#7CFFB2', 20);
+    finishBossChestPhaseIfReady();
+    return;
+  }
+
+  const activeIds = getSelectedHeroes().filter(Boolean).map(hero => hero.id);
+  const pool = HeroData.heroes.filter(hero => !activeIds.includes(hero.id));
+  const hero = pool[Math.floor(Math.random() * pool.length)] || HeroData.heroes[0];
+  bossChestState.candidate = { hero, refund: Math.floor(chest.price * 0.5) };
+  bossChestState.selectedCandidate = false;
+  setTimeout(() => {
+    if (bossChestState?.candidate?.hero?.id === hero.id && !bossChestState.selectedCandidate) {
+      addCoins(bossChestState.candidate.refund);
+      createFloatingText(`未招募 ${hero.name}，获得 ${bossChestState.candidate.refund} 金币`, canvasRef.width / 2, 200, '#FFD700', 18);
+      bossChestState.candidate = null;
+      finishBossChestPhaseIfReady();
+      drawGame();
+    }
+  }, 8000);
+}
+
+function finishBossChestPhaseIfReady() {
+  if (!bossChestState || bossChestState.candidate || bossChestState.chests.some(chest => !chest.opened)) return;
+  const defeatedLevel = bossChestState.defeatedLevel;
+  bossChestState = null;
+  transitioningToNextLevel = true;
+  setTimeout(() => {
+    currentLevel = defeatedLevel + 1;
+    const config = LevelConfigs[currentLevel] || {};
+    globalThis.gridSize = config.gridSize || 6;
+    globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'];
+    const monster = loadMonster(currentLevel);
+    globalThis.monsterHpDraw = monster.hp;
+    globalThis.monsterEntranceStart = Date.now();
+    wx.setStorageSync('lastLevel', currentLevel.toString());
+    gaugeCount = 0;
+    attackGaugeDamage = 0;
+    attackDisplayDamage = 0;
+    pendingDamage = 0;
+    selected = null;
+    initGrid();
+    createFloatingText(`第 ${currentLevel} 关`, canvasRef.width / 2, 180, '#FFFFFF', 30);
+    drawGame();
+    setTimeout(() => { transitioningToNextLevel = false; }, 600);
+  }, 250);
+}
+
+function grantMainlineHeroReward(level) {
+  const rewards = {
+    2: 'hero002',
+    4: 'hero003',
+    6: 'hero004',
+    8: 'hero005',
+    10: 'hero016'
+  };
+  const heroId = rewards[level];
+  if (!heroId || isHeroUnlocked(heroId)) return;
+
+  unlockHero(heroId);
+  const team = wx.getStorageSync('selectedHeroes') || Array(5).fill(null);
+  const emptyIdx = team.findIndex(id => !id);
+  if (emptyIdx >= 0) {
+    team[emptyIdx] = heroId;
+    wx.setStorageSync('selectedHeroes', team);
+    setSelectedHeroes(team);
+  }
+  createFloatingText('新英雄加入队伍！', canvasRef.width / 2, 220, '#66FFAA', 24);
+}
+
 /* === BlockConfig 派生工具映射 ================================= */
 const BLOCK_ROLE_MAP   = Object.fromEntries(
   Object.entries(BlockConfig).map(([k, v]) => [k, v.role])
@@ -241,9 +405,9 @@ function avoidOverlap(rect, others, minGap = 12, maxTries = 5) {
   }
   
 
-  export function addToAttackGauge(value) {
+export function addToAttackGauge(value) {
     if (value > 1) {
-      attackGaugeDamage += value;
+      attackGaugeDamage += Math.round(value * (globalThis.runModifiers?.attackMultiplier || 1));
       damagePopTime = Date.now(); // ✅ 仅在有正向增益时触发动画
     }
   }
@@ -311,6 +475,7 @@ globalThis.bgmAudioContext = gameBgm;
 
 
     resetSessionState();      //  ← 新增
+    globalThis.runModifiers = { attackMultiplier: 1, coinMultiplier: 1, healMultiplier: 1, chargeMultiplier: 1 };
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
     haltGame();                               // ☆ 立刻熔断后台循环
     wx.setStorageSync('lastLevel', currentLevel.toString());
@@ -354,6 +519,7 @@ wx.onTouchEnd(onTouchend);
 
   initGrid();
   const m = loadMonster(currentLevel);
+  globalThis.monsterEntranceStart = Date.now();
  
   const totalHp = heroes.reduce((sum, h) => sum + (h?.hp || 0), 0);
   initPlayer(totalHp);
@@ -882,6 +1048,7 @@ drawRoundedRect(ctxRef, boardX, boardY, boardW, boardH, borderRadius, false, tru
 // ✅ 棋盘外围
 
 drawMonsterSprite(ctxRef, canvasRef); 
+drawStoredChestIndicator(ctxRef, canvasRef);
 
 /* === 出战栏：固定 5 槽位 + 编号（原来绿色框位置） ================ */
 const heroes      = getSelectedHeroes();   // 长度固定 5
@@ -1299,7 +1466,7 @@ if (comboCounter >= 1 && Date.now() - lastComboUpdateTime < 2500) {
   
 
 if (showGameOver) {
-  const boxW = 260, boxH = 160;
+  const boxW = 260, boxH = 210;
   const boxX = (canvasRef.width - boxW) / 2;
   const boxY = (canvasRef.height - boxH) / 2;
   
@@ -1312,19 +1479,160 @@ if (showGameOver) {
   ctxRef.fillStyle = '#FFF';
   ctxRef.font = '24px sans-serif';
   ctxRef.textAlign = 'center';
-  ctxRef.fillText('游戏失败', boxX + boxW / 2, boxY + 50);
+  ctxRef.fillText('本局结束', boxX + boxW / 2, boxY + 42);
+  ctxRef.font = '18px sans-serif';
+  ctxRef.fillText(`到达第 ${currentLevel} 关`, boxX + boxW / 2, boxY + 78);
+  ctxRef.fillText(`本局金币：${getSessionCoins()}`, boxX + boxW / 2, boxY + 106);
 
   // 按钮
   ctxRef.fillStyle = '#F33';
-  drawRoundedRect(ctxRef, boxX + 60, boxY + 100, 140, 40, 10, true, false);
+  drawRoundedRect(ctxRef, boxX + 60, boxY + 150, 140, 40, 10, true, false);
   ctxRef.fillStyle = '#FFF';
   ctxRef.font = '18px sans-serif';
-  ctxRef.fillText('回到主页', boxX + boxW / 2, boxY + 120);
+  ctxRef.fillText('结算并返回', boxX + boxW / 2, boxY + 170);
   
+}
+
+if (bossChestState) {
+  drawBossChestOverlay(ctxRef, canvasRef);
 }
 
   globalThis.layoutRects = layoutRects;
   drawAllEffects(ctxRef, canvasRef);
+}
+
+function drawStoredChestIndicator(ctx, canvas) {
+  if (bossChestState) return;
+  const drops = globalThis.chestDropsThisRound || [];
+  if (!drops.length) return;
+
+  const counts = [0, 0, 0];
+  drops.forEach(tier => { if (Number.isInteger(tier) && tier >= 0 && tier < 3) counts[tier]++; });
+  const y = Math.max(100, globalThis.__gridStartY - 155);
+  const cardW = 48, cardH = 34, gap = 10;
+  const x0 = (canvas.width - (cardW * 3 + gap * 2)) / 2;
+  counts.forEach((count, tier) => {
+    const x = x0 + tier * (cardW + gap);
+    ctx.fillStyle = ['#8B5A2B', '#9AA4B0', '#D4A72C'][tier];
+    drawRoundedRect(ctx, x, y, cardW, cardH, 8, true, false);
+    const icon = globalThis.imageCache?.lootChests?.[tier];
+    if (icon?.complete) ctx.drawImage(icon, x + 3, y + 3, 28, 28);
+    ctx.fillStyle = '#FFF';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`×${count}`, x + cardW - 3, y + 22);
+  });
+}
+
+function drawBossChestOverlay(ctx, canvas) {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.fillStyle = 'rgba(8, 4, 18, 0.88)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#FFD700';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Boss 宝箱', W / 2, 80);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '18px sans-serif';
+  ctx.fillText(`本局金币：${getSessionCoins()}  ·  点击宝箱开启`, W / 2, 110);
+
+  const cardW = 92, cardH = 100, gap = 14;
+  const totalW = bossChestState.chests.length * cardW + Math.max(0, bossChestState.chests.length - 1) * gap;
+  const startX = (W - totalW) / 2;
+  bossChestState.chestRects = [];
+  bossChestState.chests.forEach((chest, index) => {
+    const x = startX + index * (cardW + gap);
+    const y = 135;
+    bossChestState.chestRects.push({ x, y, width: cardW, height: cardH, index });
+    ctx.fillStyle = chest.opened ? '#3a3540' : ['#8B5A2B', '#B0B8C4', '#D4A72C'][chest.tier];
+    drawRoundedRect(ctx, x, y, cardW, cardH, 12, true, false);
+    ctx.fillStyle = '#111';
+    ctx.font = '38px sans-serif';
+    ctx.fillText(chest.opened ? '✓' : '🎁', x + cardW / 2, y + 46);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#FFF';
+    ctx.fillText(chest.opened ? '已开启' : `${chest.price} 金币`, x + cardW / 2, y + 82);
+  });
+
+  const candidate = bossChestState.candidate;
+  if (!candidate) return;
+  const hero = candidate.hero;
+  const cardW2 = Math.min(300, W - 40), cardH2 = 100;
+  const x = (W - cardW2) / 2, y = 265;
+  ctx.fillStyle = bossChestState.selectedCandidate ? '#3E7758' : '#47335F';
+  drawRoundedRect(ctx, x, y, cardW2, cardH2, 12, true, false);
+  const icon = globalThis.imageCache?.[hero.icon];
+  if (icon?.complete) ctx.drawImage(icon, x + 12, y + 12, 76, 76);
+  ctx.fillStyle = '#FFF';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${hero.name} · ${hero.role}`, x + 102, y + 36);
+  ctx.font = '15px sans-serif';
+  ctx.fillText(bossChestState.selectedCandidate ? '请选择一名当前英雄替换' : '点击招募，8 秒后自动折算金币', x + 102, y + 64);
+  bossChestState.candidateRect = { x, y, width: cardW2, height: cardH2 };
+  bossChestState.skipRect = { x, y: y + 118, width: cardW2, height: 36 };
+  ctx.fillStyle = '#71572F';
+  drawRoundedRect(ctx, x, y + 118, cardW2, 36, 8, true, false);
+  ctx.fillStyle = '#FFF';
+  ctx.font = '15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`放弃招募，获得 ${candidate.refund} 金币`, W / 2, y + 142);
+
+  if (!bossChestState.selectedCandidate) return;
+  const heroes = getSelectedHeroes();
+  const slotSize = 48, slotGap = 10;
+  const slotsW = 5 * slotSize + 4 * slotGap;
+  const slotX = (W - slotsW) / 2, slotY = y + 175;
+  bossChestState.slotRects = [];
+  heroes.forEach((member, index) => {
+    const sx = slotX + index * (slotSize + slotGap);
+    bossChestState.slotRects.push({ x: sx, y: slotY, width: slotSize, height: slotSize, index });
+    ctx.fillStyle = '#222';
+    drawRoundedRect(ctx, sx, slotY, slotSize, slotSize, 8, true, false);
+    const memberIcon = member && globalThis.imageCache?.[member.icon];
+    if (memberIcon?.complete) ctx.drawImage(memberIcon, sx, slotY, slotSize, slotSize);
+  });
+}
+
+function handleBossChestTouch(x, y) {
+  const state = bossChestState;
+  if (!state) return;
+  const chestHit = state.chestRects.find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height);
+  if (chestHit) {
+    const chest = state.chests[chestHit.index];
+    if (chest.opened || state.candidate) return;
+    if (getSessionCoins() < chest.price) {
+      createFloatingText('金币不足', x, y, '#FF6666', 20);
+      return;
+    }
+    addCoins(-chest.price);
+    resolveBossChest(chest);
+    drawGame();
+    return;
+  }
+  if (state.candidate && state.candidateRect && x >= state.candidateRect.x && x <= state.candidateRect.x + state.candidateRect.width && y >= state.candidateRect.y && y <= state.candidateRect.y + state.candidateRect.height) {
+    state.selectedCandidate = true;
+    drawGame();
+    return;
+  }
+  if (state.candidate && state.skipRect && x >= state.skipRect.x && x <= state.skipRect.x + state.skipRect.width && y >= state.skipRect.y && y <= state.skipRect.y + state.skipRect.height) {
+    addCoins(state.candidate.refund);
+    state.candidate = null;
+    finishBossChestPhaseIfReady();
+    drawGame();
+    return;
+  }
+  const slot = state.selectedCandidate && state.slotRects.find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height);
+  if (slot) {
+    const ids = getSelectedHeroes().map(hero => hero?.id || null);
+    ids[slot.index] = state.candidate.hero.id;
+    setSelectedHeroes(ids);
+    createFloatingText(`${state.candidate.hero.name} 加入队伍`, canvasRef.width / 2, 220, '#7CFFB2', 20);
+    state.candidate = null;
+    finishBossChestPhaseIfReady();
+    drawGame();
+  }
 }
 
 function animateSwap(src, dst, callback, rollback = false) {
@@ -1420,6 +1728,7 @@ function animateSwap(src, dst, callback, rollback = false) {
 }
 
 function onTouch(e) {
+  if (showGameOver || transitioningToNextLevel || bossChestState) return;
 /* ====== 胜利弹窗：宝箱命中检测 ====== */
 if (showVictoryPopup) {
     const t    = e.touches[0];
@@ -1672,18 +1981,8 @@ if (letter === 'B') {
 
   /* === ④ 怪物回合 / 掉落新怪 === */
   if (isMonsterDead()) {
-    earnedGold = getMonsterGold();
-    playSound('coin_gain');
-       addCoins(earnedGold);
-       goldPopTime       = Date.now();
-       displayedGold     = getSessionCoins();
-       levelJustCompleted = currentLevel;
-    
-
-    
-       showVictoryPopup = true;
-       lockForVictory();      // ★ 新增：锁死后续异步流程
-       return;            // 暂停游戏流，等待玩家点击“下一关”
+    advanceAfterMonsterDefeat(attackGaugeDamage);
+    return returnColors ? [] : false;
   }
   else {
     // 敌人仍存活：怪物回合已由其他逻辑处理（如 turnsLeft）
@@ -1926,11 +2225,16 @@ export function updateGamePage() {
 }
 
 function onTouchend(e) {
+  if (transitioningToNextLevel) return;
   const touch = e.changedTouches?.[0];
   if (!touch) return;
 
   const x = touch.clientX;
   const y = touch.clientY;
+  if (bossChestState) {
+    handleBossChestTouch(x, y);
+    return;
+  }
 // ✅ 点击奖励英雄头像 → 自动加入空出战栏
 const icon = globalThis.rewardHeroIconRect;
 if (icon && x >= icon.x && x <= icon.x + icon.width &&
@@ -2031,11 +2335,11 @@ globalThis.allowedBlocks = config.allowedBlocks || ['A', 'B', 'C', 'D', 'E', 'F'
   // ✅ 失败弹窗点击“回到主页”
   if (showGameOver) {
     const boxW = 260;
-    const boxH = 160;
+    const boxH = 210;
     const boxX = (canvasRef.width - boxW) / 2;
     const boxY = (canvasRef.height - boxH) / 2;
     const btnX = boxX + 60;
-    const btnY = boxY + 100;
+    const btnY = boxY + 150;
     const btnW = 140;
     const btnH = 40;
 
@@ -2449,6 +2753,10 @@ showDamageText(pendingDamage, endX, endY + 50);
     }, 500);
 
     if (isMonsterDead()) {
+        advanceAfterMonsterDefeat(dmg);
+        return;
+
+        // Legacy victory-popup flow kept unreachable temporarily for reference.
         const monster = getMonster();
         if (monster.isBoss) {
           markBossDefeated(monster.level);
@@ -2625,6 +2933,8 @@ function rewardExpToHeroes(expAmount) {
   }
   
 function resetSessionState () {
+    transitioningToNextLevel = false;
+    bossChestState = null;
     gaugeCount = 0;
     attackGaugeDamage = 0;
     pendingDamage = 0;

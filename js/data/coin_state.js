@@ -40,9 +40,7 @@ export function spendCoins(amount) {
   return true;
 }
 
-/** 结束游戏后合并 sessionCoins 到永久金币，并清零 session */
+/** 远征金币只在本局使用；结束时清零，不写入局外货币。 */
 export function commitSessionCoins() {
-  const current = wx.getStorageSync(STORAGE_KEY) || 0;
-  wx.setStorageSync(STORAGE_KEY, current + sessionCoins);
   sessionCoins = 0;
 }

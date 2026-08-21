@@ -209,27 +209,8 @@ function drawHomeUI() {
     });
   }
 
-  // Roguelike 区域（是否解锁）
-  {
-    const unlocked = hasDefeatedBoss2();
-    const scale = scaleBtn('roguelike');
-    const w = mainBtnW * scale;
-    const h = mainBtnH * scale;
-    const x = (canvasRef.width - w) / 2;
-    const y = yRogue - (h - mainBtnH) / 2;
-
-    ctxRef.save();
-    ctxRef.globalAlpha = unlocked ? 1.0 : 0.3;
-    ctxRef.fillStyle = '#4B3B74';
-    drawRoundedRect(ctxRef, x, y, w, h, 20);
-    ctxRef.fill();
-    drawStyledText(ctxRef, '魔界森林', canvasRef.width / 2, y + h / 2, {
-      font: 'bold 22px IndieFlower', fill: '#CCEEFF', stroke: '#000'
-    });
-    ctxRef.restore();
-
-    roguelikeBtnArea = unlocked ? { x: xMain, y: yRogue, width: mainBtnW, height: mainBtnH } : null;
-  }
+  // 合并为单一远征后，旧“魔界森林”入口不再显示。
+  roguelikeBtnArea = null;
 
   // --------------------------------------------------
   // 四个小按钮：排行榜 / 分享 / 英雄介绍 / 背包
@@ -329,17 +310,7 @@ function onTouch(e) {
       return;
     }
 
-    if (xTouch >= xMain && xTouch <= xMain + btnWidth &&
-        yTouch >= yRogue && yTouch <= yRogue + btnHeight) {
-      if (hasDefeatedBoss2()) {
-        playClickSound();
-        clickedButton = 'roguelike';
-        clickAnimationFrame = 0;
-      } else {
-        wx.showToast?.({ title: '您还未探索到该地区', icon: 'none' });
-      }
-      return;
-    }
+    // 旧肉鸽入口已隐藏，所有远征均从酒馆进入。
   }
 
   // 小按钮区

@@ -24,7 +24,7 @@ export function onEliminateGreenBlock(count) {
 
   const hasRanger = heroes.some(h => h.role === '游侠');
   const perBlockHeal = hasRanger ? 6 : 5;
-  const totalHeal = perBlockHeal * count;
+  const totalHeal = Math.round(perBlockHeal * count * (globalThis.runModifiers?.healMultiplier || 1));
 
   healPlayer(totalHeal); // ✅ 加血
   logBattle(`[B方块] 玩家恢复生命 +${totalHeal}${hasRanger ? '（游侠加成）' : ''}`);
