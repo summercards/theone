@@ -4,6 +4,7 @@
 
 /* ---------- 依赖 ---------- */
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
+const { drawComicButton } = require('./utils/comic_button.js');
 const { shareMyStats }   = require('./utils/share_utils.js');
 const { setProfile }     = require('./utils/cloud_save.js');
 
@@ -107,32 +108,14 @@ function drawRankingUI() {
 
   const shareW=160, shareH=50;
   const shareX=(canvasRef.width-shareW)/2, shareY=cardY+cardH+30;
-  const shareG = ctxRef.createLinearGradient(0,0,shareW,0);
-  shareG.addColorStop(0,'#ffcc33');
-  shareG.addColorStop(1,'#ffaa00');
-  ctxRef.fillStyle = isPressed('share') ? '#ffd85a' : shareG;
-  drawRoundedRect(ctxRef, shareX, shareY, shareW, shareH, 14);
-  ctxRef.fill();
-
-  ctxRef.fillStyle    = '#000';
-  ctxRef.font         = '22px sans-serif';
-  ctxRef.textAlign    = 'center';
-  ctxRef.textBaseline = 'middle';
-  ctxRef.fillText('📤 分享', shareX+shareW/2, shareY+shareH/2);
+  drawComicButton(ctxRef, { x: shareX, y: shareY, width: shareW, height: shareH,
+    label: '分享', variant: 'yellow', pressed: isPressed('share'), font: 'bold 20px sans-serif' });
 
   const tabY=shareY+shareH+20, tabH=50, tabW=canvasRef.width/2;
   ['global','friends'].forEach((t,i)=>{
-    ctxRef.fillStyle = isPressed(`tab-${t}`) ? '#ffe06a' : (tab===t? '#ffaa00':'#555');
-    drawRoundedRect(ctxRef, i*tabW+10, tabY, tabW-20, tabH, 12);
-    ctxRef.fill();
-    ctxRef.fillStyle = '#000';
-    ctxRef.font      = '22px sans-serif';
-    ctxRef.textAlign = 'center';
-    ctxRef.textBaseline = 'middle';
-    ctxRef.fillText(
-      t==='global'? '🏅 全服排行' : '👥 好友排行',
-      i*tabW+tabW/2, tabY+tabH/2
-    );
+    drawComicButton(ctxRef, { x: i * tabW + 10, y: tabY, width: tabW - 20, height: tabH,
+      label: t === 'global' ? '全服排行' : '好友排行', variant: tab === t ? 'red' : 'dark',
+      pressed: isPressed(`tab-${t}`), font: 'bold 18px sans-serif' });
   });
 
   const listY0 = tabY+tabH+60;
@@ -183,27 +166,15 @@ function drawRankingUI() {
 
   const nick = wx.getStorageSync('nick') || '';
   if (!nick.trim()) {
-    ctxRef.fillStyle = isPressed('authorize') ? '#7fe4ff' : '#33ccff';
-    drawRoundedRect(ctxRef, authorizeX, authorizeY, authorizeW, authorizeH, 14);
-    ctxRef.fill();
-    ctxRef.fillStyle = '#000';
-    ctxRef.font = '22px sans-serif';
-    ctxRef.textAlign = 'center';
-    ctxRef.textBaseline = 'middle';
-    ctxRef.fillText('🔓 授权登录', authorizeX + authorizeW / 2, authorizeY + authorizeH / 2);
+    drawComicButton(ctxRef, { x: authorizeX, y: authorizeY, width: authorizeW, height: authorizeH,
+      label: '授权登录', variant: 'cyan', pressed: isPressed('authorize'), font: 'bold 18px sans-serif' });
     authorizeBtn = { x: authorizeX, y: authorizeY, width: authorizeW, height: authorizeH };
   } else {
     authorizeBtn = null;
   }
 
-  ctxRef.fillStyle = isPressed('back') ? '#b54ad0' : '#8800aa';
-  drawRoundedRect(ctxRef, backX, returnY, backW, returnH, 14);
-  ctxRef.fill();
-  ctxRef.fillStyle    = '#fff';
-  ctxRef.font         = '22px sans-serif';
-  ctxRef.textAlign    = 'center';
-  ctxRef.textBaseline = 'middle';
-  ctxRef.fillText('🔙 返回', backX+backW/2, returnY+returnH/2);
+  drawComicButton(ctxRef, { x: backX, y: returnY, width: backW, height: returnH,
+    label: '返回', variant: 'purple', pressed: isPressed('back'), font: 'bold 20px sans-serif' });
 
   rankingShareBtn  = { x:shareX,  y:shareY,  width:shareW,  height:shareH };
   rankingReturnBtn = { x:backX,   y:returnY, width:backW,  height:returnH };

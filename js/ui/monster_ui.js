@@ -3,7 +3,7 @@
 // 怪物贴图 + 血条 + 名称绘制 + 当前 HP 显示（美术风格加强版）
 // ------------------------------------------------------------
 
-const { drawRoundedRect } = require('../utils/canvas_utils.js');
+const { drawComicHealthBar } = require('../utils/comic_button.js');
 import { getMonster } from '../data/monster_state.js';
 import { monsterHitFlashTime } from '../utils/game_shared.js';
 
@@ -121,56 +121,13 @@ export function drawMonsterSprite(ctx, canvas) {
                  : 0;        // 出现 NaN / Infinity 时退回 0
   /* ---------------------------------- */
 
-  ctx.fillStyle = '#1e1121';
-  drawRoundedRect(ctx, barX, barY, BAR_W, BAR_H, 8, true, false);
-
-  const grad = ctx.createLinearGradient(barX, barY, barX + BAR_W * hpRatio, barY);
-/* ② 左→右：桃色(#E3488E) 过渡到亮紫(#C96BFF) */
-grad.addColorStop(0, '#f2093b');   // 鲜亮桃粉
-grad.addColorStop(1, '#f2091f');   // 饱和紫罗兰
-  ctx.fillStyle = grad;
-  drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, true, false);
-  ctx.strokeStyle = '#0,0,0,0.4)';  // 或使用 rgba(0,0,0,0.4) 更柔和
-ctx.lineWidth = 1.2;
-drawRoundedRect(ctx, barX, barY, BAR_W * hpRatio, BAR_H, 6, false, true);
-
-
   const flash = Date.now() - monsterHitFlashTime < 200;
-  if (flash) {
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    drawRoundedRect(ctx, barX - 1, barY - 1, BAR_W + 2, BAR_H + 2, 8, false, true);
-  }
-
-  if (monster.isBoss) {
-    const t = Date.now() / 1000;
-    const pulse = Math.sin(t * 6) * 0.5 + 0.5;
-    const alpha = 0.5 + 0.3 * pulse;
-
-    ctx.strokeStyle = `rgba(180, 0, 0, ${alpha.toFixed(2)})`;
-    ctx.lineWidth = 3;
-    ctx.shadowColor = `rgba(255, 0, 0, ${alpha.toFixed(2)})`;
-    ctx.shadowBlur = 10 + 6 * pulse;
-
-    drawRoundedRect(ctx, barX - 2, barY - 2, BAR_W + 4, BAR_H + 4, 10, false, true);
-
-    ctx.shadowBlur = 0;
-  }
-
   const isCritical = hpRatio < 0.25;
-  if (isCritical) {
-    const t = Date.now() / 1000;
-    const pulse = Math.sin(t * 10) * 0.5 + 0.5;
-    const alpha = 0.4 + 0.4 * pulse;
-    ctx.strokeStyle = `rgba(255, 60, 113, ${alpha.toFixed(2)})`;
-    ctx.lineWidth = 3;
-    drawRoundedRect(ctx, barX - 3, barY - 3, BAR_W + 6, BAR_H + 6, 10, false, true);
-  }
-
-  ctx.fillStyle = '#ffe7ef';
-  ctx.font = 'bold 14px IndieFlower, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${hpDraw} / ${monster.maxHp}`, canvas.width / 2, barY + 12);
+  drawComicHealthBar(ctx, {
+    x: barX, y: barY, width: BAR_W, height: BAR_H, ratio: hpRatio,
+    label: `${hpDraw} / ${monster.maxHp}`, side: 'enemy', hit: flash,
+    boss: monster.isBoss, critical: isCritical
+  });
 
   const nameY = y - 35;
   ctx.font = 'bold 18px IndieFlower, sans-serif';

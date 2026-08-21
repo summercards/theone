@@ -13,6 +13,7 @@
 | [04-encounters-and-progression.md](04-encounters-and-progression.md) | 77 个关卡、怪物、Boss、奖励和局外进度 |
 | [05-modes-items-and-economy.md](05-modes-items-and-economy.md) | 主线/肉鸽模式、金币、宝箱、背包与道具 |
 | [06-known-gaps.md](06-known-gaps.md) | 当前配置与运行逻辑的缺口；供后续设计和开发核对 |
+| [07-ui-button-language.md](07-ui-button-language.md) | 全局按钮形状、颜色语义与点按反馈 |
 
 ## 设计支柱（从当前实现归纳）
 

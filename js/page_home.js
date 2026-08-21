@@ -2,6 +2,7 @@
 // ------------------------------------------------------------
 
 import { drawRoundedRect, drawStyledText } from './utils/canvas_utils.js';
+import { drawComicButton } from './utils/comic_button.js';
 import { shareMyStats } from './utils/share_utils.js';
 import {
   drawAllEffects, updateAllEffects, createFireParticles,
@@ -201,11 +202,9 @@ function drawHomeUI() {
     const x = (canvasRef.width - w) / 2;
     const y = yEnter - (h - mainBtnH) / 2;
 
-    ctxRef.fillStyle = '#b3134a';
-    drawRoundedRect(ctxRef, x, y, w, h, 20);
-    ctxRef.fill();
-    drawStyledText(ctxRef, '魅影旅店', canvasRef.width / 2, y + h / 2, {
-      font: 'bold 26px IndieFlower', fill: '#ffd3df', stroke: '#000'
+    drawComicButton(ctxRef, {
+      x, y, width: w, height: h, label: '魅影旅店', variant: 'red',
+      pressed: clickedButton === 'heroSelect', font: 'bold 24px sans-serif'
     });
   }
 
@@ -223,18 +222,14 @@ function drawHomeUI() {
   const baseX     = (canvasRef.width - totalW) / 2;
   const btnY      = canvasRef.height - 80;
 
-  const drawSmall = (label, x, key, color, textColor) => {
+  const drawSmall = (label, x, key, variant) => {
     const scale = scaleBtn(key);
     const w = smallBtnW * scale;
     const h = smallBtnH * scale;
     const dx = x - (w - smallBtnW) / 2;
     const dy = btnY - (h - smallBtnH) / 2;
-    ctxRef.fillStyle = color;
-    drawRoundedRect(ctxRef, dx, dy, w, h, 12);
-    ctxRef.fill();
-    drawStyledText(ctxRef, label, dx + w / 2, dy + h / 2, {
-      font: 'bold 16px IndieFlower', fill: textColor, stroke: '#000'
-    });
+    drawComicButton(ctxRef, { x: dx, y: dy, width: w, height: h, label, variant,
+      pressed: clickedButton === key, font: 'bold 14px sans-serif' });
   };
 
   const xRank  = baseX;
@@ -242,16 +237,16 @@ function drawHomeUI() {
   const xIntro = baseX + (smallBtnW + spacing) * 2;
   const xBag   = baseX + (smallBtnW + spacing) * 3;  // ★ 新增位置
 
-  drawSmall('排行榜', xRank,  'ranking',   '#6d2c91', '#f8d6ff');
+  drawSmall('排行榜', xRank,  'ranking',   'purple');
   rankingBtnArea = { x: xRank, y: btnY, width: smallBtnW, height: smallBtnH };
 
-  drawSmall('分享',   xShare, 'share',     '#7d3f98', '#fcd5d5');
+  drawSmall('分享',   xShare, 'share',     'cyan');
   shareBtnArea   = { x: xShare, y: btnY, width: smallBtnW, height: smallBtnH };
 
-  drawSmall('英雄介绍', xIntro, 'heroIntro', '#9c275d', '#ffe3e3');
+  drawSmall('英雄介绍', xIntro, 'heroIntro', 'yellow');
   heroIntroBtnArea = { x: xIntro, y: btnY, width: smallBtnW, height: smallBtnH };
 
-  drawSmall('背包',   xBag,   'backpack', '#2b6e4f', '#eafffb');
+  drawSmall('背包',   xBag,   'backpack', 'green');
   backpackBtnArea  = { x: xBag, y: btnY, width: smallBtnW, height: smallBtnH };
 
   // --------------------------------------------------

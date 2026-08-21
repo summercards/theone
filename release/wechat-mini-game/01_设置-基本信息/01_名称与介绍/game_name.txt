@@ -1,0 +1,3 @@
+待确认
+
+工程的 `projectname` 为 `wechat_minigame_demo`，不作为对外正式游戏名使用。

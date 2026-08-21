@@ -28,6 +28,7 @@ let barDialogText = barDialogLines[Math.floor(Math.random() * barDialogLines.len
 
 // ======================= 资源与常量 =======================
 const {  drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
+const { drawComicButton } = require('./utils/comic_button.js');
 const { getTotalCoins }   = require('./data/coin_state.js');
 const {
   HeroState,            // 类
@@ -786,23 +787,10 @@ const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
  btnPrevRect = { x: PAD_X,             y: btnY, width: BTN, height: BTN };
  btnNextRect = { x: canvas.width - PAD_X - BTN, y: btnY, width: BTN, height: BTN };
 
- const scalePrev = scaleBtn('prev');
- ctx.save();
- ctx.translate(btnPrevRect.x + btnPrevRect.width / 2, btnPrevRect.y + btnPrevRect.height / 2);
- ctx.scale(scalePrev, scalePrev);
- ctx.translate(-btnPrevRect.width / 2, -btnPrevRect.height / 2);
- ctx.fillStyle = pageIndex > 0 ? '#9c275d' : '#300';
- drawRoundedRect(ctx, 0, 0, btnPrevRect.width, btnPrevRect.height, 8, true, false);
- drawText(ctx, '<', btnPrevRect.width / 2, btnPrevRect.height / 2, 'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
- ctx.restore();
- 
-  drawText(ctx, '<', btnPrevRect.x + btnPrevRect.width / 2, btnPrevRect.y + btnPrevRect.height / 2,
-  'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
-
-  ctx.fillStyle = pageIndex < TOTAL_PAGES - 1 ? '#9c275d' : '#300';
-  drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 8, true, false);
-  drawText(ctx, '>', btnNextRect.x + btnNextRect.width / 2, btnNextRect.y + btnNextRect.height / 2,
-  'bold 26px IndieFlower', '#f8d6ff', 'center', 'middle');
+ drawComicButton(ctx, { ...btnPrevRect, label: '<', variant: 'purple', disabled: pageIndex === 0,
+   pressed: clickedKey === 'prev', font: 'bold 26px sans-serif' });
+ drawComicButton(ctx, { ...btnNextRect, label: '>', variant: 'purple', disabled: pageIndex >= TOTAL_PAGES - 1,
+   pressed: clickedKey === 'next', font: 'bold 26px sans-serif' });
   //drawText(ctx, `${pageIndex + 1} / ${TOTAL_PAGES}`,
     //canvas.width / 2, btnY + btnPrevRect.height / 2,
    // '14px IndieFlower', '#DCC6F0', 'center', 'middle');
@@ -817,18 +805,8 @@ const btnY = poolStartY + ICON * poolRows + PAGING_SPACING;
   };
   upgradeToggleRect = avoidOverlap(upgradeToggleRect, layoutRects);
   layoutRects.push(upgradeToggleRect);
-  ctx.fillStyle = '#9c275d';
-  drawRoundedRect(ctx, upgradeToggleRect.x, upgradeToggleRect.y,
-                  upgradeToggleRect.width, upgradeToggleRect.height, 8, true, false);
-                  drawStyledText(ctx, showUpgradeButtons ? '隐藏' : '升级',
-                  upgradeToggleRect.x + upgradeToggleRect.width / 2,
-                  upgradeToggleRect.y + upgradeToggleRect.height / 2, {
-                    font: 'bold 18px IndieFlower',
-                    fill: '#ffe3e3',
-                    //stroke: '#FFF',
-                    align: 'center',
-                    baseline: 'middle'
-                });
+  drawComicButton(ctx, { ...upgradeToggleRect, label: showUpgradeButtons ? '隐藏' : '升级',
+    variant: 'purple', pressed: clickedKey === 'upgrade', font: 'bold 17px sans-serif' });
 // 每局均从第 1 关开始。
 const level = 1;
 
@@ -847,17 +825,8 @@ confirmRect = avoidOverlap(confirmRect, layoutRects);
 layoutRects.push(confirmRect);
 globalThis.confirmRect = confirmRect;
 const confirmX = confirmRect.x;
-const scaleConfirm = scaleBtn('confirm');
-ctx.save();
-ctx.translate(confirmRect.x + confirmRect.width / 2, confirmRect.y + confirmRect.height / 2);
-ctx.scale(scaleConfirm, scaleConfirm);
-ctx.translate(-confirmRect.width / 2, -confirmRect.height / 2);
-ctx.fillStyle = '#6d2c91';
-drawRoundedRect(ctx, 0, 0, confirmRect.width, confirmRect.height, 28, true, false);
-drawStyledText(ctx, `进入第${level}关`, confirmRect.width / 2, confirmRect.height / 2, {
-  font: 'bold 20px IndieFlower', fill: '#f8d6ff', align: 'center', baseline: 'middle'
-});
-ctx.restore();
+drawComicButton(ctx, { ...confirmRect, label: `进入第${level}关`, variant: 'red',
+  pressed: clickedKey === 'confirm', font: 'bold 20px sans-serif' });
 
 // === 分享得金币按钮 ===
 let adBtnRect = {
@@ -869,33 +838,16 @@ let adBtnRect = {
 adBtnRect = avoidOverlap(adBtnRect, layoutRects);
 layoutRects.push(adBtnRect);
 
-ctx.fillStyle = '#9c275d';
-drawRoundedRect(ctx, adBtnRect.x, adBtnRect.y, adBtnRect.width, adBtnRect.height, 8, true, false);
-drawStyledText(ctx, '分享得金币',
-  adBtnRect.x + adBtnRect.width / 2,
-  adBtnRect.y + adBtnRect.height / 2, {
-    font: 'bold 18px IndieFlower',
-    fill: '#ffe3e3',
-    align: 'center',
-    baseline: 'middle'
-});
+drawComicButton(ctx, { ...adBtnRect, label: '分享得金币', variant: 'yellow',
+  font: 'bold 16px sans-serif' });
 
 globalThis.adBtnRect = adBtnRect;
 
 
 // 返回按钮（左上角）
 btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
-const scaleBack = scaleBtn('back');
-ctx.save();
-ctx.translate(btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2);
-ctx.scale(scaleBack, scaleBack);
-ctx.translate(-btnBackRect.width / 2, -btnBackRect.height / 2);
-ctx.fillStyle = '#5e3a7d';
-drawRoundedRect(ctx, 0, 0, btnBackRect.width, btnBackRect.height, 6, true, false);
-drawStyledText(ctx, '返回', btnBackRect.width / 2, btnBackRect.height / 2, {
-  font: '14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle'
-});
-ctx.restore();
+drawComicButton(ctx, { ...btnBackRect, label: '返回', variant: 'dark',
+  pressed: clickedKey === 'back', font: 'bold 13px sans-serif' });
 
 const { updateAllEffects, drawAllEffects } = require('./effects_engine.js');
 // 所有 UI 元素之后
@@ -944,18 +896,10 @@ function drawUnlockDialog(ctx, canvas) {
   const cancelX = x + (W - 2 * btnW - gap) / 2;
   const okX     = cancelX + btnW + gap;
 
-  // 取消
-  ctx.strokeStyle = '#DCC6F0';
-  ctx.lineWidth   = 2;
-  drawRoundedRect(ctx, cancelX, btnY, btnW, btnH, 6, false, true);
-  drawText(ctx, '取消', cancelX + btnW / 2, btnY + btnH / 2 + 1,
-    '15px PingFang SC', '#DCC6F0', 'center', 'middle');
-
-  // 确定
-  ctx.fillStyle = '#B44CFF';
-  drawRoundedRect(ctx, okX, btnY, btnW, btnH, 6, true, false);
-  drawText(ctx, '确定', okX + btnW / 2, btnY + btnH / 2 + 1,
-    '15px PingFang SC', '#FFFFFF', 'center', 'middle');
+  drawComicButton(ctx, { x: cancelX, y: btnY, width: btnW, height: btnH,
+    label: '取消', variant: 'dark', font: 'bold 15px sans-serif' });
+  drawComicButton(ctx, { x: okX, y: btnY, width: btnW, height: btnH,
+    label: '确定', variant: 'green', font: 'bold 15px sans-serif' });
 
   // 保存按钮热区
   unlockDialog.cancelRect = { x: cancelX, y: btnY, width: btnW, height: btnH };
@@ -1101,13 +1045,8 @@ const magical  = saved?.attributes?.magical  ?? hero.attributes.magical  ?? 0;
           height: btnH
         };
       
-        // 绘制按钮背景
-        ctx.fillStyle = bgColor;
-        drawRoundedRect(ctx, btnRect.x, btnRect.y, btnW, btnH, 4, true, false);
-      
-        // 绘制按钮文字
-        drawText(ctx, displayText, btnRect.x + btnW / 2, btnRect.y + btnH / 2,
-          '12px IndieFlower', textColor, 'center', 'middle');
+        drawComicButton(ctx, { ...btnRect, label: displayText,
+          variant: isMax ? 'dark' : 'yellow', disabled: isMax, font: 'bold 12px sans-serif' });
       
         // 注册点击区域（仅非满级才响应）
         hero.upgradeButtonRect = isMax

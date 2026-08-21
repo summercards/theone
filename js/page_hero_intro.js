@@ -6,6 +6,7 @@ pageFlipAudio.obeyMuteSwitch = false; // 可选：静音模式下仍播放
 const HeroData = require('./data/hero_data.js');
 const { HeroState, getRequiredExpForLevel } = require('./data/hero_state.js');
 const { drawRoundedRect, drawStyledText } = require('./utils/canvas_utils.js');
+const { drawComicButton } = require('./utils/comic_button.js');
 const lockIconImg = wx.createImage();
 lockIconImg.src = 'assets/ui/lock.png';
 globalThis.imageCache = globalThis.imageCache || {};
@@ -278,16 +279,9 @@ drawStyledText(ctx, `HP：${hero.hp}`, x + cardW - 12, y + 56, {
   btnNextRect = { x: canvas.width / 2 + 10, y: centerY, width: btnW, height: btnH };
   btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
 
-  ctx.fillStyle = isPressed('prev') ? '#8a5bb1' : '#5e3a7d';
-  drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 6, true, false);
-  ctx.fillStyle = isPressed('next') ? '#8a5bb1' : '#5e3a7d';
-  drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 6, true, false);
-  ctx.fillStyle = isPressed('back') ? '#8a5bb1' : '#5e3a7d';
-  drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRect.height, 6, true, false);
-
-  drawStyledText(ctx, '< 上一页', btnPrevRect.x + btnW / 2, btnPrevRect.y + btnH / 2, { font: 'bold 14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
-  drawStyledText(ctx, '下一页 >', btnNextRect.x + btnW / 2, btnNextRect.y + btnH / 2, { font: 'bold 14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
-  drawStyledText(ctx, '返回', btnBackRect.x + btnBackRect.width / 2, btnBackRect.y + btnBackRect.height / 2, { font: 'bold 14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
+  drawComicButton(ctx, { ...btnPrevRect, label: '< 上一页', variant: 'purple', pressed: isPressed('prev'), font: 'bold 13px sans-serif' });
+  drawComicButton(ctx, { ...btnNextRect, label: '下一页 >', variant: 'purple', pressed: isPressed('next'), font: 'bold 13px sans-serif' });
+  drawComicButton(ctx, { ...btnBackRect, label: '返回', variant: 'dark', pressed: isPressed('back'), font: 'bold 13px sans-serif' });
 
   if (popupHero) drawPopup(ctx, canvas, popupHero);
 }

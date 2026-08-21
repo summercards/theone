@@ -10,6 +10,7 @@
 ============================================================= */
 
 import { drawRoundedRect } from './utils/canvas_utils.js';
+import { drawComicButton } from './utils/comic_button.js';
 import { getItems } from './data/inventory.js';
 
 let ctxRef, switchPageFn, canvasRef;
@@ -103,18 +104,8 @@ function draw() {
 
   // 返回按钮
   const backPressed = Date.now() < pressedBackUntil;
-  ctxRef.fillStyle = backPressed ? '#00d7bd' : '#00bfa5';
-  ctxRef.strokeStyle = '#004d40';
-  const inset = backPressed ? 3 : 0;
-  drawRoundedRect(ctxRef, backBtnArea.x + inset, backBtnArea.y + inset, backBtnArea.width - inset * 2, backBtnArea.height - inset * 2, 12);
-  ctxRef.fill();
-  ctxRef.stroke();
-
-  ctxRef.fillStyle = '#00251a';
-  ctxRef.font = 'bold 20px sans-serif';
-  ctxRef.textAlign = 'center';
-  ctxRef.textBaseline = 'middle';
-  ctxRef.fillText('返回', backBtnArea.x + backBtnArea.width/2, backBtnArea.y + backBtnArea.height/2 + (backPressed ? 2 : 0));
+  drawComicButton(ctxRef, { ...backBtnArea, label: '返回', variant: 'purple',
+    pressed: backPressed, font: 'bold 18px sans-serif' });
 }
 
 // 触控（统一由 game.js 分发）

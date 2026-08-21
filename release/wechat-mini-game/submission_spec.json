@@ -1,0 +1,14 @@
+{
+  "status": "READY_WITH_WARNINGS",
+  "generated_at": "2026-08-21",
+  "project_type": "WeChat Mini Game / Canvas",
+  "orientation": "portrait",
+  "console_snapshot_provided": false,
+  "platform_field_status": "console_confirmation_required",
+  "source_of_truth": ["真实本地运行", "当前源码", "docs/design"],
+  "optional_asset_defaults": {
+    "cover": {"width": 1080, "height": 1920, "format": "jpg", "generated": true},
+    "core_screenshots": {"target_count": 6, "generated_count": 2, "width": 1080, "height": 1920, "format": "jpg"},
+    "share_images": {"target_count": 2, "generated_count": 0, "reason": "未验证的分享图源和横向构图不足"}
+  }
+}

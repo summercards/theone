@@ -42,6 +42,7 @@ globalThis.victoryChestLoot = [];   // 与宝箱索引一一对应，用来存�
 let showGameOver = false;     // 是否触发失败弹窗
 let victoryHeroLoaded = false;
 const { drawRoundedRect } = require('./utils/canvas_utils.js');
+const { drawComicButton } = require('./utils/comic_button.js');
 const DEBUG = false; // 全局设置，生产时设为 false
 let showVictoryPopup = false;
 let earnedGold = 0;
@@ -1000,14 +1001,8 @@ ctx.fillText(`Lv.${up.oldLevel} → Lv.${up.newLevel}`, nameX, lvlY);
     const btnX = (W - btnW) / 2;
     const btnY = H - 80;  // 更靠近底部
   
-    ctx.fillStyle = '#D43C44';
-    drawRoundedRect(ctx, btnX, btnY, btnW, btnH, 12, true, false);
-  
-    ctx.fillStyle = '#F3E9DB';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('下一关', W / 2, btnY + btnH / 2);
+    drawComicButton(ctx, { x: btnX, y: btnY, width: btnW, height: btnH,
+      label: '下一关', variant: 'red', font: 'bold 20px sans-serif' });
   
     globalThis.victoryBtnArea = { x: btnX, y: btnY, width: btnW, height: btnH };
   }
@@ -1247,15 +1242,8 @@ const btnBackX = 20;
 const btnBackY = 20;
 const btnBackSize = 36;
 
-ctxRef.fillStyle = '#333'; // 暗灰底
-drawRoundedRect(ctxRef, btnBackX, btnBackY, btnBackSize, btnBackSize, 6);
-ctxRef.fill();
-
-ctxRef.fillStyle = '#FFF'; // 白色箭头
-ctxRef.font = '20px sans-serif';
-ctxRef.textAlign = 'center';
-ctxRef.textBaseline = 'middle';
-ctxRef.fillText('⟵', btnBackX + btnBackSize / 2, btnBackY + btnBackSize / 2);
+drawComicButton(ctxRef, { x: btnBackX, y: btnBackY, width: btnBackSize, height: btnBackSize,
+  label: '←', variant: 'dark', font: 'bold 20px sans-serif' });
 
 // 存按钮区域
 globalThis.backToHomeBtn = {
@@ -1550,11 +1538,8 @@ if (showGameOver) {
   ctxRef.fillText(`本局金币：${getSessionCoins()}`, boxX + boxW / 2, boxY + 106);
 
   // 按钮
-  ctxRef.fillStyle = '#F33';
-  drawRoundedRect(ctxRef, boxX + 60, boxY + 150, 140, 40, 10, true, false);
-  ctxRef.fillStyle = '#FFF';
-  ctxRef.font = '18px sans-serif';
-  ctxRef.fillText('结算并返回', boxX + boxW / 2, boxY + 170);
+  drawComicButton(ctxRef, { x: boxX + 60, y: boxY + 150, width: 140, height: 40,
+    label: '结算并返回', variant: 'red', font: 'bold 16px sans-serif' });
   
 }
 
@@ -1720,12 +1705,9 @@ function drawBossChestOverlay(ctx, canvas) {
 
   const continueY = H - 62;
   bossChestState.continueRect = { x: W / 2 - 100, y: continueY, width: 200, height: 40 };
-  ctx.fillStyle = bossChestState.feedbackKey === 'continue' && Date.now() < bossChestState.feedbackUntil ? '#777777' : '#424242';
-  drawRoundedRect(ctx, bossChestState.continueRect.x, continueY, 200, 40, 10, true, false);
-  ctx.fillStyle = '#FFF';
-  ctx.font = 'bold 17px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('不开箱继续', W / 2, continueY + 26);
+  drawComicButton(ctx, { ...bossChestState.continueRect, label: '不开箱继续', variant: 'dark',
+    pressed: bossChestState.feedbackKey === 'continue' && Date.now() < bossChestState.feedbackUntil,
+    font: 'bold 17px sans-serif' });
 
   const candidate = bossChestState.candidate;
   if (!candidate) return;
@@ -1746,12 +1728,10 @@ function drawBossChestOverlay(ctx, canvas) {
   ctx.fillText(bossChestState.selectedCandidate ? '请选择一名当前英雄替换' : '点击招募，8 秒后自动折算金币', x + 102, y + 64);
   bossChestState.candidateRect = { x, y, width: cardW2, height: cardH2 };
   bossChestState.skipRect = { x, y: y + 118, width: cardW2, height: 36 };
-  ctx.fillStyle = bossChestState.feedbackKey === 'skip' && Date.now() < bossChestState.feedbackUntil ? '#A68045' : '#71572F';
-  drawRoundedRect(ctx, x, y + 118, cardW2, 36, 8, true, false);
-  ctx.fillStyle = '#FFF';
-  ctx.font = '15px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`放弃招募，获得 ${candidate.refund} 金币`, W / 2, y + 142);
+  drawComicButton(ctx, { x, y: y + 118, width: cardW2, height: 36,
+    label: `放弃招募，获得 ${candidate.refund} 金币`, variant: 'yellow',
+    pressed: bossChestState.feedbackKey === 'skip' && Date.now() < bossChestState.feedbackUntil,
+    font: 'bold 14px sans-serif' });
 
   if (!bossChestState.selectedCandidate) return;
   const heroes = getSelectedHeroes();

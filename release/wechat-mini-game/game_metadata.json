@@ -1,0 +1,11 @@
+{
+  "game_name": "待确认",
+  "project_name": "wechat_minigame_demo",
+  "appid": "wxc071d777a4a541c8",
+  "compile_type": "game",
+  "library_version": "3.8.0",
+  "version_from_design_docs": "0.2.0",
+  "git_commit": "2c09680a8f589737fbbdde2d9515ec4a1a930130",
+  "git_subject": "调整奖励物",
+  "tested_on": "微信开发者工具 Stable v2.01.2510290，iPhone 12/13 (Pro) 模拟器"
+}
