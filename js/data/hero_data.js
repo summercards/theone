@@ -182,7 +182,6 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       hp: 96, // ✅ 新增
       locked: true,
-      hidden: true, 
       unlockCost: 3400,
       attributes: { physical: 15 },
       level: 1,
@@ -333,7 +332,6 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       hp: 33, // ✅ 新增
       locked: true,
-      hidden: true, 
       unlockCost: 320200,
       attributes: { magical: 8, healing: 12 },
       level: 1,
@@ -418,7 +416,6 @@ const HeroData = {
       hireCost: 20,         // ✅ 新增字段
       hp: 47, // ✅ 新增
       locked: true,
-      hidden: true,  
       unlockCost: 89900,
       attributes: { magical: 15 },
       level: 1,

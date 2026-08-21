@@ -18,6 +18,19 @@ let btnPrevRect = null, btnNextRect = null, btnBackRect = null;
 let heroRects = [];
 let popupHero = null;
 const HEROES_PER_PAGE = 5;
+let pressedKey = '';
+let pressUntil = 0;
+let pendingAction = false;
+
+function isPressed(key) {
+  return pressedKey === key && Date.now() < pressUntil;
+}
+
+function press(key, duration = 110) {
+  pressedKey = key;
+  pressUntil = Date.now() + duration;
+  render();
+}
 
 function init(ctx, switchPage, canvas) {
   ctxRef = ctx;
@@ -28,6 +41,16 @@ function init(ctx, switchPage, canvas) {
 
 function update() {}
 function destroy() {}
+function touchstart(e) {
+  const touch = e.touches?.[0];
+  if (!touch || popupHero) return;
+  const { clientX: x, clientY: y } = touch;
+  if (btnPrevRect && hit(x, y, btnPrevRect) && pageIndex > 0) return press('prev');
+  if (btnNextRect && hit(x, y, btnNextRect) && (pageIndex + 1) * HEROES_PER_PAGE < HeroData.heroes.length) return press('next');
+  if (btnBackRect && hit(x, y, btnBackRect)) return press('back');
+  const card = heroRects.find(({ rect, hero }) => !hero.locked && hit(x, y, rect));
+  if (card) press(`hero-${card.hero.id}`);
+}
 function touchend(e) {
   const touch = e.changedTouches[0];
   const x = touch.clientX;
@@ -38,19 +61,21 @@ function touchend(e) {
     return render();
   }
 
+  if (pendingAction) return;
   if (btnPrevRect && hit(x, y, btnPrevRect) && pageIndex > 0) {
+    pendingAction = true;
     pageFlipAudio.play();
-    pageIndex--;
-    return render();
+    return setTimeout(() => { pageIndex--; pendingAction = false; render(); }, 105);
   }
   if (btnNextRect && hit(x, y, btnNextRect) && (pageIndex + 1) * HEROES_PER_PAGE < HeroData.heroes.length) {
+    pendingAction = true;
     pageFlipAudio.play();
-    pageIndex++;
-    return render();
+    return setTimeout(() => { pageIndex++; pendingAction = false; render(); }, 105);
   }
   
   if (btnBackRect && hit(x, y, btnBackRect)) {
-    return switchPageFn('home');
+    pendingAction = true;
+    return setTimeout(() => switchPageFn('home'), 105);
   }
   for (const { rect, hero } of heroRects) {
     if (hit(x, y, rect)) {
@@ -58,8 +83,8 @@ function touchend(e) {
         wx.showToast({ title: '英雄未解锁', icon: 'none' });
         return;
       }
-      popupHero = hero;
-      return render();
+      pendingAction = true;
+      return setTimeout(() => { popupHero = hero; pendingAction = false; render(); }, 105);
     }
   }
 }
@@ -164,7 +189,7 @@ function render() {
     const y = startY + i * (cardH + gap);
 
     const rect = { x, y, width: cardW, height: cardH };
-    ctx.fillStyle = '#3e205c';
+    ctx.fillStyle = isPressed(`hero-${hero.id}`) ? '#674088' : '#3e205c';
     drawRoundedRect(ctx, x, y, cardW, cardH, 10, true, false);
 
     const imgSize = 54;
@@ -253,9 +278,11 @@ drawStyledText(ctx, `HP：${hero.hp}`, x + cardW - 12, y + 56, {
   btnNextRect = { x: canvas.width / 2 + 10, y: centerY, width: btnW, height: btnH };
   btnBackRect = { x: 16, y: 16, width: 64, height: 30 };
 
-  ctx.fillStyle = '#5e3a7d';
+  ctx.fillStyle = isPressed('prev') ? '#8a5bb1' : '#5e3a7d';
   drawRoundedRect(ctx, btnPrevRect.x, btnPrevRect.y, btnPrevRect.width, btnPrevRect.height, 6, true, false);
+  ctx.fillStyle = isPressed('next') ? '#8a5bb1' : '#5e3a7d';
   drawRoundedRect(ctx, btnNextRect.x, btnNextRect.y, btnNextRect.width, btnNextRect.height, 6, true, false);
+  ctx.fillStyle = isPressed('back') ? '#8a5bb1' : '#5e3a7d';
   drawRoundedRect(ctx, btnBackRect.x, btnBackRect.y, btnBackRect.width, btnBackRect.height, 6, true, false);
 
   drawStyledText(ctx, '< 上一页', btnPrevRect.x + btnW / 2, btnPrevRect.y + btnH / 2, { font: 'bold 14px IndieFlower', fill: '#fff', align: 'center', baseline: 'middle' });
@@ -345,5 +372,6 @@ export default {
   update,
   draw: render,
   destroy,
+  touchstart,
   touchend
 };

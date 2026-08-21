@@ -49,6 +49,7 @@ let levelJustCompleted = 0;
 let currentLevel = 1; // 🌟 当前关卡编号，需保存下来
 let transitioningToNextLevel = false;
 let bossChestState = null;
+let milestoneHeroRollState = null;
 let goldPopTime = 0; // 最近一次金币弹出时间（用于动画）
 
 let exitingGame = false;        // ☆ 新增：返回主页时置 true
@@ -185,8 +186,6 @@ function advanceAfterMonsterDefeat(damage) {
   const exp = Math.floor(defeatedLevel * 5 + 10 + (defeatedMonster?.isBoss ? 50 : 0));
   globalThis.expGainedThisRound = exp;
   rewardExpToHeroes(exp);
-  grantMainlineHeroReward(defeatedLevel);
-
   updatePlayerStats({
     stage: defeatedLevel,
     damage,
@@ -197,12 +196,13 @@ function advanceAfterMonsterDefeat(damage) {
   // 已落地宝箱会跨关保留；Boss 后由玩家手动点击开启。
   createFloatingText(`第 ${defeatedLevel} 关击破！`, canvasRef.width / 2, 180, '#FFD700', 28);
 
-  if (defeatedMonster?.isBoss) {
-    setTimeout(() => startBossChestPhase(defeatedLevel), 700);
-    return;
-  }
+  const continueToNextEncounter = () => {
+    if (defeatedMonster?.isBoss) {
+      setTimeout(() => startBossChestPhase(defeatedLevel), 700);
+      return;
+    }
 
-  setTimeout(() => {
+    setTimeout(() => {
     currentLevel = defeatedLevel + 1;
     const config = LevelConfigs[currentLevel] || {};
     globalThis.gridSize = config.gridSize || 6;
@@ -221,7 +221,12 @@ function advanceAfterMonsterDefeat(damage) {
     createFloatingText(`第 ${currentLevel} 关`, canvasRef.width / 2, 180, '#FFFFFF', 30);
     drawGame();
     setTimeout(() => { transitioningToNextLevel = false; }, 600);
-  }, 700);
+    }, 700);
+  };
+
+  // 仅第 3、5 关保留英雄里程碑；先播放随机头像，再继续本局接力。
+  if (startMilestoneHeroRecruit(defeatedLevel, continueToNextEncounter)) return;
+  continueToNextEncounter();
 }
 
 const BOSS_CHEST_PRICES = [150, 350, 750];
@@ -244,12 +249,26 @@ function startBossChestPhase(defeatedLevel) {
     selectedCandidate: false,
     chestRects: [],
     slotRects: [],
-    skipRect: null
+    skipRect: null,
+    feedbackKey: '',
+    feedbackUntil: 0
   };
   clearLootChests();
   globalThis.chestDropsThisRound = [];
   transitioningToNextLevel = false;
   drawGame();
+}
+
+function flashBossChestControl(state, key, duration = 170) {
+  state.feedbackKey = key;
+  state.feedbackUntil = Date.now() + duration;
+  drawGame();
+  setTimeout(() => {
+    if (bossChestState === state && state.feedbackKey === key) {
+      state.feedbackKey = '';
+      drawGame();
+    }
+  }, duration);
 }
 
 function resolveBossChest(chest) {
@@ -306,26 +325,70 @@ function finishBossChestPhaseIfReady(force = false) {
   }, 250);
 }
 
-function grantMainlineHeroReward(level) {
-  const rewards = {
-    2: 'hero002',
-    4: 'hero003',
-    6: 'hero004',
-    8: 'hero005',
-    10: 'hero016'
-  };
-  const heroId = rewards[level];
-  if (!heroId || isHeroUnlocked(heroId)) return;
+function getMilestoneHeroPool() {
+  const progress = wx.getStorageSync('heroProgress') || {};
+  const firstTen = HeroData.heroes.slice(0, 10);
+  const permanentlyUnlocked = HeroData.heroes.filter(hero =>
+    hero.locked === false || progress[hero.id]?.locked === false
+  );
+  return [...new Map([...firstTen, ...permanentlyUnlocked].map(hero => [hero.id, hero])).values()];
+}
 
-  unlockHero(heroId);
-  const team = wx.getStorageSync('selectedHeroes') || Array(5).fill(null);
-  const emptyIdx = team.findIndex(id => !id);
-  if (emptyIdx >= 0) {
-    team[emptyIdx] = heroId;
-    wx.setStorageSync('selectedHeroes', team);
-    setSelectedHeroes(team);
+function unlockAndDeployMilestoneHero(hero) {
+  const progress = wx.getStorageSync('heroProgress') || {};
+  const wasUnlocked = hero.locked === false || progress[hero.id]?.locked === false;
+  if (!wasUnlocked) {
+    unlockHero(hero.id);
+    const unlocked = wx.getStorageSync('unlockedHeroes') || [];
+    if (!unlocked.includes(hero.id)) wx.setStorageSync('unlockedHeroes', [...unlocked, hero.id]);
   }
-  createFloatingText('新英雄加入队伍！', canvasRef.width / 2, 220, '#66FFAA', 24);
+
+  const team = (wx.getStorageSync('selectedHeroes') || Array(5).fill(null)).slice(0, 5);
+  while (team.length < 5) team.push(null);
+  const emptySlot = team.findIndex(id => !id);
+  const slot = emptySlot >= 0 ? emptySlot : Math.floor(Math.random() * team.length);
+  team[slot] = hero.id;
+  wx.setStorageSync('selectedHeroes', team);
+  setSelectedHeroes(team);
+  return { slot, wasUnlocked };
+}
+
+function startMilestoneHeroRecruit(level, onComplete) {
+  if (![3, 5].includes(level)) return false;
+  const pool = getMilestoneHeroPool();
+  if (!pool.length) return false;
+
+  const state = {
+    level,
+    pool,
+    shownHero: pool[Math.floor(Math.random() * pool.length)],
+    finalHero: pool[Math.floor(Math.random() * pool.length)],
+    rolling: true
+  };
+  milestoneHeroRollState = state;
+  const rollTimer = setInterval(() => {
+    if (milestoneHeroRollState !== state) return clearInterval(rollTimer);
+    state.shownHero = pool[Math.floor(Math.random() * pool.length)];
+    drawGame();
+  }, 90);
+  drawGame();
+
+  setTimeout(() => {
+    if (milestoneHeroRollState !== state) return;
+    clearInterval(rollTimer);
+    state.rolling = false;
+    state.shownHero = state.finalHero;
+    state.result = unlockAndDeployMilestoneHero(state.finalHero);
+    createFloatingText(`${state.finalHero.name} 随机加入出战！`, canvasRef.width / 2, 220, '#7CFFB2', 22);
+    drawGame();
+    setTimeout(() => {
+      if (milestoneHeroRollState !== state) return;
+      milestoneHeroRollState = null;
+      drawGame();
+      onComplete();
+    }, 450);
+  }, 1000);
+  return true;
 }
 
 /* === BlockConfig 派生工具映射 ================================= */
@@ -477,6 +540,7 @@ globalThis.bgmAudioContext = gameBgm;
 
 
     resetSessionState();      //  ← 新增
+    milestoneHeroRollState = null;
     globalThis.runModifiers = { attackMultiplier: 1, coinMultiplier: 1, healMultiplier: 1, chargeMultiplier: 1 };
     currentLevel = options?.level || 1;  // 🌟 记录本次启动关卡
     haltGame();                               // ☆ 立刻熔断后台循环
@@ -1498,8 +1562,51 @@ if (bossChestState) {
   drawBossChestOverlay(ctxRef, canvasRef);
 }
 
+if (milestoneHeroRollState) {
+  drawMilestoneHeroRollOverlay(ctxRef, canvasRef, milestoneHeroRollState);
+}
+
   globalThis.layoutRects = layoutRects;
   drawAllEffects(ctxRef, canvasRef);
+}
+
+function drawMilestoneHeroRollOverlay(ctx, canvas, state) {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = 'rgba(8, 4, 18, 0.82)';
+  ctx.fillRect(0, 0, W, H);
+
+  const cardW = Math.min(280, W - 48), cardH = 220;
+  const x = (W - cardW) / 2, y = (H - cardH) / 2 - 20;
+  ctx.fillStyle = state.rolling ? '#44235F' : '#28624A';
+  drawRoundedRect(ctx, x, y, cardW, cardH, 18, true, false);
+  ctx.strokeStyle = state.rolling ? '#C881FF' : '#7CFFB2';
+  ctx.lineWidth = 3;
+  drawRoundedRect(ctx, x + 2, y + 2, cardW - 4, cardH - 4, 16, false, true);
+
+  ctx.fillStyle = '#FFD700';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`第 ${state.level} 关 · 英雄随机出战`, W / 2, y + 34);
+
+  const hero = state.shownHero;
+  const iconSize = 94;
+  const iconX = W / 2 - iconSize / 2, iconY = y + 52;
+  const icon = globalThis.imageCache?.[hero.icon];
+  ctx.fillStyle = '#1B1128';
+  drawRoundedRect(ctx, iconX - 4, iconY - 4, iconSize + 8, iconSize + 8, 14, true, false);
+  if (icon?.complete) ctx.drawImage(icon, iconX, iconY, iconSize, iconSize);
+  else {
+    ctx.fillStyle = '#FFF';
+    ctx.font = '48px sans-serif';
+    ctx.fillText('?', W / 2, iconY + 63);
+  }
+
+  ctx.fillStyle = '#FFF';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText(hero.name, W / 2, iconY + iconSize + 30);
+  ctx.font = '16px sans-serif';
+  ctx.fillStyle = state.rolling ? '#E5B7FF' : '#A6FFD0';
+  ctx.fillText(state.rolling ? '随机抽取中…' : '已固定并加入本局队伍', W / 2, iconY + iconSize + 58);
 }
 
 function drawStoredChestIndicator(ctx, canvas) {
@@ -1595,8 +1702,14 @@ function drawBossChestOverlay(ctx, canvas) {
     const x = (W - (inRow * cardW + (inRow - 1) * gap)) / 2 + col * (cardW + gap);
     const y = 135 + row * (cardH + gap);
     bossChestState.chestRects.push({ x, y, width: cardW, height: cardH, index });
-    ctx.fillStyle = chest.opened ? '#3a3540' : ['#8B5A2B', '#B0B8C4', '#D4A72C'][chest.tier];
+    const isActive = bossChestState.feedbackKey === `chest-${index}` && Date.now() < bossChestState.feedbackUntil;
+    ctx.fillStyle = chest.opened ? '#3a3540' : (isActive ? '#FFE16A' : ['#8B5A2B', '#B0B8C4', '#D4A72C'][chest.tier]);
     drawRoundedRect(ctx, x, y, cardW, cardH, 12, true, false);
+    if (isActive) {
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 3;
+      drawRoundedRect(ctx, x + 2, y + 2, cardW - 4, cardH - 4, 10, false, true);
+    }
     ctx.fillStyle = '#111';
     ctx.font = '27px sans-serif';
     ctx.fillText(chest.opened ? '✓' : '🎁', x + cardW / 2, y + 34);
@@ -1607,7 +1720,7 @@ function drawBossChestOverlay(ctx, canvas) {
 
   const continueY = H - 62;
   bossChestState.continueRect = { x: W / 2 - 100, y: continueY, width: 200, height: 40 };
-  ctx.fillStyle = '#424242';
+  ctx.fillStyle = bossChestState.feedbackKey === 'continue' && Date.now() < bossChestState.feedbackUntil ? '#777777' : '#424242';
   drawRoundedRect(ctx, bossChestState.continueRect.x, continueY, 200, 40, 10, true, false);
   ctx.fillStyle = '#FFF';
   ctx.font = 'bold 17px sans-serif';
@@ -1620,7 +1733,8 @@ function drawBossChestOverlay(ctx, canvas) {
   const cardW2 = Math.min(300, W - 40), cardH2 = 100;
   const chestRows = Math.ceil(bossChestState.chests.length / perRow);
   const x = (W - cardW2) / 2, y = 135 + chestRows * (cardH + gap) + 18;
-  ctx.fillStyle = bossChestState.selectedCandidate ? '#3E7758' : '#47335F';
+  const candidatePressed = bossChestState.feedbackKey === 'candidate' && Date.now() < bossChestState.feedbackUntil;
+  ctx.fillStyle = candidatePressed ? '#76539A' : (bossChestState.selectedCandidate ? '#3E7758' : '#47335F');
   drawRoundedRect(ctx, x, y, cardW2, cardH2, 12, true, false);
   const icon = globalThis.imageCache?.[hero.icon];
   if (icon?.complete) ctx.drawImage(icon, x + 12, y + 12, 76, 76);
@@ -1632,7 +1746,7 @@ function drawBossChestOverlay(ctx, canvas) {
   ctx.fillText(bossChestState.selectedCandidate ? '请选择一名当前英雄替换' : '点击招募，8 秒后自动折算金币', x + 102, y + 64);
   bossChestState.candidateRect = { x, y, width: cardW2, height: cardH2 };
   bossChestState.skipRect = { x, y: y + 118, width: cardW2, height: 36 };
-  ctx.fillStyle = '#71572F';
+  ctx.fillStyle = bossChestState.feedbackKey === 'skip' && Date.now() < bossChestState.feedbackUntil ? '#A68045' : '#71572F';
   drawRoundedRect(ctx, x, y + 118, cardW2, 36, 8, true, false);
   ctx.fillStyle = '#FFF';
   ctx.font = '15px sans-serif';
@@ -1648,7 +1762,8 @@ function drawBossChestOverlay(ctx, canvas) {
   heroes.forEach((member, index) => {
     const sx = slotX + index * (slotSize + slotGap);
     bossChestState.slotRects.push({ x: sx, y: slotY, width: slotSize, height: slotSize, index });
-    ctx.fillStyle = '#222';
+    const slotPressed = bossChestState.feedbackKey === `slot-${index}` && Date.now() < bossChestState.feedbackUntil;
+    ctx.fillStyle = slotPressed ? '#58A878' : '#222';
     drawRoundedRect(ctx, sx, slotY, slotSize, slotSize, 8, true, false);
     const memberIcon = member && globalThis.imageCache?.[member.icon];
     if (memberIcon?.complete) ctx.drawImage(memberIcon, sx, slotY, slotSize, slotSize);
@@ -1661,12 +1776,14 @@ function handleBossChestTouch(x, y) {
 
   // 英雄候选覆盖层优先响应，避免其区域被下方宝箱热区抢走。
   if (state.candidate && state.candidateRect && x >= state.candidateRect.x && x <= state.candidateRect.x + state.candidateRect.width && y >= state.candidateRect.y && y <= state.candidateRect.y + state.candidateRect.height) {
+    flashBossChestControl(state, 'candidate');
     state.selectedCandidate = true;
     createFloatingText('请选择要替换的英雄', canvasRef.width / 2, state.candidateRect.y - 12, '#7CFFB2', 18);
     drawGame();
     return;
   }
   if (state.candidate && state.skipRect && x >= state.skipRect.x && x <= state.skipRect.x + state.skipRect.width && y >= state.skipRect.y && y <= state.skipRect.y + state.skipRect.height) {
+    flashBossChestControl(state, 'skip');
     addCoins(state.candidate.refund);
     createFloatingText(`获得 ${state.candidate.refund} 金币`, canvasRef.width / 2, state.skipRect.y - 10, '#FFD700', 18);
     state.candidate = null;
@@ -1676,6 +1793,7 @@ function handleBossChestTouch(x, y) {
   }
   const slot = state.selectedCandidate && state.slotRects?.find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height);
   if (slot) {
+    flashBossChestControl(state, `slot-${slot.index}`);
     const ids = getSelectedHeroes().map(hero => hero?.id || null);
     ids[slot.index] = state.candidate.hero.id;
     setSelectedHeroes(ids);
@@ -1691,9 +1809,11 @@ function handleBossChestTouch(x, y) {
     const chest = state.chests[chestHit.index];
     if (chest.opened || state.candidate) return;
     if (getSessionCoins() < chest.price) {
+      flashBossChestControl(state, `chest-${chestHit.index}`);
       createFloatingText('金币不足', x, y, '#FF6666', 20);
       return;
     }
+    flashBossChestControl(state, `chest-${chestHit.index}`);
     addCoins(-chest.price);
     createFloatingText(`开启宝箱 -${chest.price}`, x, y - 24, '#FFD700', 18);
     resolveBossChest(chest);
@@ -1701,6 +1821,7 @@ function handleBossChestTouch(x, y) {
     return;
   }
   if (state.continueRect && x >= state.continueRect.x && x <= state.continueRect.x + state.continueRect.width && y >= state.continueRect.y && y <= state.continueRect.y + state.continueRect.height) {
+    flashBossChestControl(state, 'continue');
     if (state.candidate) addCoins(state.candidate.refund);
     clearLootChests();
     finishBossChestPhaseIfReady(true);
@@ -2851,43 +2972,10 @@ showDamageText(pendingDamage, endX, endY + 50);
             rewardExpToHeroes(exp);                    // 分发经验
  
 
-// ✅ 添加关卡奖励英雄（例如每隔几关解锁新英雄）
-const levelRewardTexts = [];
-
-  globalThis.currentChestStats = {};      // 用完就清空，防止带到下一关
-  // ===============================================
-
-let heroId = null;
-if (currentLevel === 2) {
-  heroId = 'hero002';
-} else if (currentLevel === 4) {
-  heroId = 'hero003';
-} else if (currentLevel === 6) {
-  heroId = 'hero004';
-} else if (currentLevel === 8) {
-  heroId = 'hero005';
-} else if (currentLevel === 10) {
-  heroId = 'hero016';
-}
-
-if (heroId && !isHeroUnlocked(heroId)) {
-    if (typeof unlockHero === 'function') unlockHero(heroId);
-    globalThis.levelRewardsHeroId = heroId;          // 用于弹窗展示
-  
-    /* ⭐️ 自动加入出战栏 —— 复用原点击逻辑 */
-    const team     = wx.getStorageSync('selectedHeroes') || [null, null, null, null, null];
-    const emptyIdx = team.findIndex(id => !id);
-    if (emptyIdx >= 0) {
-      team[emptyIdx] = heroId;
-      wx.setStorageSync('selectedHeroes', team);
-      setSelectedHeroes(team);
-    }
-    /* ------------------------------------------------------- */
-  }
-  
-
-
-globalThis.levelRewards = levelRewardTexts;
+// 旧胜利弹窗流程保留作兼容参考，但不再创建任何关卡奖励或英雄奖励。
+globalThis.currentChestStats = {};
+globalThis.levelRewards = [];
+globalThis.levelRewardsHeroId = null;
 
 // 弹窗即将出现——先抽一行对白
 globalThis.victoryDialogText =

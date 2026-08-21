@@ -14,6 +14,8 @@ import { getItems } from './data/inventory.js';
 
 let ctxRef, switchPageFn, canvasRef;
 let backBtnArea = null;
+let pressedBackUntil = 0;
+let leavingBackpack = false;
 
 // 九宫格布局缓存
 let grid = {
@@ -41,7 +43,10 @@ function init(ctx, switchPage, canvas) {
 }
 
 function update() {
-  // 背包目前无动画，预留
+  // 主循环会持续调用 update；按下高亮自然在短暂时间后回弹。
+  if (pressedBackUntil && Date.now() >= pressedBackUntil) {
+    pressedBackUntil = 0;
+  }
 }
 
 function draw() {
@@ -97,9 +102,11 @@ function draw() {
   });
 
   // 返回按钮
-  ctxRef.fillStyle = '#00bfa5';
+  const backPressed = Date.now() < pressedBackUntil;
+  ctxRef.fillStyle = backPressed ? '#00d7bd' : '#00bfa5';
   ctxRef.strokeStyle = '#004d40';
-  drawRoundedRect(ctxRef, backBtnArea.x, backBtnArea.y, backBtnArea.width, backBtnArea.height, 12);
+  const inset = backPressed ? 3 : 0;
+  drawRoundedRect(ctxRef, backBtnArea.x + inset, backBtnArea.y + inset, backBtnArea.width - inset * 2, backBtnArea.height - inset * 2, 12);
   ctxRef.fill();
   ctxRef.stroke();
 
@@ -107,7 +114,7 @@ function draw() {
   ctxRef.font = 'bold 20px sans-serif';
   ctxRef.textAlign = 'center';
   ctxRef.textBaseline = 'middle';
-  ctxRef.fillText('返回', backBtnArea.x + backBtnArea.width/2, backBtnArea.y + backBtnArea.height/2);
+  ctxRef.fillText('返回', backBtnArea.x + backBtnArea.width/2, backBtnArea.y + backBtnArea.height/2 + (backPressed ? 2 : 0));
 }
 
 // 触控（统一由 game.js 分发）
@@ -116,8 +123,11 @@ function onTouchstart(e) {
   if (!t) return;
   const x = t.clientX, y = t.clientY;
   if (x>=backBtnArea.x && x<=backBtnArea.x+backBtnArea.width &&
-      y>=backBtnArea.y && y<=backBtnArea.y+backBtnArea.height) {
-    switchPageFn('home');
+      y>=backBtnArea.y && y<=backBtnArea.y+backBtnArea.height && !leavingBackpack) {
+    leavingBackpack = true;
+    pressedBackUntil = Date.now() + 110;
+    draw();
+    setTimeout(() => switchPageFn('home'), 110);
   }
 }
 function onTouchend(_e){ /* 预留 */ }
@@ -128,6 +138,8 @@ function destroy() {
   switchPageFn = null;
   canvasRef = null;
   backBtnArea = null;
+  pressedBackUntil = 0;
+  leavingBackpack = false;
 }
 
 const BackpackPage = {

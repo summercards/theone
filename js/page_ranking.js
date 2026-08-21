@@ -14,6 +14,24 @@ let tab = 'global';         // 'global' | 'friends'
 let globalList = [];        // Top100 数据
 let scrollY = 0, startY = 0;
 let userOpenId = '', myRank = '';
+let pressedControl = '';
+let controlPressUntil = 0;
+
+function isPressed(key) {
+  return pressedControl === key && Date.now() < controlPressUntil;
+}
+
+function flashControl(key, duration = 120) {
+  pressedControl = key;
+  controlPressUntil = Date.now() + duration;
+  drawRankingUI();
+  setTimeout(() => {
+    if (pressedControl === key) {
+      pressedControl = '';
+      drawRankingUI();
+    }
+  }, duration);
+}
 
 /* =============================================================
    云函数调用：拉取 Top100 并计算我的排名
@@ -92,7 +110,7 @@ function drawRankingUI() {
   const shareG = ctxRef.createLinearGradient(0,0,shareW,0);
   shareG.addColorStop(0,'#ffcc33');
   shareG.addColorStop(1,'#ffaa00');
-  ctxRef.fillStyle = shareG;
+  ctxRef.fillStyle = isPressed('share') ? '#ffd85a' : shareG;
   drawRoundedRect(ctxRef, shareX, shareY, shareW, shareH, 14);
   ctxRef.fill();
 
@@ -104,7 +122,7 @@ function drawRankingUI() {
 
   const tabY=shareY+shareH+20, tabH=50, tabW=canvasRef.width/2;
   ['global','friends'].forEach((t,i)=>{
-    ctxRef.fillStyle = (tab===t? '#ffaa00':'#555');
+    ctxRef.fillStyle = isPressed(`tab-${t}`) ? '#ffe06a' : (tab===t? '#ffaa00':'#555');
     drawRoundedRect(ctxRef, i*tabW+10, tabY, tabW-20, tabH, 12);
     ctxRef.fill();
     ctxRef.fillStyle = '#000';
@@ -165,7 +183,7 @@ function drawRankingUI() {
 
   const nick = wx.getStorageSync('nick') || '';
   if (!nick.trim()) {
-    ctxRef.fillStyle = '#33ccff';
+    ctxRef.fillStyle = isPressed('authorize') ? '#7fe4ff' : '#33ccff';
     drawRoundedRect(ctxRef, authorizeX, authorizeY, authorizeW, authorizeH, 14);
     ctxRef.fill();
     ctxRef.fillStyle = '#000';
@@ -178,7 +196,7 @@ function drawRankingUI() {
     authorizeBtn = null;
   }
 
-  ctxRef.fillStyle = '#8800aa';
+  ctxRef.fillStyle = isPressed('back') ? '#b54ad0' : '#8800aa';
   drawRoundedRect(ctxRef, backX, returnY, backW, returnH, 14);
   ctxRef.fill();
   ctxRef.fillStyle    = '#fff';
@@ -199,7 +217,7 @@ function onTouchstart(e) {
   if (t.clientY>=tabY && t.clientY<=tabY+50) {
     tab = t.clientX < canvasRef.width / 2 ? 'global' : 'friends';
     scrollY = 0;
-    drawRankingUI();
+    flashControl(`tab-${tab}`);
     return;
   }
 }
@@ -220,11 +238,14 @@ function onTouchend(e) {
 
   if (x>=rankingReturnBtn.x && x<=rankingReturnBtn.x+rankingReturnBtn.width &&
       y>=rankingReturnBtn.y && y<=rankingReturnBtn.y+rankingReturnBtn.height) {
-    switchPageFn('home'); return;
+    flashControl('back');
+    setTimeout(() => switchPageFn('home'), 120);
+    return;
   }
 
   if (x>=rankingShareBtn.x && x<=rankingShareBtn.x+rankingShareBtn.width &&
       y>=rankingShareBtn.y && y<=rankingShareBtn.y+rankingShareBtn.height) {
+    flashControl('share');
     shareMyStats();
     return;
   }
@@ -232,6 +253,7 @@ function onTouchend(e) {
   if (authorizeBtn &&
     x >= authorizeBtn.x && x <= authorizeBtn.x + authorizeBtn.width &&
     y >= authorizeBtn.y && y <= authorizeBtn.y + authorizeBtn.height) {
+  flashControl('authorize');
   console.log('[授权按钮] 命中点击区域', x, y);
   wx.getUserProfile({
     desc: '用于展示排行榜昵称和头像',
