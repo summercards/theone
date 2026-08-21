@@ -107,6 +107,7 @@ export function drawMonsterSprite(ctx, canvas) {
   const BAR_OFFSET_Y = 18;
   const barX = (canvas.width - BAR_W) / 2;
   const barY = y + SPR_H + BAR_OFFSET_Y;
+  globalThis.monsterHpBarPos = { x: barX, y: barY, width: BAR_W, height: BAR_H };
 
   globalThis.monsterHpDraw = globalThis.monsterHpDraw ?? monster.hp;
   const speed = 0.2;

@@ -73,9 +73,10 @@ export function getMonster() {
           /* 起点：怪物中心附近 ±18px */
           const sx = canvas.width / 2 + (Math.random() - 0.5) * 36;
           const sy = globalThis.__gridStartY - 280 + (Math.random() - 0.5) * 36;
-          // 落点位于伤害槽下方、英雄头像上方的宝箱栏，避开血条和头像。
-          const ex = canvas.width / 2 + (Math.random() - 0.5) * 70;
-          const ey = globalThis.__gridStartY - 155 + (Math.random() - 0.5) * 10;
+          // 落在怪物血条正上方：垂直随机偏差控制在 ±3px，且不遮挡血条。
+          const bar = globalThis.monsterHpBarPos;
+          const ex = (bar?.x ?? canvas.width / 2 - 140) + (bar?.width ?? 280) / 2 + (Math.random() - 0.5) * 110;
+          const ey = (bar?.y ?? globalThis.__gridStartY - 165) - 30 + (Math.random() - 0.5) * 6;
           createLootChest(sx, sy, ex, ey, 650, rollChestTier());
         }
       } catch (err) {

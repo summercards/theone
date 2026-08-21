@@ -63,6 +63,15 @@ export function clearLootChests () {
     }
   }
 
+export function getLandedLootChests () {
+  return effects.filter(effect => effect.type === 'loot_chest' && effect.landed);
+}
+
+export function removeLootChest (target) {
+  const index = effects.indexOf(target);
+  if (index >= 0) effects.splice(index, 1);
+}
+
 export function drawAllEffects(ctx, canvas) {
   const now = Date.now();
   const remove = [];
@@ -538,9 +547,9 @@ else if (e.type === 'proj') {
         const img = globalThis.imageCache.lootChests?.[e.idx];
         if (!img || !img.complete) return;           // 图片还没加载好
 
-        if (e.landed) {                              // ★落地后：直接画静止
+        if (e.landed) {
           ctx.drawImage(img, e.x1 - 24, e.y1 - 24, 48, 48);
-          return;                                    // 别进删除逻辑
+          return;
         }
 
         // ★飞行中：抛物线插值
@@ -554,8 +563,8 @@ else if (e.type === 'proj') {
 
         ctx.drawImage(img, x - 24, y - 24, 48, 48);
 
-        if (p >= 1) e.landed = true;                 // ★到站：改状态，不删
-        return;                                      // 跳过统一 remove
+        if (p >= 1) e.landed = true;                 // 到达后停留，等待 Boss 后手动开启
+        return;
       }
 
       else if (e.type === 'charge_glow') {
@@ -1057,4 +1066,3 @@ export function createHeroLevelUpEffect(slotIndex) {
 
     animate();
   }
-
