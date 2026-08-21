@@ -224,30 +224,30 @@ function advanceAfterMonsterDefeat(damage) {
   }, 700);
 }
 
-const BOSS_CHEST_PRICES = [30, 70, 150];
+const BOSS_CHEST_PRICES = [150, 350, 750];
 const RUN_EFFECTS = [
-  { name: '战意', desc: '攻击槽伤害 +25%', apply: () => { globalThis.runModifiers.attackMultiplier *= 1.25; } },
-  { name: '丰收', desc: '金币收益 +50%', apply: () => { globalThis.runModifiers.coinMultiplier *= 1.5; } },
-  { name: '灵泉', desc: '治疗效果 +50%', apply: () => { globalThis.runModifiers.healMultiplier *= 1.5; } },
-  { name: '共鸣', desc: '充能效率 +50%', apply: () => { globalThis.runModifiers.chargeMultiplier *= 1.5; } }
+  { name: '战意', desc: '攻击槽伤害 +20%', apply: () => { globalThis.runModifiers.attackMultiplier *= 1.2; } },
+  { name: '丰收', desc: '金币收益 +40%', apply: () => { globalThis.runModifiers.coinMultiplier *= 1.4; } },
+  { name: '灵泉', desc: '治疗效果 +40%', apply: () => { globalThis.runModifiers.healMultiplier *= 1.4; } },
+  { name: '共鸣', desc: '充能效率 +40%', apply: () => { globalThis.runModifiers.chargeMultiplier *= 1.4; } }
 ];
 
 function startBossChestPhase(defeatedLevel) {
-  const landedChests = getLandedLootChests();
+  // 掉落记录在伤害结算时立即写入；不要依赖飞行动画是否已结束，
+  // 否则 Boss 击杀过快时会错误地跳过开箱阶段。
+  const dropTypes = globalThis.chestDropsThisRound || [];
+  const chestTypes = dropTypes.length ? dropTypes : [Math.floor(Math.random() * 3)];
   bossChestState = {
     defeatedLevel,
-    chests: landedChests.map(effect => ({ effect, tier: effect.idx, price: BOSS_CHEST_PRICES[effect.idx], opened: false })),
+    chests: chestTypes.map(tier => ({ tier, price: BOSS_CHEST_PRICES[tier], opened: false })),
     candidate: null,
     selectedCandidate: false,
     chestRects: [],
     slotRects: [],
     skipRect: null
   };
-  if (!bossChestState.chests.length) {
-    finishBossChestPhaseIfReady();
-    return;
-  }
   clearLootChests();
+  globalThis.chestDropsThisRound = [];
   transitioningToNextLevel = false;
   drawGame();
 }
@@ -1584,9 +1584,9 @@ function drawBossChestOverlay(ctx, canvas) {
   ctx.fillText('Boss 宝箱', W / 2, 80);
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '18px sans-serif';
-  ctx.fillText(`本局金币：${getSessionCoins()}  ·  点击宝箱开启`, W / 2, 110);
+  ctx.fillText(`本局金币：${getSessionCoins()}  ·  任意点击宝箱开启`, W / 2, 110);
 
-  const cardW = 84, cardH = 92, gap = 12, perRow = 3;
+  const cardW = 56, cardH = 70, gap = 8, perRow = 5;
   bossChestState.chestRects = [];
   bossChestState.chests.forEach((chest, index) => {
     const col = index % perRow;
@@ -1598,12 +1598,11 @@ function drawBossChestOverlay(ctx, canvas) {
     ctx.fillStyle = chest.opened ? '#3a3540' : ['#8B5A2B', '#B0B8C4', '#D4A72C'][chest.tier];
     drawRoundedRect(ctx, x, y, cardW, cardH, 12, true, false);
     ctx.fillStyle = '#111';
-    ctx.font = '38px sans-serif';
-    ctx.fillText(chest.opened ? '✓' : '🎁', x + cardW / 2, y + 46);
-    ctx.font = '14px sans-serif';
+    ctx.font = '27px sans-serif';
+    ctx.fillText(chest.opened ? '✓' : '🎁', x + cardW / 2, y + 34);
+    ctx.font = '12px sans-serif';
     ctx.fillStyle = '#FFF';
-    const next = bossChestState.chests.find(item => !item.opened);
-    ctx.fillText(chest.opened ? '已开启' : (next === chest ? `${chest.price} 金币` : '等待开启'), x + cardW / 2, y + 76);
+    ctx.fillText(chest.opened ? '已开启' : `${chest.price} 金币`, x + cardW / 2, y + 57);
   });
 
   const continueY = H - 62;
@@ -1619,7 +1618,8 @@ function drawBossChestOverlay(ctx, canvas) {
   if (!candidate) return;
   const hero = candidate.hero;
   const cardW2 = Math.min(300, W - 40), cardH2 = 100;
-  const x = (W - cardW2) / 2, y = 265;
+  const chestRows = Math.ceil(bossChestState.chests.length / perRow);
+  const x = (W - cardW2) / 2, y = 135 + chestRows * (cardH + gap) + 18;
   ctx.fillStyle = bossChestState.selectedCandidate ? '#3E7758' : '#47335F';
   drawRoundedRect(ctx, x, y, cardW2, cardH2, 12, true, false);
   const icon = globalThis.imageCache?.[hero.icon];
@@ -1658,16 +1658,44 @@ function drawBossChestOverlay(ctx, canvas) {
 function handleBossChestTouch(x, y) {
   const state = bossChestState;
   if (!state) return;
+
+  // 英雄候选覆盖层优先响应，避免其区域被下方宝箱热区抢走。
+  if (state.candidate && state.candidateRect && x >= state.candidateRect.x && x <= state.candidateRect.x + state.candidateRect.width && y >= state.candidateRect.y && y <= state.candidateRect.y + state.candidateRect.height) {
+    state.selectedCandidate = true;
+    createFloatingText('请选择要替换的英雄', canvasRef.width / 2, state.candidateRect.y - 12, '#7CFFB2', 18);
+    drawGame();
+    return;
+  }
+  if (state.candidate && state.skipRect && x >= state.skipRect.x && x <= state.skipRect.x + state.skipRect.width && y >= state.skipRect.y && y <= state.skipRect.y + state.skipRect.height) {
+    addCoins(state.candidate.refund);
+    createFloatingText(`获得 ${state.candidate.refund} 金币`, canvasRef.width / 2, state.skipRect.y - 10, '#FFD700', 18);
+    state.candidate = null;
+    finishBossChestPhaseIfReady();
+    drawGame();
+    return;
+  }
+  const slot = state.selectedCandidate && state.slotRects?.find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height);
+  if (slot) {
+    const ids = getSelectedHeroes().map(hero => hero?.id || null);
+    ids[slot.index] = state.candidate.hero.id;
+    setSelectedHeroes(ids);
+    createFloatingText(`${state.candidate.hero.name} 加入队伍`, canvasRef.width / 2, 220, '#7CFFB2', 20);
+    state.candidate = null;
+    finishBossChestPhaseIfReady();
+    drawGame();
+    return;
+  }
+
   const chestHit = state.chestRects?.find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height);
   if (chestHit) {
     const chest = state.chests[chestHit.index];
-    const next = state.chests.find(item => !item.opened);
-    if (chest.opened || state.candidate || chest !== next) return;
+    if (chest.opened || state.candidate) return;
     if (getSessionCoins() < chest.price) {
       createFloatingText('金币不足', x, y, '#FF6666', 20);
       return;
     }
     addCoins(-chest.price);
+    createFloatingText(`开启宝箱 -${chest.price}`, x, y - 24, '#FFD700', 18);
     resolveBossChest(chest);
     drawGame();
     return;
@@ -1677,28 +1705,6 @@ function handleBossChestTouch(x, y) {
     clearLootChests();
     finishBossChestPhaseIfReady(true);
     return;
-  }
-  if (state.candidate && state.candidateRect && x >= state.candidateRect.x && x <= state.candidateRect.x + state.candidateRect.width && y >= state.candidateRect.y && y <= state.candidateRect.y + state.candidateRect.height) {
-    state.selectedCandidate = true;
-    drawGame();
-    return;
-  }
-  if (state.candidate && state.skipRect && x >= state.skipRect.x && x <= state.skipRect.x + state.skipRect.width && y >= state.skipRect.y && y <= state.skipRect.y + state.skipRect.height) {
-    addCoins(state.candidate.refund);
-    state.candidate = null;
-    finishBossChestPhaseIfReady();
-    drawGame();
-    return;
-  }
-  const slot = state.selectedCandidate && state.slotRects.find(rect => x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height);
-  if (slot) {
-    const ids = getSelectedHeroes().map(hero => hero?.id || null);
-    ids[slot.index] = state.candidate.hero.id;
-    setSelectedHeroes(ids);
-    createFloatingText(`${state.candidate.hero.name} 加入队伍`, canvasRef.width / 2, 220, '#7CFFB2', 20);
-    state.candidate = null;
-    finishBossChestPhaseIfReady();
-    drawGame();
   }
 }
 
